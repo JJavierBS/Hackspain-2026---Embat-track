@@ -1,10 +1,6 @@
 import type { HTMLAttributes } from "react";
 
+/** A plain film: flat panel, hairline border, corner marks (see .film in index.css). */
 export function Card({ className = "", ...props }: HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      className={`rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900 ${className}`}
-      {...props}
-    />
-  );
+  return <div className={`film p-5 ${className}`} {...props} />;
 }
