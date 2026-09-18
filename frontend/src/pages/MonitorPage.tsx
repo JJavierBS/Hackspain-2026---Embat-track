@@ -104,7 +104,8 @@ export function MonitorPage() {
             </div>
           </Film>
 
-          <Film title="Watchlist" meta={`${data.watchlist.length} entidades`} className="self-start lg:sticky lg:top-6">
+          <div className="grid content-start gap-12 self-start lg:sticky lg:top-6">
+          <Film title="Watchlist" meta={`${data.watchlist.length} entidades`}>
             <p className="mb-4 text-[15px] text-ink-muted">Una alerta crítica o dos avisos negativos en los últimos 3 meses.</p>
             {data.watchlist.length === 0 ? (
               <p className="text-ink-muted">Ninguna entidad en vigilancia en {monthCode(month)}.</p>
@@ -126,8 +127,52 @@ export function MonitorPage() {
               </ul>
             )}
           </Film>
+          <MonthSummary alerts={data.alerts} />
+          </div>
         </div>
       )}
     </div>
+  );
+}
+
+/** Negative and positive alerts per month, as paired bars. */
+function MonthSummary({ alerts }: { alerts: Alert[] }) {
+  const months = [...new Set(alerts.map((a) => a.month))].sort();
+  const counts = months.map((m) => ({
+    month: m,
+    negative: alerts.filter((a) => a.month === m && a.direction === "NEGATIVE").length,
+    positive: alerts.filter((a) => a.month === m && a.direction === "POSITIVE").length,
+  }));
+  const max = Math.max(1, ...counts.map((c) => Math.max(c.negative, c.positive)));
+  return (
+    <Film title="Resumen por mes" meta="Alertas negativas y positivas">
+      {counts.length === 0 ? (
+        <p className="text-ink-muted">Sin alertas en este periodo.</p>
+      ) : (
+        <ul className="grid gap-3">
+          {counts.map((c) => (
+            <li key={c.month} className="grid grid-cols-[4.5rem_1fr] items-center gap-3 text-[15px]">
+              <span>
+                {monthShort(c.month)}
+                <span className="block text-sm text-ink-muted">{monthCode(c.month)}</span>
+              </span>
+              <span className="grid gap-1">
+                {(["negative", "positive"] as const).map((k) => (
+                  <span key={k} className="flex items-center gap-2">
+                    <span
+                      className={`h-3 ${k === "negative" ? "bg-down/80" : "bg-up/80"}`}
+                      style={{ width: `${(c[k] / max) * 62}%`, minWidth: c[k] ? 6 : 0 }}
+                    />
+                    <span className={`text-sm font-semibold whitespace-nowrap ${k === "negative" ? "text-down" : "text-up"}`}>
+                      {c[k]} {k === "negative" ? (c[k] === 1 ? "negativa" : "negativas") : c[k] === 1 ? "positiva" : "positivas"}
+                    </span>
+                  </span>
+                ))}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Film>
   );
 }
