@@ -1,8 +1,0 @@
-{
-  "name": "hackspain-2026",
-  "private": true,
-  "packageManager": "pnpm@11.9.0",
-  "scripts": {
-    "typecheck": "pnpm -r run typecheck"
-  }
-}

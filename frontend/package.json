@@ -1,5 +1,5 @@
 {
-  "name": "web",
+  "name": "xray-frontend",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -11,11 +11,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@app/shared": "workspace:*",
     "@tanstack/react-query": "5.103.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-router-dom": "7.18.4",
+    "recharts": "3.10.1",
     "zod": "4.6.5"
   },
   "devDependencies": {
