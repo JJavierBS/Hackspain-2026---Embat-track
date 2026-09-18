@@ -71,9 +71,10 @@ public class PipelineRunner {
             runs.save(runId, config.unit(), startedAt, Instant.now(), timings, configHash());
             status.done(timings);
             log.info("pipeline run {} done", runId);
-        } catch (RuntimeException e) {
+        } catch (Throwable e) {
+            // Throwable, not RuntimeException: an Error would otherwise leave the state RUNNING forever.
             log.error("pipeline run {} failed", runId, e);
-            status.failed(e.getMessage(), timings);
+            status.failed(String.valueOf(e.getMessage()), timings);
         }
     }
 

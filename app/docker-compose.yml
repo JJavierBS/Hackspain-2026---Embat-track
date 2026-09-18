@@ -29,15 +29,13 @@ services:
   api:
     profiles: ["demo"]
     build:
-      context: ./backend
+      context: ../backend
     container_name: hackspain-api
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
     environment:
-      SPRING_PROFILES_ACTIVE: demo
-      DB_NAME: app
+      XRAY_DATA_DIR: /data
+    volumes:
+      - ../data:/data
     ports:
       - "8080:8080"
 

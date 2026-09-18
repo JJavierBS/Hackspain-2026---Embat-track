@@ -14,7 +14,7 @@ help:
 
 setup:
 	pnpm install
-	cd backend && ./mvnw -q dependency:go-offline
+	cd ../backend && ./mvnw -q dependency:go-offline
 
 db:
 	@command -v colima >/dev/null 2>&1 && ! colima status >/dev/null 2>&1 && \
@@ -25,7 +25,7 @@ db:
 	@echo "Postgres is ready on 127.0.0.1:5432 (db=app user=app password=hackathon)"
 
 api:
-	cd backend && ./mvnw spring-boot:run
+	cd ../backend && ./mvnw spring-boot:run
 
 web:
 	pnpm --filter web run dev
@@ -45,7 +45,7 @@ demo:
 	docker compose --profile demo up --build
 
 test:
-	cd backend && ./mvnw -q test
+	cd ../backend && ./mvnw -q test
 	pnpm run typecheck
 
 stop:

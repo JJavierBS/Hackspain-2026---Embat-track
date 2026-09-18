@@ -26,3 +26,8 @@ mobile/.expo/
 
 # Logs
 *.log
+
+# X-Ray data: Embat CSVs and the DuckDB file never go to git
+data/raw/
+data/*.duckdb
+data/*.duckdb.wal
