@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { MONTHS, PROFILES, useGlobalParams } from "../hooks/useGlobalParams";
+import { USE_MOCKS } from "../api/queries";
 import { PROFILE_LABELS } from "../lib/format";
 import { XRayMark } from "./Icons";
 import { MonthStrip } from "./MonthStrip";
@@ -43,7 +44,17 @@ export function TopBar() {
           ))}
         </nav>
         <div className="ml-auto">
-          <PipelineBadge />
+          {USE_MOCKS ? (
+            <span
+              title="La app usa datos sintéticos generados en el navegador, no datos de Embat."
+              className="inline-flex items-center gap-2 border border-band-c/70 px-2.5 py-1 text-sm text-viewer-ink"
+            >
+              <span aria-hidden className="h-2 w-2 bg-band-c" />
+              Datos de demostración
+            </span>
+          ) : (
+            <PipelineBadge />
+          )}
         </div>
       </div>
 

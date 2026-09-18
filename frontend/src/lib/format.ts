@@ -1,3 +1,4 @@
+import type { Category, Confidence, Regime, Status } from "../api/types";
 import { MONTHS, type Profile } from "../hooks/useGlobalParams";
 
 const MONTH_FORMAT = new Intl.DateTimeFormat("es-ES", { month: "short", year: "numeric", timeZone: "UTC" });
@@ -55,4 +56,69 @@ export function formatDelta(value: number): string {
   if (value > 0) return `+${abs}`;
   if (value < 0) return `−${abs}`;
   return abs;
+}
+
+
+export const STATUS_LABELS: Record<Status, string> = {
+  EXCEPTIONAL: "Excepcional",
+  HEALTHY: "Sana",
+  IMPROVING: "Mejorando",
+  TURNING: "Empieza a torcerse",
+  DIP: "Bache",
+  STRUCTURAL_DECLINE: "Deterioro",
+  CRITICAL: "Crítica",
+  WATCH: "Vigilar",
+};
+
+export const REGIME_LABELS: Record<Regime, string> = {
+  STABLE: "Estable",
+  DIP: "Bache",
+  DIP_RECOVERED: "Bache superado",
+  STRUCTURAL_DECLINE: "Caída estructural",
+  STRUCTURAL_IMPROVEMENT: "Mejora estructural",
+};
+
+export const CONFIDENCE_LABELS: Record<Confidence, string> = {
+  HIGH: "Alta",
+  MEDIUM: "Media",
+  LOW: "Baja",
+};
+
+export const CATEGORY_LABELS: Record<Category, string> = {
+  LIQUIDITY: "Liquidez",
+  OPERATING_CASH_FLOW: "Flujo de caja operativo",
+  ACTIVITY_GROWTH: "Crecimiento de actividad",
+  DEBT_SERVICE: "Servicio de la deuda",
+  LEVERAGE: "Apalancamiento",
+  PAYMENT_BEHAVIOUR: "Comportamiento de pago",
+  DELINQUENCY: "Morosidad",
+  CONCENTRATION: "Concentración",
+  TAX_REGULARITY: "Regularidad fiscal",
+  MOMENTUM: "Momentum",
+};
+
+const EUR = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0, useGrouping: "always" });
+const EUR_COMPACT = new Intl.NumberFormat("es-ES", {
+  style: "currency",
+  currency: "EUR",
+  notation: "compact",
+  maximumFractionDigits: 2,
+});
+const PCT = new Intl.NumberFormat("es-ES", { style: "percent", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+export function formatEur(value: number): string {
+  return EUR.format(value);
+}
+
+export function formatEurCompact(value: number): string {
+  return EUR_COMPACT.format(value);
+}
+
+export function formatPct(value: number): string {
+  return PCT.format(value);
+}
+
+/** Direction of a signed change, with a dead zone for rounding noise. */
+export function directionOf(delta: number): "up" | "down" | "flat" {
+  return delta > 0.05 ? "up" : delta < -0.05 ? "down" : "flat";
 }

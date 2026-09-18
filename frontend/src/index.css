@@ -93,6 +93,8 @@ body {
 /* A film: a flat hairline sheet held by clips, with a tab that carries its title. */
 .film {
   position: relative;
+  /* Lets wide content (the ranking table) scroll inside the film, not stretch the page. */
+  min-width: 0;
   background: var(--color-film);
   border: 1px solid var(--color-rule);
 }
