@@ -6,7 +6,7 @@ import { PendingFilm } from "../components/PendingFilm";
 export function EntityPage() {
   const { id } = useParams();
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-12">
       <PageHeader
         title={<>Entidad {id}</>}
         lede="La radiografía de una entidad: su nivel, hacia dónde va y qué movió el número."

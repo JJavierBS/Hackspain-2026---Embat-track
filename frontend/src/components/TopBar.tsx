@@ -70,7 +70,7 @@ export function TopBar() {
           })}
         </div>
 
-        <div className="hidden pt-3 lg:block">
+        <div className="order-last w-full pt-4 lg:order-none lg:w-auto">
           <MonthStrip value={month} onChange={setMonth} />
         </div>
 

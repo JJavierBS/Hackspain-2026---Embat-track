@@ -3,7 +3,7 @@ import { PendingFilm } from "../components/PendingFilm";
 
 export function MonitorPage() {
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-12">
       <PageHeader
         title="Monitor"
         lede="Alertas tempranas que saltan solas, mes a mes. Las buenas noticias también avisan."

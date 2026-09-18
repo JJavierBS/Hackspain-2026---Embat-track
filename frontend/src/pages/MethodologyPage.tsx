@@ -6,7 +6,7 @@ import { PendingFilm } from "../components/PendingFilm";
 import { ScoreReadout } from "../components/ScoreReadout";
 import { TrendChart, type TrendPoint } from "../components/TrendChart";
 import { MONTHS } from "../hooks/useGlobalParams";
-import { monthCode } from "../lib/format";
+import { bandOf, formatScore, monthCode } from "../lib/format";
 
 /** Illustrative series for the reading guide. Not Embat data. */
 const EXAMPLE: TrendPoint[] = MONTHS.map((month, i) => {
@@ -28,7 +28,7 @@ export function MethodologyPage() {
   const before = EXAMPLE[MONTHS.indexOf(EXAMPLE_MONTH) - 3];
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-12">
       <PageHeader
         title="Metodología"
         lede="Cómo leer cada número de X-Ray: bandas, dirección y evolución. Los pesos de cada perfil llegan con el bloque 7."
@@ -66,7 +66,10 @@ export function MethodologyPage() {
       </Film>
 
       <Film title="Bandas" meta="Umbrales de la puntuación final">
-        <BandLadder active="B" />
+        <BandLadder active={bandOf(now.final).band} hideCounts />
+        <p className="mt-4 text-[15px] text-ink-muted">
+          Iluminada: la banda del ejemplo ({formatScore(now.final)} → {bandOf(now.final).band}).
+        </p>
       </Film>
 
       <PendingFilm

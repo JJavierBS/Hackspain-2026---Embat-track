@@ -19,15 +19,15 @@ export function PageHeader({ title, lede }: PageHeaderProps) {
       </div>
       <dl className="grid grid-cols-3 gap-px self-end border border-rule bg-rule text-sm md:w-[26rem]">
         <div className="bg-film px-3 py-2">
-          <dt className="text-xs text-ink-muted">Vista</dt>
+          <dt className="text-sm text-ink-muted">Vista</dt>
           <dd className="font-semibold">{label.name}</dd>
         </div>
         <div className="bg-film px-3 py-2">
-          <dt className="text-xs text-ink-muted">Producto</dt>
+          <dt className="text-sm text-ink-muted">Producto</dt>
           <dd className="font-semibold">{label.product}</dd>
         </div>
         <div className="bg-film px-3 py-2">
-          <dt className="text-xs text-ink-muted">Mes</dt>
+          <dt className="text-sm text-ink-muted">Mes</dt>
           <dd className="font-semibold">
             {monthLong(month)} <span className="font-normal text-ink-muted">{monthCode(month)}</span>
           </dd>

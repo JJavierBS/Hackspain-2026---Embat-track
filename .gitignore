@@ -35,3 +35,6 @@ frontend/dist/
 
 # Local env
 .env
+
+# Impeccable review captures (local only)
+.impeccable/review/

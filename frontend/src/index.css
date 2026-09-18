@@ -31,6 +31,10 @@
   --color-band-d: #c2500a;
   --color-band-e: #8e1b8f;
 
+  /* Chart series: neutral hues kept off cyan, the band colors and green/red. */
+  --color-series-level: #7a6a55;
+  --color-series-trajectory: #4f6a8f;
+
   --color-up: #15803d;
   --color-down: #c62828;
 
@@ -71,44 +75,77 @@ body {
   scrollbar-width: thin;
 }
 
-/* The lit panel: a faint diffuser grid, the modular grid every film snaps to. */
+/*
+ * The lit panel: a full-width diffuser grid whose origin sits on the content column.
+ * Columns are 1/24 of the content width (max-w-7xl minus 2 × 24px padding),
+ * rows are 48px, so full-width films sit on the outer lines.
+ */
 .lightbox {
+  --content: calc(min(100cqw, 80rem) - 48px);
   background-color: var(--color-panel);
   background-image:
     linear-gradient(var(--color-panel-grid) 1px, transparent 1px),
     linear-gradient(90deg, var(--color-panel-grid) 1px, transparent 1px);
-  background-size: 48px 48px;
-  background-position: -1px -1px;
+  background-size: calc(var(--content) / 24) 48px;
+  background-position: calc(max(0px, (100cqw - 80rem) / 2) + 24px) 0;
 }
 
-/* A film: flat, hairline, with registration marks in two corners. */
+/* A film: a flat hairline sheet held by clips, with a tab that carries its title. */
 .film {
   position: relative;
   background: var(--color-film);
   border: 1px solid var(--color-rule);
 }
 
-.film::before,
 .film::after {
   content: "";
   position: absolute;
+  right: -1px;
+  bottom: -1px;
   width: 10px;
   height: 10px;
-  border-color: var(--color-ink);
-  border-style: solid;
+  border: solid var(--color-ink);
+  border-width: 0 2px 2px 0;
   pointer-events: none;
 }
 
-.film::before {
-  top: -1px;
-  left: -1px;
-  border-width: 2px 0 0 2px;
+.film-tab {
+  position: absolute;
+  top: 0;
+  left: 20px;
+  transform: translateY(-50%);
+  max-width: calc(100% - 120px);
+  padding: 4px 12px;
+  background: var(--color-ink);
+  color: var(--color-film);
+  font-size: 1.125rem;
+  line-height: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
-.film::after {
-  right: -1px;
-  bottom: -1px;
-  border-width: 0 2px 2px 0;
+/* A notch cut into the top edge, where the viewer clip holds the sheet. */
+.film-notch {
+  position: absolute;
+  top: -1px;
+  width: 16px;
+  height: 8px;
+  background: var(--color-panel);
+  border: 1px solid var(--color-rule);
+  border-top: 0;
+}
+
+/* The measurement readout printed on the top rule, opposite the tab. */
+.film-meta {
+  position: absolute;
+  top: 0;
+  right: 20px;
+  transform: translateY(-50%);
+  padding: 0 8px;
+  background: var(--color-film);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-ink-muted);
 }
 
 /* The one authored moment: a scan line passes over the panel once per view. */

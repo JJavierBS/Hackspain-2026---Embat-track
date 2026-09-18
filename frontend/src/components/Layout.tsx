@@ -9,11 +9,13 @@ export function Layout() {
   return (
     <div className="flex min-h-screen flex-col">
       <TopBar />
-      <main className="lightbox relative flex-1 overflow-hidden">
+      <main className="relative flex flex-1 flex-col overflow-hidden bg-panel [container-type:inline-size]">
         {/* A new view or a new buyer profile re-scans the panel once. */}
         <span key={`${pathname}|${profile}`} aria-hidden className="scanline" />
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
-          <Outlet />
+        <div className="lightbox flex-1">
+          <div className="mx-auto w-full max-w-7xl px-6 py-12">
+            <Outlet />
+          </div>
         </div>
       </main>
       <footer className="bg-viewer px-4 py-3 text-center text-xs text-viewer-muted sm:px-6">

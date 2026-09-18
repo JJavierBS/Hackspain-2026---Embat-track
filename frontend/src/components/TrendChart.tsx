@@ -27,15 +27,37 @@ interface TrendChartProps {
 
 const SERIES = [
   { key: "final", name: "Final", color: "var(--color-ink)", width: 3, dash: undefined },
-  { key: "level", name: "Nivel", color: "var(--color-band-a)", width: 1.75, dash: undefined },
-  { key: "trajectory", name: "Trayectoria", color: "var(--color-scan)", width: 1.75, dash: "5 4" },
+  { key: "level", name: "Nivel", color: "var(--color-series-level)", width: 2.25, dash: undefined },
+  { key: "trajectory", name: "Trayectoria", color: "var(--color-series-trajectory)", width: 2.25, dash: "7 4" },
 ] as const;
+
+/** Minimum vertical gap, in px, between two line-end labels. */
+const LABEL_GAP = 16;
+
+/**
+ * Pixel offsets that keep the line-end labels apart when the last values are close.
+ * The plot spans about (height - 32) px for 100 points.
+ */
+function labelOffsets(last: TrendPoint | undefined, height: number): Record<string, number> {
+  const offsets: Record<string, number> = {};
+  if (!last) return offsets;
+  const pxPerPoint = (height - 32) / 100;
+  const sorted = SERIES.map((s) => ({ key: s.key, y: -last[s.key] * pxPerPoint })).sort((a, b) => a.y - b.y);
+  let previous = -Infinity;
+  for (const item of sorted) {
+    const placed = Math.max(item.y, previous + LABEL_GAP);
+    offsets[item.key] = placed - item.y;
+    previous = placed;
+  }
+  return offsets;
+}
 
 /** Score over time against the band zones, with the active month marked. */
 export function TrendChart({ data, activeMonth, height = 260 }: TrendChartProps) {
+  const offsets = labelOffsets(data[data.length - 1], height);
   return (
     <div>
-      <ul className="mb-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-ink-muted">
+      <ul className="mb-3 flex flex-wrap gap-x-5 gap-y-1 text-[15px] text-ink-muted">
         {SERIES.map((s) => (
           <li key={s.key} className="flex items-center gap-2">
             <svg width="22" height="8" aria-hidden>
@@ -44,10 +66,14 @@ export function TrendChart({ data, activeMonth, height = 260 }: TrendChartProps)
             {s.name}
           </li>
         ))}
+        <li className="flex items-center gap-2">
+          <span aria-hidden className="h-3 w-2.5 bg-scan/40" />
+          Mes seleccionado
+        </li>
       </ul>
       <div style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
+          <LineChart data={data} margin={{ top: 8, right: 92, bottom: 0, left: -8 }}>
             {BANDS.map((b, i) => (
               <ReferenceArea
                 key={b.band}
@@ -64,16 +90,16 @@ export function TrendChart({ data, activeMonth, height = 260 }: TrendChartProps)
             <XAxis
               dataKey="month"
               tickFormatter={monthShort}
-              tick={{ fill: "var(--color-ink-muted)", fontSize: 12 }}
+              tick={{ fill: "var(--color-ink-muted)", fontSize: 14 }}
               tickLine={false}
               axisLine={{ stroke: "var(--color-rule)" }}
               interval="preserveStartEnd"
-              minTickGap={24}
+              minTickGap={32}
             />
             <YAxis
               domain={[0, 100]}
               ticks={[0, 35, 50, 65, 80, 100]}
-              tick={{ fill: "var(--color-ink-muted)", fontSize: 12 }}
+              tick={{ fill: "var(--color-ink-muted)", fontSize: 14 }}
               tickLine={false}
               axisLine={false}
             />
@@ -98,6 +124,22 @@ export function TrendChart({ data, activeMonth, height = 260 }: TrendChartProps)
                 dot={false}
                 activeDot={{ r: 4 }}
                 isAnimationActive={false}
+                label={(props: { index?: number; x?: number | string; y?: number | string }) =>
+                  props.index === data.length - 1 ? (
+                    <text
+                      key={s.key}
+                      x={Number(props.x) + 8}
+                      y={Number(props.y) + 4 + (offsets[s.key] ?? 0)}
+                      fill={s.color}
+                      fontSize={14}
+                      fontWeight={600}
+                    >
+                      {s.name}
+                    </text>
+                  ) : (
+                    <g key={`${s.key}-${props.index}`} />
+                  )
+                }
               />
             ))}
           </LineChart>

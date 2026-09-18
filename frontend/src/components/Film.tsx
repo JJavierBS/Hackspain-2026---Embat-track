@@ -2,21 +2,26 @@ import type { ReactNode } from "react";
 
 interface FilmProps {
   title: string;
-  /** Short measurement readout on the right of the title row. */
+  /** Short measurement readout, printed on the top rule opposite the tab. */
   meta?: ReactNode;
   className?: string;
   children: ReactNode;
 }
 
-/** A titled film. The title row is separated from the reading by one hairline. */
+/** A titled film: the tab carries the title, two notches mark where the viewer clips hold it. */
 export function Film({ title, meta, className = "", children }: FilmProps) {
   return (
-    <section className={`film ${className}`}>
-      <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-rule px-5 py-3">
-        <h2 className="text-base font-semibold tracking-tight">{title}</h2>
-        {meta && <div className="text-sm text-ink-muted">{meta}</div>}
-      </header>
-      <div className="p-5">{children}</div>
+    <section className={`film px-5 pt-10 pb-6 ${className}`}>
+      <h2 className="film-tab">{title}</h2>
+      <span aria-hidden className="film-notch left-[calc(50%-28px)] hidden sm:block" />
+      <span aria-hidden className="film-notch left-[calc(50%+12px)] hidden sm:block" />
+      {meta && (
+        <>
+          <div className="film-meta hidden md:block">{meta}</div>
+          <div className="-mt-3 mb-5 text-right text-sm text-ink-muted md:hidden">{meta}</div>
+        </>
+      )}
+      {children}
     </section>
   );
 }

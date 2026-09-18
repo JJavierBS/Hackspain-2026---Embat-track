@@ -22,7 +22,7 @@ export function MonthStrip({ value, onChange }: MonthStripProps) {
   }
 
   return (
-    <div role="radiogroup" aria-label="Mes (línea temporal)" onKeyDown={onKeyDown} className="flex items-end gap-[3px]">
+    <div role="radiogroup" aria-label="Mes (línea temporal)" onKeyDown={onKeyDown} className="flex w-full items-end gap-[3px] lg:w-auto">
       {MONTHS.map((m, i) => {
         const selected = m === value;
         const yearStart = m.endsWith("-01") || i === 0;
@@ -37,10 +37,10 @@ export function MonthStrip({ value, onChange }: MonthStripProps) {
             data-month={m}
             tabIndex={selected ? 0 : -1}
             onClick={() => onChange(m)}
-            className="group relative flex h-8 w-3 items-end justify-center focus-visible:outline-offset-0"
+            className="group relative flex h-8 min-w-0 flex-1 items-end justify-center focus-visible:outline-offset-0 lg:w-3 lg:flex-none"
           >
             {yearStart && (
-              <span className="pointer-events-none absolute -top-3.5 left-0 text-[10px] leading-none text-viewer-muted">
+              <span className="pointer-events-none absolute -top-4 left-0 text-xs leading-none text-viewer-muted">
                 {m.slice(0, 4)}
               </span>
             )}

@@ -8,7 +8,7 @@ const QUESTIONS = ["Sanas y excepcionales", "Mejorando", "Empiezan a torcerse", 
 
 export function PortfolioPage() {
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-12">
       <PageHeader
         title="Cartera"
         lede="Quién está sana, quién mejora y quién empieza a torcerse. Cambia de perfil y el ranking se recalcula con los pesos de ese comprador."
@@ -16,11 +16,11 @@ export function PortfolioPage() {
       <Film title="Distribución por banda" meta="Puntuación final 0–100">
         <BandLadder />
       </Film>
-      <Film title="Las seis preguntas" meta="Filtros de estado">
+      <Film title="Las seis preguntas" meta="Filtros de estado · llegan en el bloque 4">
         <div className="flex flex-wrap gap-2">
           {QUESTIONS.map((q) => (
-            <span key={q} className="border border-rule bg-panel px-3 py-1.5 text-sm text-ink-muted">
-              {q} <span className="ml-1 font-semibold text-ink">—</span>
+            <span key={q} className="border border-dashed border-ink-muted/50 px-3 py-1.5 text-[15px] text-ink-muted">
+              {q}
             </span>
           ))}
         </div>

@@ -5,10 +5,12 @@ interface BandLadderProps {
   active?: Band;
   /** Entities per band. Absent until the pipeline has results. */
   counts?: Partial<Record<Band, number>>;
+  /** Hide the count row, e.g. on a reference page. */
+  hideCounts?: boolean;
 }
 
 /** The full A–E scale, always visible. The current band is lit forward. */
-export function BandLadder({ active, counts }: BandLadderProps) {
+export function BandLadder({ active, counts, hideCounts = false }: BandLadderProps) {
   return (
     <ol className="grid grid-cols-5 gap-px border border-rule bg-rule" aria-label="Bandas de puntuación">
       {BANDS.map(({ band, range, color }) => {
@@ -28,12 +30,14 @@ export function BandLadder({ active, counts }: BandLadderProps) {
             >
               {band}
             </span>
-            <span className={`mt-2 block text-xs sm:text-sm ${lit ? "text-white/85" : "text-ink-muted"}`}>{range}</span>
+            <span className={`mt-2 block text-sm sm:text-base ${lit ? "text-white/85" : "text-ink-muted"}`}>{range}</span>
+            {!hideCounts && (
             <span className={`mt-1 block text-lg font-semibold ${lit ? "" : "text-ink"}`}>
               {count === undefined ? "—" : count}
-              <span className={`ml-1 hidden text-xs font-normal sm:inline ${lit ? "text-white/85" : "text-ink-muted"}`}>entidades</span>
+              <span className={`ml-1 hidden text-sm font-normal sm:inline ${lit ? "text-white/85" : "text-ink-muted"}`}>entidades</span>
               <span className="sr-only sm:hidden"> entidades</span>
             </span>
+            )}
           </li>
         );
       })}

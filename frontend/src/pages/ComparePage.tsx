@@ -3,7 +3,7 @@ import { PendingFilm } from "../components/PendingFilm";
 
 export function ComparePage() {
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-12">
       <PageHeader
         title="Comparar"
         lede="Dos entidades con la misma nota hoy y trayectorias opuestas, lado a lado."
