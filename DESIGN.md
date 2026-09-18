@@ -32,6 +32,13 @@ typography:
     lineHeight: 1
     fontVariation: "'wdth' 80"
     fontFeature: "'tnum'"
+  figure:
+    fontFamily: "Archivo Variable, Archivo, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "1.5rem"
+    fontWeight: 600
+    lineHeight: 2rem
+    fontVariation: "'wdth' 85"
+    fontFeature: "'tnum'"
   headline:
     fontFamily: "Archivo Variable, Archivo, ui-sans-serif, system-ui, sans-serif"
     fontSize: "3rem"
@@ -122,6 +129,34 @@ components:
     textColor: "{colors.film}"
     rounded: "{rounded.none}"
     size: "32px"
+  band-chip-row:
+    textColor: "{colors.film}"
+    rounded: "{rounded.none}"
+    size: "24px"
+  status-tag:
+    backgroundColor: "{colors.film}"
+    textColor: "{colors.ink}"
+    typography: "{typography.caption}"
+    rounded: "{rounded.none}"
+    padding: "2px 8px"
+  status-tag-critical:
+    backgroundColor: "{colors.down}"
+    textColor: "{colors.film}"
+  question-filter:
+    backgroundColor: "{colors.film}"
+    textColor: "{colors.ink}"
+    typography: "{typography.label}"
+    rounded: "{rounded.none}"
+    padding: "8px 12px"
+  question-filter-active:
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.film}"
+  meter-track:
+    backgroundColor: "{colors.panel-grid}"
+    rounded: "{rounded.none}"
+    height: "10px"
+  ranking-row-hover:
+    backgroundColor: "{colors.scan-soft}"
 ---
 
 # Design System: X-Ray
@@ -132,13 +167,13 @@ components:
 
 Every company is read like a scan clipped to a lit viewer: measured, annotated with calipers, compared with the prior exam. The screen is two materials. A near-black viewer frame (the top bar and footer) carries every control: navigation, the buyer-profile cord, the 24-tick month strip and the pipeline lamp. Below it, a cool backlit panel with a visible diffuser grid holds the content, and the content sits on films: flat, pale sheets with hairline edges, a dark title tab on the top edge, two clip notches and an ink corner mark.
 
-Density is operational, not decorative. Numbers are large, tabular and seated in fixed slots so they read from a projector. Color is rationed by meaning: five band colors name health, green and red name direction only, and one cyan names "now" (the active month, the scan line, focus). The world refuses the white KPI-tile fintech dashboard: no rounded cards, no drop-shadow tiles, no gradient hero.
+Density is operational, not decorative. Numbers are large, tabular and seated in fixed slots so they read from a projector. Color is rationed by meaning: five band colors name health (a 0–100 health value only), green and red name direction, and one cyan names "now" (the active month, the scan line, focus). The world refuses the white KPI-tile fintech dashboard: no rounded cards, no drop-shadow tiles, no gradient hero.
 
 **Key Characteristics:**
 - Dark viewer frame over a cool lit panel; two materials, never a third.
 - Films, not cards: flat, square, hairline-edged, titled by a tab on the top rule.
 - One cyan scan color marks the present moment everywhere.
-- Band A–E colors carry health; green/red carry direction; nothing else borrows them.
+- Band A–E colors carry 0–100 health values; green/red carry direction; nothing else borrows them.
 - Tabular figures everywhere; the score sits in fixed numeral slots.
 - One authored motion: a single scan line passes down the panel per view or profile change.
 
@@ -148,14 +183,14 @@ A cold clinical palette of blue-black and backlit white, with one cyan signal an
 
 ### Primary
 - **Scan Cyan** (`scan`): the present. Active month tick (with glow), active nav underline, the active-month band on every chart axis, the scan line, focus outlines, the "Listo" pipeline lamp, the stroke through the X-Ray mark.
-- **Scan Wash** (`scan-soft`): text selection only.
+- **Scan Wash** (`scan-soft`): text selection, and the ranking row under the pointer (at 40%).
 
 ### Secondary (semantic: health bands)
-- **Cobalt A** (`band-a`), **Teal B** (`band-b`), **Ochre C** (`band-c`), **Amber-Orange D** (`band-d`), **Plum E** (`band-e`): one hue per score band. Used for the band letter, the 4px top stripe of each ladder rung, the lit rung's fill, the score numerals and their slot underlines, the square band chip, and faint band zones behind trend charts.
+- **Cobalt A** (`band-a`), **Teal B** (`band-b`), **Ochre C** (`band-c`), **Amber-Orange D** (`band-d`), **Plum E** (`band-e`): one hue per score band. Used only where a 0–100 health value is shown: the band letter, the 4px top stripe of each ladder rung, the lit rung's fill, the score numerals and their slot underlines, the square band chip (32px in the readout, 24px in rows), faint band zones behind trend charts (7%), the sparkline stroke (band of its last value), the Nivel meter fill, and each category's level figure and bar. A category with weight 0 keeps its band hue at 55% opacity.
 
 ### Tertiary (semantic: direction and chart series)
-- **Direction Green** (`up`) / **Direction Red** (`down`): the delta and its drawn arrow in the caliper. Never used for health, backgrounds or status.
-- **Level Umber** (`series-level`) and **Trajectory Slate** (`series-trajectory`, dashed 7 4): chart series kept off cyan, the bands and green/red. The final score series is drawn in ink at 3px.
+- **Direction Green** (`up`) / **Direction Red** (`down`): every signed change and every reading of where a company is heading. The delta and its drawn arrow (caliper, Δ 3m column, "what changed"), the Trayectoria meter (grown from the 50 mark), the arrow inside status and trend tags, driver bars (at 80%), positive/negative alert marks, the monthly alert summary bars (at 80%), the limit action and its change, the red-outlined count of negative alerts. A solid Direction Red fill with white text is reserved for critical severity: the "Crítica" status and a critical alert. Never used for a 0–100 health value.
+- **Level Umber** (`series-level`) and **Trajectory Slate** (`series-trajectory`, dashed 7 4): chart series kept off cyan, the bands and green/red. The final score series is drawn in ink at 3px; each series is named by a 14px semibold label at its line end. In the two-entity overlay, A is ink and B is Trajectory Slate, both solid at 3px.
 
 ### Neutral
 - **Viewer Black** (`viewer`): top bar, footer, and the html background.
@@ -168,7 +203,9 @@ A cold clinical palette of blue-black and backlit white, with one cyan signal an
 - **Ink** (`ink`) / **Ink Muted** (`ink-muted`): text on films; ink also draws film tabs, corner marks and the caliper.
 
 ### Named Rules
-**The Three Voices Rule.** Cyan means now, band hues mean health, green/red mean direction. A color never speaks for another role; a new state gets a neutral, not a borrowed band or direction hue.
+**The Three Voices Rule.** Cyan means now, band hues mean health, green/red mean direction. A color never speaks for another role; a new state gets a neutral, not a borrowed band or direction hue. The one extension is critical severity, which is a solid Direction Red fill.
+
+**The Health-Only Band Rule.** Band hues belong to 0–100 health values (Final, Nivel, category levels). Trajectory and change are direction and read in green/red, even though trajectory is also on a 0–100 scale; a status label, a link or a mode indicator never takes a band hue.
 
 **The Full Ladder Rule.** All five bands appear together whenever bands are shown. The current band is lit (filled, white text); the others stay at rest with only their stripe and letter colored.
 
@@ -181,11 +218,12 @@ A cold clinical palette of blue-black and backlit white, with one cyan signal an
 
 ### Hierarchy
 - **Display** (600, 72px mobile / 96px desktop, line-height 1, wdth 80): the score in fixed numeral slots. The `md` readout drops to 48px.
+- **Figure** (600, 24px in the ranking table, 30px in compact rows and the watchlist, wdth 85): a score seated in a row, in band color beside a 24px band chip. Stat cell values use 24px at wdth 88 in ink.
 - **Headline** (600, 36px mobile / 48px desktop, tight tracking, wdth 88): page titles, one per view. Band letters in the ladder use the same size at wdth 80.
 - **Title** (600, 18px / 24px, -0.01em): film tab titles.
 - **Body** (400, 16px): ledes (max 62ch) and film copy.
-- **Label** (400, 15px): nav, profile cord, month select, chart legend, chips, caliper caption.
-- **Caption** (400, 14px): film meta readouts, study readout cells, ladder ranges and counts, chart ticks.
+- **Label** (400, 15px): nav, profile cord, month select, chart legend, question filters, list copy, meter labels (semibold), caliper caption.
+- **Caption** (400, 14px): film meta readouts, study readout cells, ladder ranges and counts, chart ticks and line-end labels, table headers, status and trend tags (medium), secondary lines under entity names.
 
 ### Named Rules
 **The Measured Figure Rule.** Numbers are tabular, formatted in Spanish (decimal comma, true minus sign "−"), and the headline score always occupies five slots sized for "100,0", with empty slots underlined in hairline.
@@ -196,11 +234,11 @@ A cold clinical palette of blue-black and backlit white, with one cyan signal an
 
 The page is a full-height column: viewer frame (top), lit panel (grows), viewer footer. The content column is `max-w-7xl` (1280px) with 24px side padding and 48px vertical padding; the top bar uses 16px side padding on mobile, 24px from `sm`.
 
-The lit panel draws its diffuser grid across the full width, with the grid origin registered to the content column's left edge: columns are 1/24 of the content width, rows are 48px. Films stack in a single column with generous vertical gaps (the tab overhangs the top rule by half its height, so films need space above).
+The lit panel draws its diffuser grid across the full width, with the grid origin registered to the content column's left edge: columns are 1/24 of the content width, rows are 48px. Films stack with 48px gaps (the tab overhangs the top rule by half its height, so films need space above). Where two films sit side by side from `lg` (or `md` for the comparison pickers), they share the same 48px gutter in asymmetric pairs (7:5 for the alert feed and watchlist, 5:7 inside the entity radiograph for readout and chart) or halves (drivers and what-changed). Every film has `min-width: 0`, so wide content scrolls inside the film rather than stretching the page. The Monitor watchlist column is sticky (24px from the top) from `lg`.
 
-Cells inside a film tile on a 1px hairline gap (the grid background shows through as the rule): the study readout (3 columns, 26rem wide from `md`), the band ladder (5 columns at every width).
+Cells inside a film tile on a 1px hairline gap (the grid background shows through as the rule): the study readout (3 columns, 26rem wide from `md`), the band ladder (5 columns at every width), and product stat cells (1 column, 2 from `sm`, 3 or 4 from `lg`). Lists inside films are separated by hairline rules: solid for rows of entities, dashed for feed items and change notes.
 
-Responsive behavior, observed: at `sm` the nav wraps to its own scrolling row below the wordmark; below `lg` the month strip takes its own full-width row with flexible ticks; below `md` the film meta readout drops from the top rule into a right-aligned line inside the film; below `sm` film notches hide and ladder counts drop their "entidades" word.
+Responsive behavior, observed: at `sm` the nav wraps to its own scrolling row below the wordmark; below `lg` the month strip takes its own full-width row with flexible ticks; below `md` the film meta readout drops from the top rule into a right-aligned line inside the film; below `sm` film notches hide and ladder counts drop their "entidades" word. The entity ranking is a full table (min 960px, bleeding to the film edges) from `lg`; below `lg` each entity becomes a compact row: rank and ID, name, figure and chip on the right, then Δ 3m, sparkline and status tags wrapping underneath.
 
 **Open, not yet true of the build:** grid registration is on vertical lines only. Film tops do not snap to the 48px rows, and the columns (content/24) are not square with the rows. Do not describe the grid as fully modular until this is fixed.
 
@@ -218,7 +256,7 @@ Flat. Depth comes from material and light, never from lifted surfaces: the dark 
 
 ## Shapes
 
-Square everywhere: films, tabs, cells, chips, the profile cord, the select and the band chip have no radius. The single round shape is the 8px pipeline lamp. Borders are 1px hairlines; 2px strokes are reserved for ink marks (film corner, caliper, nav underline, numeral slot underlines). A film's silhouette is its signature: a dark tab straddling the top edge on the left, two 16×8px notches cut into the top edge near center (from `sm`), a meta readout straddling the top edge on the right (from `md`), and a 10px ink L-bracket at the bottom-right corner.
+Square everywhere: films, tabs, cells, chips, the profile cord, the select and the band chip have no radius. The single round shape is the 8px pipeline lamp (the demo-data marker that replaces it is square). Bars (meters, driver bars, category bars, summary bars) are square-ended. Borders are 1px hairlines; 2px strokes are reserved for ink marks (film corner, caliper, nav underline, numeral slot underlines). A film's silhouette is its signature: a dark tab straddling the top edge on the left, two 16×8px notches cut into the top edge near center (from `sm`), a meta readout straddling the top edge on the right (from `md`), and a 10px ink L-bracket at the bottom-right corner.
 
 ## Components
 
@@ -229,7 +267,8 @@ The container for every section of content.
 - **Shadow Strategy:** none (see The Backlight Rule).
 - **Internal Padding:** 40px top (clears the tab), 20px sides, 24px bottom. A plain untitled film uses 20px all round.
 - **Tab:** Ink fill, Film White title text (Title role), 4px 12px padding, 20px from the left, centered on the top rule.
-- **Meta:** Caption in Ink Muted on a Film White knockout, 20px from the right, centered on the top rule; states the film's measurement or scale.
+- **Tab width:** capped at the film width minus 120px so it never collides with the meta.
+- **Meta:** Caption in Ink Muted on a Film White knockout, 20px from the right, centered on the top rule; states the film's measurement, scale, count or comparison month. Below `md` it drops inside the film as a right-aligned muted line.
 - **Notches:** two clip notches filled with the panel color, bordered on three sides.
 
 ### Band Ladder (signature)
@@ -237,6 +276,30 @@ Five equal rungs on a 1px hairline gap. Each rung: a 4px band-color stripe on to
 
 ### Score Readout (signature)
 Score numerals in band color across five fixed slots with 2px underlines, a 32px square band chip beside them, then a caliper: a 2px ink bracket enclosing the delta (30px, direction color, drawn arrow) and a 15px muted caption naming the comparison month.
+
+### Delta
+A signed change: a 15px drawn arrow (up, down or flat) and the figure with a true minus sign, semibold, in Direction Green, Direction Red or Ink Muted for flat (|Δ| ≤ 0,05). Used wherever a change is stated.
+
+### Meter
+A 0–100 reading on a 10px square Diffuser Grid track with a 1px ink mark at 50 that overhangs the track by 4px. Label (15px semibold) left, figure (24px semibold) right, optional muted hint below. Health mode (Nivel) fills from 0 in the band color. Direction mode (Trayectoria) grows from the 50 mark toward the value in green or red, and the figure carries the direction arrow.
+
+### Status and Trend Tags
+Square hairline-bordered tags, Caption size, medium weight, 2px 8px. The status tag carries a green or red arrow for improving or declining states; "Crítica" is the only filled tag (Direction Red fill, white text). The trend tag reads direction from the trajectory with the meter's 50 mark and a ±5 dead zone ("Tendencia al alza / a la baja / plana"). Regime and confidence use the same neutral tag. The same shape carries alert severity in the feed: critical filled red, warning red-outlined, positive green-outlined, information neutral.
+
+### Sparkline
+112×32px, 12 months of the final score: a 2px round-joined line in the band color of its last value, a 2.75px dot at the end, and a dashed hairline at 50. Fewer than two points shows an em dash.
+
+### Question Filters
+The six portfolio questions as square toggle buttons (Label size, 8px 12px): Film fill with a 25% ink border at rest, full ink border on hover, inverted to Ink fill with Film text when pressed. Each carries a count in a small Lit Panel cell (inverted when pressed). A question with no matches is disabled at 45% opacity. The Monitor direction switch uses the same ink inversion as a joined segmented group.
+
+### Ranking Table
+Hairline-ruled rows, muted Caption headers over a 20% ink rule, sortable headers in muted text that turn ink and semibold when active with a 14px sort arrow. Each row: rank, name (semibold, underlined on row hover) over a muted ID line, figure plus 24px band chip, Delta, sparkline, Nivel, Trayectoria, alert count, status tag, confidence. Row hover washes in Scan Wash at 40%.
+
+### Bars
+Driver bars diverge from a 1px ink center line, green right and red left at 80%, with the signed contribution at the right and a hairline-ruled sum line below. Category bars are 8px band-colored fills on a Diffuser Grid track under a label, weight and level figure. Monthly alert summary bars are 12px green/red fills with their counts.
+
+### Load State
+Loading and error share the film frame so the page does not jump: three Diffuser Grid skeleton bars (20px, 90/72/54% wide) under a "Cargando" tab, or a "No se pudo cargar" film with the message and a muted hint.
 
 ### Navigation
 Top-bar links in Label size, Viewer Muted at rest, Viewer Ink on hover, active state in semibold Viewer Ink with a 2px Scan Cyan underline. On mobile the nav becomes a horizontally scrolling row.
@@ -248,7 +311,7 @@ A segmented radio group with a Viewer Rule border. Inactive segments are Viewer 
 24 radio ticks (3px wide, 3px apart), one per month, with a year label above each January. Elapsed months are 16px Viewer Muted ticks, future months 12px Viewer Rule ticks, hover grows any tick to 24px in Viewer Ink, and the selected month is a 32px, 5px-wide Scan Cyan tick with glow. Arrow keys step through months. A square month select sits beside it as the precise fallback.
 
 ### Pipeline Lamp
-A hairline-bordered status chip in the frame: an 8px round lamp, "Pipeline" in muted text, the state in medium weight.
+A hairline-bordered status chip in the frame: an 8px round lamp, "Pipeline" in muted text, the state in medium weight. In demo mode a "Datos de demostración" marker takes its slot.
 
 ### Study Readout
 A 3-cell definition grid on hairline gaps (Vista, Producto, Mes): Caption muted term above a semibold value; the month also shows its M-code in muted.
@@ -267,14 +330,16 @@ An unexposed film: a muted "Sin datos todavía" line and a two-column list of wh
 - **Do** mark the active month in Scan Cyan on every time axis.
 - **Do** set figures tabular, in Spanish format, with a true minus sign.
 - **Do** tile cells on a 1px hairline gap instead of separate bordered boxes.
+- **Do** color 0–100 health values by band and trajectory or change by direction; a meter in direction mode grows from 50.
+- **Do** show loading and error states inside a film so the layout holds.
 - **Do** keep emphasis to weight 600 plus a narrower width.
 - **Do** disable the scan line under `prefers-reduced-motion`.
 
 ### Don't:
 - **Don't** round corners on films, cells, chips or controls; the lamp is the only circle.
 - **Don't** cast shadows from films or cells; glow belongs only to light sources in the viewer.
-- **Don't** use green or red for health, status or decoration; they are direction only.
+- **Don't** use green or red for a health value or decoration; they are direction, and a solid red fill means critical severity only.
 - **Don't** use Scan Cyan for anything other than "now", focus and the viewer's own light.
-- **Don't** use band hues outside band meaning, or chart series hues that collide with cyan, a band or green/red.
+- **Don't** use band hues outside 0–100 health values (not for status labels, links or mode markers), or chart series hues that collide with cyan, a band or green/red.
 - **Don't** add a second authored animation; the scan line is the one moment.
 - **Don't** show zero for a missing value; show an em dash.

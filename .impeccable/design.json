@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-18T23:08:33+00:00",
+  "generatedAt": "2026-09-18T23:28:14+00:00",
   "title": "Design System: X-Ray",
   "extensions": {
     "colorMeta": {
@@ -354,11 +354,15 @@
       },
       "label": {
         "displayName": "Label",
-        "purpose": "Nav, profile cord, month select, chart legend, chips, caliper caption."
+        "purpose": "Nav, profile cord, month select, chart legend, question filters, list copy, meter labels, caliper caption."
       },
       "caption": {
         "displayName": "Caption",
-        "purpose": "Film meta, study readout cells, ladder ranges and counts, chart ticks."
+        "purpose": "Film meta, study readout cells, ladder ranges and counts, chart ticks and line-end labels, table headers, status and trend tags."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "A score seated in a row: 24px in the ranking table, 30px in compact rows and the watchlist, wdth 85, band color."
       }
     },
     "shadows": [
@@ -469,26 +473,55 @@
     {
       "name": "Pipeline Lamp",
       "kind": "chip",
-      "description": "Exposure lamp in the frame showing pipeline state.",
+      "description": "Exposure lamp in the frame showing pipeline state; replaced by the demo-data marker in mock mode.",
       "html": "<span class=\"ds-lamp\"><i></i><span class=\"m\">Pipeline</span><b>Listo</b></span>",
       "css": ".ds-lamp { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border: 1px solid #2a4052; background: #0d1b26; color: #e4edf3; font-size: 0.875rem; font-family: var(--font-sans, 'Archivo Variable', Archivo, ui-sans-serif, system-ui, sans-serif); font-variant-numeric: tabular-nums; } .ds-lamp i { width: 8px; height: 8px; border-radius: 9999px; background: #0fa3c2; box-shadow: 0 0 10px 2px rgb(15 163 194 / 0.6); } .ds-lamp .m { color: #8fa6b8; } .ds-lamp b { font-weight: 500; }"
+    },
+    {
+      "name": "Status Tags",
+      "kind": "chip",
+      "refersTo": "status-tag",
+      "description": "Square hairline tags for status, trend and alert severity; direction arrows in green/red, a solid red fill only for Crítica.",
+      "html": "<div class=\"ds-tags\"><span class=\"ds-tag\"><i class=\"u\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M8 13V3M3.5 7.5 8 3l4.5 4.5\"/></svg></i>Mejorando</span><span class=\"ds-tag\"><i class=\"d\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M8 3v10M3.5 8.5 8 13l4.5-4.5\"/></svg></i>Deterioro</span><span class=\"ds-tag\">Sana</span><span class=\"ds-tag crit\">Crítica</span><span class=\"ds-delta d\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M8 3v10M3.5 8.5 8 13l4.5-4.5\"/></svg>−12,4</span></div>",
+      "css": ".ds-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-family: var(--font-sans, 'Archivo Variable', Archivo, ui-sans-serif, system-ui, sans-serif); font-variant-numeric: tabular-nums; } .ds-tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border: 1px solid var(--color-rule, #cfdae3); border-radius: 0; background: var(--color-film, #fbfcfd); color: var(--color-ink, #0d1b26); font-size: 0.875rem; font-weight: 500; white-space: nowrap; } .ds-tag i { display: inline-flex; } .ds-tag i.u { color: var(--color-up, #15803d); } .ds-tag i.d { color: var(--color-down, #c62828); } .ds-tag.crit { background: var(--color-down, #c62828); border-color: var(--color-down, #c62828); color: #fff; } .ds-delta { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; } .ds-delta.d { color: var(--color-down, #c62828); }"
+    },
+    {
+      "name": "Meter",
+      "kind": "custom",
+      "refersTo": "meter-track",
+      "description": "0–100 reading with the 50 mark: band fill from 0 for Nivel, green/red growth from 50 for Trayectoria.",
+      "html": "<div class=\"ds-meters\"><div class=\"ds-meter\"><div class=\"h\"><span>Nivel</span><b style=\"color:#0b7a88\">68,7</b></div><div class=\"t\"><i style=\"left:0;width:68.7%;background:#0b7a88\"></i><s></s></div><p>Salud actual</p></div><div class=\"ds-meter\"><div class=\"h\"><span>Trayectoria</span><b style=\"color:#15803d\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M8 13V3M3.5 7.5 8 3l4.5 4.5\"/></svg>63,7</b></div><div class=\"t\"><i style=\"left:50%;width:13.7%;background:#15803d\"></i><s></s></div><p>50 = estable · más de 50 mejora</p></div></div>",
+      "css": ".ds-meters { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 30rem; font-family: var(--font-sans, 'Archivo Variable', Archivo, ui-sans-serif, system-ui, sans-serif); font-variant-numeric: tabular-nums; color: var(--color-ink, #0d1b26); } .ds-meter .h { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; } .ds-meter .h span { font-size: 15px; font-weight: 600; } .ds-meter .h b { display: flex; align-items: center; gap: 4px; font-size: 1.5rem; font-weight: 600; } .ds-meter .t { position: relative; height: 10px; margin-top: 8px; background: var(--color-panel-grid, #dde6ed); } .ds-meter .t i { position: absolute; top: 0; bottom: 0; } .ds-meter .t s { position: absolute; top: -4px; bottom: -4px; left: 50%; width: 1px; background: rgb(13 27 38 / 0.6); } .ds-meter p { margin: 6px 0 0; font-size: 0.875rem; color: var(--color-ink-muted, #4a5d6d); }"
+    },
+    {
+      "name": "Question Filters",
+      "kind": "button",
+      "refersTo": "question-filter",
+      "description": "The six portfolio questions as square toggles with counts; the pressed one inverts to ink.",
+      "html": "<div class=\"ds-q\"><button aria-pressed=\"false\">Sanas y excepcionales <span>7</span></button><button aria-pressed=\"true\" class=\"on\">Empiezan a torcerse <span>2</span></button><button disabled>Bache <span>0</span></button></div>",
+      "css": ".ds-q { display: flex; flex-wrap: wrap; gap: 8px; font-family: var(--font-sans, 'Archivo Variable', Archivo, ui-sans-serif, system-ui, sans-serif); font-variant-numeric: tabular-nums; } .ds-q button { display: flex; align-items: center; gap: 8px; padding: 8px 12px; font: inherit; font-size: 15px; background: var(--color-film, #fbfcfd); color: var(--color-ink, #0d1b26); border: 1px solid rgb(13 27 38 / 0.25); border-radius: 0; cursor: pointer; transition: border-color 150ms, background 150ms, color 150ms; } .ds-q button:hover { border-color: var(--color-ink, #0d1b26); } .ds-q button span { min-width: 24px; padding: 0 6px; text-align: center; font-size: 0.875rem; font-weight: 600; background: var(--color-panel, #eef3f7); } .ds-q button.on { background: var(--color-ink, #0d1b26); border-color: var(--color-ink, #0d1b26); color: var(--color-film, #fbfcfd); } .ds-q button.on span { background: var(--color-film, #fbfcfd); color: var(--color-ink, #0d1b26); } .ds-q button:disabled { opacity: 0.45; cursor: not-allowed; } .ds-q button:focus-visible { outline: 2px solid var(--color-scan, #0fa3c2); outline-offset: 2px; }"
     }
   ],
   "narrative": {
     "northStar": "The Radiology Lightbox",
-    "overview": "Every company is read like a scan clipped to a lit viewer: measured, annotated with calipers, compared with the prior exam. The screen is two materials. A near-black viewer frame (the top bar and footer) carries every control: navigation, the buyer-profile cord, the 24-tick month strip and the pipeline lamp. Below it, a cool backlit panel with a visible diffuser grid holds the content, and the content sits on films: flat, pale sheets with hairline edges, a dark title tab on the top edge, two clip notches and an ink corner mark.\n\nDensity is operational, not decorative. Numbers are large, tabular and seated in fixed slots so they read from a projector. Color is rationed by meaning: five band colors name health, green and red name direction only, and one cyan names \"now\" (the active month, the scan line, focus). The world refuses the white KPI-tile fintech dashboard: no rounded cards, no drop-shadow tiles, no gradient hero.",
+    "overview": "Every company is read like a scan clipped to a lit viewer: measured, annotated with calipers, compared with the prior exam. The screen is two materials. A near-black viewer frame (the top bar and footer) carries every control: navigation, the buyer-profile cord, the 24-tick month strip and the pipeline lamp. Below it, a cool backlit panel with a visible diffuser grid holds the content, and the content sits on films: flat, pale sheets with hairline edges, a dark title tab on the top edge, two clip notches and an ink corner mark.\n\nDensity is operational, not decorative. Numbers are large, tabular and seated in fixed slots so they read from a projector. Color is rationed by meaning: five band colors name health (a 0–100 health value only), green and red name direction, and one cyan names \"now\" (the active month, the scan line, focus). The world refuses the white KPI-tile fintech dashboard: no rounded cards, no drop-shadow tiles, no gradient hero.",
     "keyCharacteristics": [
       "Dark viewer frame over a cool lit panel; two materials, never a third.",
       "Films, not cards: flat, square, hairline-edged, titled by a tab on the top rule.",
       "One cyan scan color marks the present moment everywhere.",
-      "Band A–E colors carry health; green/red carry direction; nothing else borrows them.",
+      "Band A–E colors carry 0–100 health values; green/red carry direction; nothing else borrows them.",
       "Tabular figures everywhere; the score sits in fixed numeral slots.",
       "One authored motion: a single scan line passes down the panel per view or profile change."
     ],
     "rules": [
       {
         "name": "The Three Voices Rule",
-        "body": "Cyan means now, band hues mean health, green/red mean direction. A color never speaks for another role; a new state gets a neutral, not a borrowed band or direction hue.",
+        "body": "Cyan means now, band hues mean health, green/red mean direction. A color never speaks for another role; a new state gets a neutral, not a borrowed band or direction hue. The one extension is critical severity, which is a solid Direction Red fill.",
+        "section": "colors"
+      },
+      {
+        "name": "The Health-Only Band Rule",
+        "body": "Band hues belong to 0–100 health values (Final, Nivel, category levels). Trajectory and change are direction and read in green/red, even though trajectory is also on a 0–100 scale; a status label, a link or a mode indicator never takes a band hue.",
         "section": "colors"
       },
       {
@@ -518,15 +551,17 @@
       "**Do** mark the active month in Scan Cyan on every time axis.",
       "**Do** set figures tabular, in Spanish format, with a true minus sign.",
       "**Do** tile cells on a 1px hairline gap instead of separate bordered boxes.",
+      "**Do** color 0–100 health values by band and trajectory or change by direction; a meter in direction mode grows from 50.",
+      "**Do** show loading and error states inside a film so the layout holds.",
       "**Do** keep emphasis to weight 600 plus a narrower width.",
       "**Do** disable the scan line under `prefers-reduced-motion`."
     ],
     "donts": [
       "**Don't** round corners on films, cells, chips or controls; the lamp is the only circle.",
       "**Don't** cast shadows from films or cells; glow belongs only to light sources in the viewer.",
-      "**Don't** use green or red for health, status or decoration; they are direction only.",
+      "**Don't** use green or red for a health value or decoration; they are direction, and a solid red fill means critical severity only.",
       "**Don't** use Scan Cyan for anything other than \"now\", focus and the viewer's own light.",
-      "**Don't** use band hues outside band meaning, or chart series hues that collide with cyan, a band or green/red.",
+      "**Don't** use band hues outside 0–100 health values (not for status labels, links or mode markers), or chart series hues that collide with cyan, a band or green/red.",
       "**Don't** add a second authored animation; the scan line is the one moment.",
       "**Don't** show zero for a missing value; show an em dash."
     ]
