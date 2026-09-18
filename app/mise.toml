@@ -1,0 +1,4 @@
+# Project-local pins. This file wins over ~/.config/mise/config.toml.
+[tools]
+java = "temurin-21"
+node = "24"

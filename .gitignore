@@ -1,1 +1,28 @@
 notas.txt
+
+# macOS artifacts
+.DS_Store
+.AppleDouble
+.LSOverride
+__MACOSX/
+._*
+
+# Archives
+*.zip
+*.tar.gz
+*.tgz
+
+# Node
+node_modules/
+.pnpm-store/
+
+# Backend (Java / Maven)
+backend/target/
+**/target/
+
+# Mobile / Expo
+mobile/.expo/
+**/.expo/
+
+# Logs
+*.log

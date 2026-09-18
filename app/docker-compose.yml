@@ -1,0 +1,57 @@
+# Local Postgres, plus a "demo" profile that builds and runs the whole
+# stack for showing judges one URL. Start Colima first: run `make demo`
+# and the Makefile checks for you and prints the fix if it is not running.
+#
+#   docker compose up -d postgres          # just the database (make db)
+#   docker compose --profile demo up --build   # full demo stack (make demo)
+
+name: hackspain-app
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: hackspain-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: hackathon
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    profiles: ["demo"]
+    build:
+      context: ./backend
+    container_name: hackspain-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: demo
+      DB_NAME: app
+    ports:
+      - "8080:8080"
+
+  web:
+    profiles: ["demo"]
+    build:
+      context: .
+      dockerfile: ./web/Dockerfile
+    container_name: hackspain-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "3000:80"
+
+volumes:
+  postgres-data:
