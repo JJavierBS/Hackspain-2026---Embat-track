@@ -7,7 +7,7 @@ import { LoadState } from "../components/LoadState";
 import { Meter } from "../components/Meter";
 import { PageHeader } from "../components/PageHeader";
 import { ScoreReadout } from "../components/ScoreReadout";
-import { StatusTag } from "../components/StatusTag";
+import { StatusTag, TrendTag } from "../components/StatusTag";
 import { MONTHS, useGlobalParams } from "../hooks/useGlobalParams";
 import { BANDS, formatScore, monthCode, monthShort } from "../lib/format";
 
@@ -86,12 +86,13 @@ function Side({ entity, month }: { entity: EntityDetail; month: string }) {
   return (
     <div className="grid gap-6">
       <ScoreReadout score={entity.row.final} delta={entity.row.delta3m} against={`vs ${monthCode(MONTHS[Math.max(0, m - 3)])}`} size="md" />
-      <div>
+      <div className="flex flex-wrap gap-2">
         <StatusTag status={entity.row.status} />
+        <TrendTag traj={entity.row.traj} />
       </div>
       <div className="grid gap-5 sm:grid-cols-2">
         <Meter label="Nivel" value={entity.row.level} />
-        <Meter label="Trayectoria" value={entity.row.traj} />
+        <Meter label="Trayectoria" value={entity.row.traj} direction />
       </div>
     </div>
   );

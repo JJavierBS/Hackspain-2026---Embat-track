@@ -104,7 +104,7 @@ export function MonitorPage() {
             </div>
           </Film>
 
-          <Film title="Watchlist" meta={`${data.watchlist.length} entidades`} className="self-start">
+          <Film title="Watchlist" meta={`${data.watchlist.length} entidades`} className="self-start lg:sticky lg:top-6">
             <p className="mb-4 text-[15px] text-ink-muted">Una alerta crítica o dos avisos negativos en los últimos 3 meses.</p>
             {data.watchlist.length === 0 ? (
               <p className="text-ink-muted">Ninguna entidad en vigilancia en {monthCode(month)}.</p>

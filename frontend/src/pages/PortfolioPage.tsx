@@ -117,7 +117,12 @@ export function PortfolioPage() {
             title="Ranking de entidades"
             meta={filter ? `${rows.length} de ${data.rows.length} · ${filter.label}` : `${rows.length} entidades`}
           >
-            <div className="-mx-5 overflow-x-auto">
+            <ul className="-mx-5 lg:hidden">
+              {rows.map((r) => (
+                <CompactRow key={r.id} row={r} rank={rankOf.get(r.id) ?? 0} href={`/entity/${r.id}${linkSearch}`} />
+              ))}
+            </ul>
+            <div className="-mx-5 hidden overflow-x-auto lg:block">
               <table className="w-full min-w-[960px] border-collapse text-left">
                 <thead>
                   <tr className="border-b border-ink/20 text-sm text-ink-muted">
@@ -211,5 +216,45 @@ function Row({ row, rank, href }: { row: PortfolioRow; rank: number; href: strin
       </td>
       <td className="px-5 py-3 text-ink-muted">{CONFIDENCE_LABELS[row.confidence]}</td>
     </tr>
+  );
+}
+
+/** The ranking row below lg: every number whole, nothing scrolls. */
+function CompactRow({ row, rank, href }: { row: PortfolioRow; rank: number; href: string }) {
+  const band = bandOf(row.final);
+  return (
+    <li className="border-b border-rule px-5 py-4 last:border-b-0">
+      <div className="flex items-start justify-between gap-4">
+        <span className="min-w-0">
+          <span className="text-sm text-ink-muted">#{rank} · {row.id}</span>
+          <Link to={href} className="block font-semibold text-ink underline-offset-4 hover:underline">
+            {row.name}
+          </Link>
+        </span>
+        <span className="flex shrink-0 items-center gap-2">
+          <span className="text-3xl font-semibold [font-stretch:85%]" style={{ color: band.color }}>
+            {formatScore(row.final)}
+          </span>
+          <span className="inline-flex h-6 w-6 items-center justify-center text-sm font-bold text-white" style={{ background: band.color }}>
+            {band.band}
+          </span>
+        </span>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <Sparkline values={row.sparkline} width={120} />
+        <span className="flex items-center gap-3">
+          <Delta value={row.delta3m} />
+          <span className="text-sm text-ink-muted">3 meses</span>
+        </span>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <StatusTag status={row.status} />
+        {row.activeAlerts > 0 && (
+          <span className="border border-down/50 px-2 py-0.5 text-sm font-medium text-down">
+            {row.activeAlerts} {row.activeAlerts === 1 ? "alerta" : "alertas"}
+          </span>
+        )}
+      </div>
+    </li>
   );
 }

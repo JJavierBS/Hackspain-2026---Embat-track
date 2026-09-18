@@ -260,6 +260,10 @@ function scoreEntity(seed: Seed, profile: Profile): EntitySeries {
       contributionDelta3m: round1(c.contribution - prev.categories[k].contribution),
     }));
   });
+  // The shown contributions add up exactly to the shown score (SPEC §7.5).
+  months.forEach((ms) => {
+    ms.final = round1(clamp(50 + ms.categories.reduce((a, c) => a + c.contribution, 0)));
+  });
 
   const finals = months.map((x) => x.final);
   const regimes: Regime[] = [];

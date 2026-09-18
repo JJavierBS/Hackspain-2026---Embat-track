@@ -5,7 +5,7 @@ import { PageHeader } from "../components/PageHeader";
 import { PendingFilm } from "../components/PendingFilm";
 import { ScoreReadout } from "../components/ScoreReadout";
 import { TrendChart, type TrendPoint } from "../components/TrendChart";
-import { MONTHS } from "../hooks/useGlobalParams";
+import { MONTHS, useGlobalParams } from "../hooks/useGlobalParams";
 import { bandOf, formatScore, monthCode } from "../lib/format";
 
 /** Illustrative series for the reading guide. Not Embat data. */
@@ -21,11 +21,12 @@ const EXAMPLE: TrendPoint[] = MONTHS.map((month, i) => {
   };
 });
 
-const EXAMPLE_MONTH = "2026-05";
 
 export function MethodologyPage() {
-  const now = EXAMPLE.find((p) => p.month === EXAMPLE_MONTH)!;
-  const before = EXAMPLE[MONTHS.indexOf(EXAMPLE_MONTH) - 3];
+  const { month } = useGlobalParams();
+  const m = MONTHS.indexOf(month);
+  const now = EXAMPLE[m];
+  const before = EXAMPLE[Math.max(0, m - 3)];
 
   return (
     <div className="grid gap-12">
@@ -61,7 +62,7 @@ export function MethodologyPage() {
               </div>
             </dl>
           </div>
-          <TrendChart data={EXAMPLE} activeMonth={EXAMPLE_MONTH} />
+          <TrendChart data={EXAMPLE} activeMonth={month} />
         </div>
       </Film>
 

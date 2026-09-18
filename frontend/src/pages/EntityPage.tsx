@@ -7,7 +7,7 @@ import { LoadState } from "../components/LoadState";
 import { Meter } from "../components/Meter";
 import { PageHeader } from "../components/PageHeader";
 import { ScoreReadout } from "../components/ScoreReadout";
-import { StatusTag } from "../components/StatusTag";
+import { StatusTag, TrendTag } from "../components/StatusTag";
 import { TrendChart } from "../components/TrendChart";
 import { MONTHS, useGlobalParams } from "../hooks/useGlobalParams";
 import { useLinkSearch } from "../hooks/useLinkSearch";
@@ -49,7 +49,7 @@ export function EntityPage() {
     <div className="grid gap-12">
       <PageHeader
         title={data.name}
-        lede={`${data.entityType === "GROUP" ? "Grupo" : "Empresa"} ${data.id} · confianza ${CONFIDENCE_LABELS[row.confidence].toLowerCase()} · régimen: ${REGIME_LABELS[row.regime].toLowerCase()}.`}
+        lede={`${data.entityType === "GROUP" ? "Grupo" : "Empresa"} ${data.id} · confianza ${CONFIDENCE_LABELS[row.confidence].toLowerCase()}.`}
       />
 
       <Film title="Radiografía" meta={`Perfil activo · ${monthCode(month)}`}>
@@ -58,12 +58,13 @@ export function EntityPage() {
             <ScoreReadout score={row.final} delta={row.delta3m} against={`vs ${against}`} />
             <div className="flex flex-wrap items-center gap-2">
               <StatusTag status={row.status} />
-              <span className="border border-rule px-2 py-0.5 text-sm">{REGIME_LABELS[row.regime]}</span>
+              <TrendTag traj={row.traj} />
+              {row.regime !== "STABLE" && <span className="border border-rule px-2 py-0.5 text-sm">{REGIME_LABELS[row.regime]}</span>}
               <span className="border border-rule px-2 py-0.5 text-sm text-ink-muted">Confianza {CONFIDENCE_LABELS[row.confidence].toLowerCase()}</span>
             </div>
             <div className="grid gap-5 sm:grid-cols-2">
               <Meter label="Nivel" value={row.level} hint="Salud actual" />
-              <Meter label="Trayectoria" value={row.traj} hint="50 = estable · más de 50 mejora" />
+              <Meter label="Trayectoria" value={row.traj} hint="50 = estable · más de 50 mejora" direction />
             </div>
           </div>
           <TrendChart
@@ -118,8 +119,9 @@ function Drivers({ categories, final }: { categories: CategoryScore[]; final: nu
         })}
       </ul>
       <p className="mt-5 border-t border-rule pt-3 text-[15px] text-ink-muted">
-        50 + suma de aportaciones ({formatDelta(sum)}) = <span className="font-semibold text-ink">{formatScore(50 + sum)}</span>
-        {Math.abs(50 + sum - final) >= 0.05 && " (redondeo)"}
+        50 + suma de aportaciones ({formatDelta(sum)})
+        {Math.abs(final - 50 - sum) >= 0.05 && <> + redondeo ({formatDelta(final - 50 - sum)})</>} ={" "}
+        <span className="font-semibold text-ink">{formatScore(final)}</span>
       </p>
     </Film>
   );
@@ -217,9 +219,11 @@ function ProductPanel({ data }: { data: EntityDetail }) {
             label="Acción"
             value={<span className={tone}>{ACTION_LABELS[limit.action]}</span>}
             sub={
-              <span className={change > 0 ? "text-up" : change < 0 ? "text-down" : ""}>
+              <span className={limit.action === "MAINTAIN" ? "" : change > 0 ? "text-up" : change < 0 ? "text-down" : ""}>
                 {change > 0 ? "+" : change < 0 ? "\u2212" : ""}
-                {formatEur(Math.abs(change))} frente al mes anterior
+                {formatEur(Math.abs(change))}
+                {limit.previousLimitEur > 0 && ` (${formatDelta((change / limit.previousLimitEur) * 100)} %)`}
+                {limit.action === "MAINTAIN" ? " · dentro de la banda de ±10 %" : " frente al mes anterior"}
               </span>
             }
           />
