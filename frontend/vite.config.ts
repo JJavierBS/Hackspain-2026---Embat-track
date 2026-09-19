@@ -8,10 +8,10 @@ export default defineConfig({
   server: {
     host: true, // also listen on the LAN, useful when testing from a phone browser
     proxy: {
-      // Forwards to the Spring Boot API started with `make api`.
-      // Avoids CORS entirely in development.
+      // Forwards /api to the Spring Boot API. Avoids CORS in development.
+      // VITE_API_TARGET lets a second worktree use another port (phase 4 plan A uses 8081).
       "/api": {
-        target: "http://localhost:8080",
+        target: process.env.VITE_API_TARGET ?? "http://localhost:8080",
         changeOrigin: true,
       },
     },
