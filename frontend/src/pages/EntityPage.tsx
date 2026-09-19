@@ -16,6 +16,8 @@ import type {
   MomentumView,
   PortfolioRow,
   PremiumQuote,
+  RecommendationSeverity,
+  Recommendations,
 } from "../api/types";
 import { ApiError, isServerDown } from "../api/client";
 import { useEntity, useMeta, useMethodology, useSimulateLimit } from "../api/queries";
@@ -34,7 +36,7 @@ import { ScoreReadout } from "../components/ScoreReadout";
 import { StatusTag, TrendTag } from "../components/StatusTag";
 import { ForecastControls } from "../components/ForecastControls";
 import { TrendChart } from "../components/TrendChart";
-import { MONTHS, useGlobalParams } from "../hooks/useGlobalParams";
+import { MONTHS, type Profile, useGlobalParams } from "../hooks/useGlobalParams";
 import { useHashScroll } from "../hooks/useHashScroll";
 import { useHorizon } from "../hooks/useHorizon";
 import { useLinkSearch } from "../hooks/useLinkSearch";
@@ -194,6 +196,8 @@ export function EntityPage() {
         <Drivers categories={data.categories} drivers={data.drivers} final={row.final} />
         <Changes changes={data.changes3m} against={against} />
       </div>
+
+      <WhatToDo recommendations={data.recommendations} profile={data.profile} />
 
       <Categories categories={data.categories} />
       <Indicators indicators={data.indicators} />
@@ -502,6 +506,81 @@ function Changes({ changes, against }: { changes: Change[]; against: string }) {
             </li>
           ))}
         </ul>
+      )}
+    </Film>
+  );
+}
+
+const SEVERITY_LABELS: Record<RecommendationSeverity, string> = {
+  CRITICAL: "Urgente",
+  HIGH: "Alta",
+  MEDIUM: "Media",
+  INFO: "Oportunidad",
+};
+
+/**
+ * The top actions of this entity-month-profile (docs/RECOMMENDATIONS.md). Static texts written at pipeline time:
+ * the page only reads them. Ranked by survival first, then by the score points each action would recover.
+ */
+function WhatToDo({ recommendations, profile }: { recommendations?: Recommendations; profile: string }) {
+  if (!recommendations || recommendations.situation === null) {
+    return (
+      <Film title="Qué hacer ahora" meta="Prioridades">
+        <p className="text-ink-muted">Las recomendaciones no están calculadas en esta base de datos. Vuelve a ejecutar el pipeline.</p>
+      </Film>
+    );
+  }
+  const { summary, items } = recommendations;
+  const profileName = PROFILE_LABELS[profile as Profile]?.name ?? profile;
+  return (
+    <Film title="Qué hacer ahora" meta={`Hasta 3 prioridades · perfil ${profileName}`}>
+      {summary && <p className="max-w-[75ch] text-[15px] text-ink-muted">{summary}</p>}
+      {items.length > 0 && (
+        <ol className="mt-5 grid gap-5">
+          {items.map((r) => {
+            const urgent = r.severity === "CRITICAL";
+            const opportunity = r.kind === "OPPORTUNITY";
+            return (
+              <li key={r.rank} className="flex gap-4 border-b border-dashed border-rule pb-5 last:border-b-0 last:pb-0">
+                <span
+                  className={`grid h-7 w-7 shrink-0 place-items-center border text-sm font-semibold ${
+                    urgent ? "border-down text-down" : "border-ink/30"
+                  }`}
+                >
+                  {r.rank}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                      <span className="text-lg font-semibold">{r.title}</span>
+                      <span
+                        className={`text-xs font-semibold uppercase tracking-wide ${
+                          urgent ? "text-down" : opportunity ? "text-up" : "text-ink-muted"
+                        }`}
+                      >
+                        {SEVERITY_LABELS[r.severity]}
+                      </span>
+                    </span>
+                    {r.points !== null && r.points >= 0.1 && (
+                      <span
+                        className="text-sm font-semibold text-ink-muted"
+                        title={`Puntos que recuperaría el score (${profileName}) si el indicador volviera a un nivel sano y dejara de empeorar`}
+                      >
+                        +{formatScore(r.points)} pts
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-[15px] text-ink-muted">{r.why}</p>
+                  <p className="mt-2 text-[15px]">{r.action}</p>
+                  <p className="mt-2 text-sm text-ink-muted">
+                    {CATEGORY_LABELS[r.category]}
+                    {r.goal && <> · Objetivo: {r.goal}</>}
+                  </p>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
       )}
     </Film>
   );
