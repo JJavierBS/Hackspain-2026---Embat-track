@@ -25,21 +25,26 @@ COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 # Algorithm page, or POST /api/pipeline/run, recalculates in place. XRAY_DEMO_MODE is not set here (the
 # app default is false). Set XRAY_DEMO_MODE=true on the service to lock both.
 # MaxRAMPercentage rather than -Xmx so one image fits whatever instance size Render gives it.
-# On the 512 MB starter plan a pipeline run needs ~280 MB of heap (S60/S65 write in batches), so
-# DuckDB is capped: its default is 80% of the RAM it sees, which leaves no room for the JVM. Measured
-# on 512 MB / 0.5 CPU: JVM ~420 MB committed (heap ~280), DuckDB ~60 MB. It spills to /data past 96 MB.
+# Measured in a 512 MB / 0.5 CPU container, like the starter plan, over three pipeline runs in a row:
+# live heap 175-233 MB (the panels), non-heap ~85 MB, the rest is DuckDB and thread stacks. With
+# DuckDB at 96 MB and 2 threads and a 55% heap, the container passed 512 MB in S50 and was OOM killed.
+# These values finish three runs with no kill, but anonymous memory still reaches ~470 MB.
+# - DuckDB: its default is 80% of the RAM it sees. At 64 MB it spills to /data sooner.
+# - TieredStopAtLevel=1 and a 48 MB code cache: C1 only, less JIT memory. The pipeline is SQL-bound.
+# - Xss512k: every Tomcat and pipeline thread reserves a smaller stack.
 # MALLOC_ARENA_MAX stops glibc from giving each pipeline thread its own native memory pool.
 # ExitOnOutOfMemoryError: a heap OutOfMemoryError can kill any thread, Tomcat's poller included, which
-# leaves a process that answers nothing. Exiting lets Render restart it (from the shipped database).
+# leaves a process that answers nothing. Exiting lets Render restart it, with the database on its disk.
 ENV XRAY_DATA_DIR=/data \
-    XRAY_DUCKDB_MEMORY_LIMIT=96MB \
-    XRAY_DUCKDB_THREADS=2 \
+    XRAY_DUCKDB_MEMORY_LIMIT=64MB \
+    XRAY_DUCKDB_THREADS=1 \
     MALLOC_ARENA_MAX=2 \
-    JAVA_OPTS="-XX:MaxRAMPercentage=55 -XX:MaxMetaspaceSize=128m -XX:+UseSerialGC -XX:+ExitOnOutOfMemoryError"
+    JAVA_OPTS="-XX:MaxRAMPercentage=50 -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=48m -XX:TieredStopAtLevel=1 -Xss512k -XX:+UseSerialGC -XX:+ExitOnOutOfMemoryError"
 
 RUN mkdir -p /data && chown xray:xray /data && chmod +x /usr/local/bin/docker-entrypoint.sh
 
-USER xray
+# No USER line: the entrypoint starts as root, gives /data to xray (a Render disk mounts owned by
+# root), then runs Java as xray.
 # Render injects $PORT and application.yml prefers it; this is the local default.
 EXPOSE 8080
 ENTRYPOINT ["docker-entrypoint.sh"]
