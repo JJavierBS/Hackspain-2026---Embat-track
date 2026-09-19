@@ -1,17 +1,14 @@
 package com.xray.pipeline;
 
+import com.xray.config.ConfigFingerprint;
 import com.xray.config.ScoringConfig;
 import com.xray.infrastructure.duckdb.PipelineRunRepository;
 import com.xray.infrastructure.duckdb.SqlRunner;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
-import org.springframework.util.DigestUtils;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,16 +28,18 @@ public class PipelineRunner {
     private final ScoringConfig config;
     private final PipelineStatus status;
     private final PipelineRunRepository runs;
+    private final ConfigFingerprint fingerprint;
     private final ExecutorService executor =
             Executors.newSingleThreadExecutor(r -> new Thread(r, "pipeline"));
 
     public PipelineRunner(List<PipelineStage> stages, SqlRunner sql, ScoringConfig config,
-                          PipelineStatus status, PipelineRunRepository runs) {
+                          PipelineStatus status, PipelineRunRepository runs, ConfigFingerprint fingerprint) {
         this.stages = stages;
         this.sql = sql;
         this.config = config;
         this.status = status;
         this.runs = runs;
+        this.fingerprint = fingerprint;
     }
 
     public synchronized String startAsync() {
@@ -68,7 +67,7 @@ public class PipelineRunner {
                 status.timings(timings);
                 log.info("{} took {} ms", stage.id(), ms);
             }
-            runs.save(runId, config.unit(), startedAt, Instant.now(), timings, configHash());
+            runs.save(runId, config.unit(), startedAt, Instant.now(), timings, fingerprint.of(config));
             status.done(timings);
             log.info("pipeline run {} done", runId);
         } catch (Throwable e) {
@@ -78,13 +77,6 @@ public class PipelineRunner {
         }
     }
 
-    private static String configHash() {
-        try (InputStream in = new ClassPathResource("scoring-config.yml").getInputStream()) {
-            return DigestUtils.md5DigestAsHex(in);
-        } catch (IOException e) {
-            return "unknown";
-        }
-    }
 
     @PreDestroy
     void shutdown() {
