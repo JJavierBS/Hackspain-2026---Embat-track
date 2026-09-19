@@ -14,6 +14,7 @@ interface Props {
 }
 
 const STAGE_LABELS: Record<string, string> = {
+  PREPARE: "Copia de trabajo",
   S00_INGEST: "Lectura de los CSV",
   S10_STAGING: "Limpieza",
   S20_MONTHLY: "Agregados mensuales",
@@ -29,6 +30,7 @@ const STAGE_LABELS: Record<string, string> = {
   S85_FORECAST: "Previsión",
   S90_ANALYTICS: "Anticipación",
   S95_QUANTILES: "Cuantiles",
+  PUBLISH: "Publicación de los datos",
 };
 
 /**

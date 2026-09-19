@@ -68,8 +68,14 @@ public class ResultWriter {
         try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
             st.execute("DROP TABLE IF EXISTS " + table);
             st.execute("CREATE TABLE " + table + " (" + columnsDdl + ")");
+            // The current database, not the default one: a pipeline run writes to its RunDatabase copy.
+            String db;
+            try (var rs = st.executeQuery("SELECT current_database()")) {
+                rs.next();
+                db = rs.getString(1);
+            }
             try (DuckDBAppender a = c.unwrap(DuckDBConnection.class)
-                    .createAppender(DuckDBConnection.DEFAULT_SCHEMA, table)) {
+                    .createAppender(db, DuckDBConnection.DEFAULT_SCHEMA, table)) {
                 int n = 0;
                 while (batches.hasNext()) {
                     for (Object[] row : batches.next()) {
