@@ -140,6 +140,8 @@ export interface Timeline {
   changepoints: Changepoint[];
   /** This entity, ?profile, oldest first. */
   alerts: Alert[];
+  /** Lead-time events of this entity, ?profile, all months, oldest first (phase 6). */
+  events: EntityEvent[];
 }
 
 export interface Changepoint {
@@ -250,6 +252,8 @@ export interface EntityDetail {
   momentum: MomentumView | null;
   /** This entity, ?profile, months <= ?month, newest first, at most 20. */
   alerts: Alert[];
+  /** Lead-time events of this entity, ?profile, eventMonth <= ?month, oldest first (phase 6, decision G8). */
+  events: EntityEvent[];
 }
 
 export interface Meta {
@@ -264,6 +268,8 @@ export interface Meta {
   dynamicsReady: boolean;
   alertsReady: boolean;
   productsReady: boolean;
+  /** lead_time_events and showcase_pairs exist (phase 6). */
+  analyticsReady: boolean;
   caveats: string[];
 }
 
@@ -376,4 +382,90 @@ export interface Methodology {
   insurer: { basePremiumRate: number; multiplierByBand: Partial<Record<BandLetter, number>> };
   momentum: { risingStarMaxLevel: number; risingStarMinTraj: number };
   watchlist: { minCritical: number; minWarn: number };
+}
+
+// Phase 6 analytics (overview contract item 6).
+
+export type EventType = "DETERIORATION" | "IMPROVEMENT";
+export type EventTrigger = "RUNWAY" | "DSCR" | "OVERDUE" | "SCORE" | "LEVEL_CROSS";
+
+export interface LeadTimeBlock {
+  eventType: EventType;
+  /** Entities of the unit with an event of this type. */
+  events: number;
+  /** Signal in [e − window, e] (lead ≥ 0). */
+  detected: number;
+  /** Lead ≥ 1. */
+  detectedAhead: number;
+  /** detected / events, null when events = 0. */
+  detectionRate: number | null;
+  /** detectedAhead / events. */
+  aheadRate: number | null;
+  /** Over detected. */
+  meanLead: number | null;
+  medianLead: number | null;
+  /** 0..windowMonths, every bucket present. */
+  histogram: { leadMonths: number; count: number }[];
+  byTrigger: { trigger: EventTrigger; events: number; detectedAhead: number }[];
+  signals: number;
+  evaluable: number;
+  followed: number;
+  /** 1 − followed / evaluable, null when evaluable = 0. */
+  falseAlarmRate: number | null;
+}
+
+export interface LeadTimeExample {
+  entityId: string;
+  entityName: string;
+  eventType: EventType;
+  trigger: EventTrigger;
+  eventMonth: string;
+  signalMonth: string;
+  leadMonths: number;
+  limitSignalMonth: string | null;
+  limitLeadMonths: number | null;
+}
+
+/** GET /api/analytics/lead-time?profile. */
+export interface LeadTime {
+  profile: string;
+  unit: EntityType;
+  /** From config. */
+  windowMonths: number;
+  horizonMonths: number;
+  minHistoryMonths: number;
+  deterioration: LeadTimeBlock;
+  improvement: LeadTimeBlock;
+  /** Limit profile only. */
+  limit: { events: number; cutAhead: number; meanLead: number | null; medianLead: number | null } | null;
+  /** Up to 5 deterioration events with the largest lead, then improvement, ids asc on ties. */
+  examples: LeadTimeExample[];
+}
+
+export interface ShowcasePair {
+  rank: number;
+  meetsSpec: boolean;
+  up: { id: string; name: string; final: number; traj: number };
+  down: { id: string; name: string; final: number; traj: number };
+  finalGap: number;
+  trajGap: number;
+}
+
+/** GET /api/analytics/showcase-pairs?profile&month (month default = last month). */
+export interface ShowcasePairs {
+  profile: string;
+  month: string;
+  pairs: ShowcasePair[];
+}
+
+/** Lead-time event of one entity (Entity page, Timeline). */
+export interface EntityEvent {
+  eventType: EventType;
+  trigger: EventTrigger;
+  eventMonth: string;
+  signalMonth: string | null;
+  leadMonths: number | null;
+  /** Limit profile only. */
+  limitSignalMonth: string | null;
+  limitLeadMonths: number | null;
 }
