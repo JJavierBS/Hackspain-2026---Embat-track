@@ -315,8 +315,8 @@ function median(xs: number[]): number {
 function alertsFor(series: EntitySeries): Alert[] {
   const { seed, months, regimes } = series;
   const out: Alert[] = [];
-  const push = (m: number, code: string, severity: Alert["severity"], direction: Alert["direction"], message: string) =>
-    out.push({ id: `${seed.id}-${m}-${code}`, entityId: seed.id, entityName: seed.name, month: MONTHS[m], code, severity, direction, message });
+  const push = (m: number, code: Alert["code"], severity: Alert["severity"], direction: Alert["direction"], message: string) =>
+    out.push({ id: `${seed.entityType}:${seed.id}:${MONTHS[m]}:${code}`, entityId: seed.id, entityName: seed.name, entityType: seed.entityType, month: MONTHS[m], code, severity, direction, message, value: null });
 
   let dropActive = false;
   let runwayActive = false;
@@ -332,7 +332,6 @@ function alertsFor(series: EntitySeries): Alert[] {
     if (regimes[m] !== regimes[m - 1]) {
       if (regimes[m] === "STRUCTURAL_DECLINE") push(m, "STRUCTURAL_DECLINE", "CRITICAL", "NEGATIVE", "Entra en deterioro estructural");
       if (regimes[m] === "STRUCTURAL_IMPROVEMENT") push(m, "STRUCTURAL_IMPROVEMENT", "INFO", "POSITIVE", "Entra en mejora estructural");
-      if (regimes[m] === "DIP") push(m, "DIP", "WARN", "NEGATIVE", "Bache: caída puntual frente a su media de 6 meses");
     }
     const drop = m >= 3 ? f - months[m - 3].final : 0;
     if (drop <= -8 && !dropActive) {
@@ -413,6 +412,7 @@ function rowAt(series: EntitySeries, m: number): PortfolioRow {
     sparkline: months.slice(Math.max(0, m - 11), m + 1).map((p) => p.final),
     activeAlerts: recent.length,
     confidence: seed.confidence,
+    risingStar: null,
   };
 }
 
@@ -439,6 +439,11 @@ export function mockEntity(id: string, profile: Profile, month: string): EntityD
     band: bandLetter(p.final),
     status: series.statuses[i],
     regime: series.regimes[i],
+    limitEur: null,
+    limitAction: null,
+    premiumRate: null,
+    buyerLimitEur: null,
+    newAlerts: 0,
   }));
 
   const now = limitAt(series, m);
@@ -476,7 +481,19 @@ export function mockEntity(id: string, profile: Profile, month: string): EntityD
     timeline,
     changepoints: [],
     companies: [],
+    alerts: [],
     limit: {
+      month,
+      profile: "BANK",
+      final: row.final,
+      band,
+      allInRate: null,
+      projectedDscr: null,
+      baseEur: series.seed.inflow,
+      factor: 1,
+      trend: 1,
+      runwayGuard: false,
+      dscrCapEur: null,
       limitEur: now.limit,
       previousLimitEur: prev.limit,
       spreadBps: SPREAD_BPS[band],
@@ -484,11 +501,21 @@ export function mockEntity(id: string, profile: Profile, month: string): EntityD
       bindingConstraint: now.binding,
     },
     premium: {
+      month,
+      profile: "INSURER",
+      final: row.final,
+      band,
+      insurable: mult !== null,
+      previousBand: prevBand,
+      tierChange: null,
       premiumRate: mult === null ? null : baseRate * mult,
       previousPremiumRate: prevMult === null ? null : baseRate * prevMult,
       recommendedBuyerLimitEur: Math.round((series.seed.inflow * 0.6 * (row.final / 100)) / 1000) * 1000,
     },
     momentum: {
+      month,
+      profile: "FUND",
+      growthPercentile: null,
       rank: fundSorted.findIndex((f) => f.id === id) + 1,
       of: fund.length,
       trajPercentile: Math.round((below / (fund.length - 1)) * 100),
@@ -516,9 +543,9 @@ export function mockMonitor(profile: Profile, month: string): MonitorData {
       });
       return active.some((a) => a.severity === "CRITICAL") || active.filter((a) => a.severity === "WARN").length >= 2;
     })
-    .map(({ row }) => row)
-    .sort((a, b) => a.final - b.final);
-  return { alerts, watchlist };
+    .map(({ row }) => ({ row, criticalAlerts: 0, warnAlerts: 0, codes: [] }))
+    .sort((a, b) => a.row.final - b.row.final);
+  return { profile, month, fromMonth: MONTHS[Math.max(0, m - 5)], alerts, watchlist };
 }
 
 function severityRank(a: Alert): number {
@@ -555,6 +582,8 @@ export function mockMeta(): Meta {
     demoMode: true,
     explanationsReady: false,
     dynamicsReady: false,
+    alertsReady: true,
+    productsReady: true,
     caveats: ["Datos sintéticos de demostración: no proceden de Embat."],
   };
 }

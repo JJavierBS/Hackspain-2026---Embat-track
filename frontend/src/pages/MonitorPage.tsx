@@ -120,7 +120,7 @@ export function MonitorPage() {
               <p className="text-ink-muted">Ninguna entidad en vigilancia en {monthCode(month)}.</p>
             ) : (
               <ul className="grid">
-                {data.watchlist.map((r) => (
+                {data.watchlist.map(({ row: r }) => (
                   <li key={r.id} className="flex items-center justify-between gap-3 border-b border-rule py-3 last:border-b-0">
                     <span className="min-w-0">
                       <Link to={`/entity/${r.id}${linkSearch}`} className="block truncate font-semibold underline-offset-4 hover:underline">

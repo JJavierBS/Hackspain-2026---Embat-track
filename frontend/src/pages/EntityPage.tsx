@@ -453,7 +453,7 @@ function ProductPanel({ data }: { data: EntityDetail }) {
         />
       );
     }
-    const limit = data.limit;
+    const limit = { ...data.limit, previousLimitEur: data.limit.previousLimitEur ?? 0 };
     const change = limit.limitEur - limit.previousLimitEur;
     const tone =
       limit.action === "INCREASE" ? "text-up" : limit.action === "REDUCE" || limit.action === "FREEZE" || limit.action === "DECLINE" ? "text-down" : "";
@@ -501,7 +501,7 @@ function ProductPanel({ data }: { data: EntityDetail }) {
             value={premium.premiumRate === null ? "No asegurable" : formatPct(premium.premiumRate)}
             sub={premium.previousPremiumRate === null ? "Mes anterior: no asegurable" : `Mes anterior ${formatPct(premium.previousPremiumRate)}`}
           />
-          <Stat label="Límite recomendado por comprador" value={formatEur(premium.recommendedBuyerLimitEur)} sub="Aproximación a la exposición" />
+          <Stat label="Límite recomendado por comprador" value={premium.recommendedBuyerLimitEur === null ? "—" : formatEur(premium.recommendedBuyerLimitEur)} sub="Aproximación a la exposición" />
           <Stat label="Banda" value={bandOf(final).band} sub={`${formatScore(final)} puntos`} />
         </dl>
       </Film>
@@ -518,7 +518,7 @@ function ProductPanel({ data }: { data: EntityDetail }) {
     <Film title="Momentum" meta="Ranking del perfil Fondo">
       <dl className="grid gap-px border border-rule bg-rule sm:grid-cols-3">
         <Stat label="Posición" value={`${momentum.rank} de ${momentum.of}`} />
-        <Stat label="Percentil de trayectoria" value={`P${momentum.trajPercentile}`} sub="Frente al resto de la cartera" />
+        <Stat label="Percentil de trayectoria" value={momentum.trajPercentile === null ? "—" : `P${momentum.trajPercentile}`} sub="Frente al resto de la cartera" />
         <Stat
           label="Estrella emergente"
           value={momentum.risingStar ? "Sí" : "No"}
