@@ -37,13 +37,18 @@ FROM indicator_values_raw r JOIN a_ind USING (indicator_id)
 JOIN entity_months em USING (entity_type, entity_id, month)
 GROUP BY 1, 2 ORDER BY 1, 2;
 
-.print '## V9 causality spot check at M12 (2025-09): recompute from rows dated <= 2025-09 only (expect diff = 0)'
+.print '## V9 causality spot check at M12: recompute from rows dated <= M12 only (expect diff = 0)'
+-- The months come from the months table and the cap from the data, so the check runs on any dataset.
 -- Groups with a runway below the cap, so the burn formula is checked, not only the cap.
-WITH g AS (
+WITH p AS (
+  SELECT (SELECT month FROM months WHERE month_idx = 12) AS m12,
+         (SELECT month FROM months WHERE month_idx = 10) AS m10,
+         (SELECT MAX(value) FROM indicator_values_raw WHERE indicator_id = 'LIQ_RUNWAY') AS cap),
+g AS (
   SELECT m.entity_id FROM indicator_values_raw m
   JOIN indicator_values_raw r ON r.entity_type = m.entity_type AND r.entity_id = m.entity_id AND r.month = m.month
-   AND r.indicator_id = 'LIQ_RUNWAY' AND r.available AND r.value < 24
-  WHERE m.entity_type = 'GROUP' AND m.month = '2025-09' AND m.indicator_id = 'CF_NOCF_MARGIN' AND m.available
+   AND r.indicator_id = 'LIQ_RUNWAY' AND r.available AND r.value < (SELECT cap FROM p)
+  WHERE m.entity_type = 'GROUP' AND m.month = (SELECT m12 FROM p) AND m.indicator_id = 'CF_NOCF_MARGIN' AND m.available
   ORDER BY m.entity_id LIMIT 3),
 f AS (
   SELECT entity_id,
@@ -52,22 +57,22 @@ f AS (
          SUM(CASE WHEN flow_class = 'TAX'           THEN outflow_eur - inflow_eur ELSE 0 END) AS tax,
          SUM(CASE WHEN flow_class = 'DEBT_SERVICE'  THEN outflow_eur - inflow_eur ELSE 0 END) AS ds
   FROM monthly_flows
-  WHERE entity_type = 'GROUP' AND month BETWEEN '2025-07' AND '2025-09' AND month <= '2025-09'
+  WHERE entity_type = 'GROUP' AND month BETWEEN (SELECT m10 FROM p) AND (SELECT m12 FROM p)
     AND entity_id IN (SELECT entity_id FROM g)
   GROUP BY 1),
 h AS (
   SELECT f.entity_id, (f.op_in - f.op_out - f.tax) / f.op_in AS margin,
          CASE WHEN f.op_out + f.tax + f.ds - f.op_in <= 0 THEN NULL
-              ELSE c.cash_eom / ((f.op_out + f.tax + f.ds - f.op_in) / 3.0) END AS runway_uncapped
-  FROM f JOIN monthly_cash c ON c.entity_type = 'GROUP' AND c.entity_id = f.entity_id AND c.month = '2025-09')
+              ELSE c.cash_eom / ((f.op_out + f.tax + f.ds - f.op_in) / 3.0) END AS runway
+  FROM f JOIN monthly_cash c ON c.entity_type = 'GROUP' AND c.entity_id = f.entity_id AND c.month = (SELECT m12 FROM p))
 SELECT h.entity_id,
        ROUND(h.margin, 6) AS margin_by_hand, ROUND(m.value, 6) AS margin_stored,
        ROUND(ABS(h.margin - m.value), 9) AS diff_margin,
-       ROUND(h.runway_uncapped, 4) AS runway_by_hand, ROUND(r.value, 4) AS runway_stored,
-       ROUND(ABS(h.runway_uncapped - r.value), 9) AS diff_runway
+       ROUND(h.runway, 4) AS runway_by_hand, ROUND(r.value, 4) AS runway_stored,
+       ROUND(ABS(h.runway - r.value), 9) AS diff_runway
 FROM h
-JOIN indicator_values_raw m ON m.entity_type = 'GROUP' AND m.entity_id = h.entity_id AND m.month = '2025-09'
+JOIN indicator_values_raw m ON m.entity_type = 'GROUP' AND m.entity_id = h.entity_id AND m.month = (SELECT m12 FROM p)
  AND m.indicator_id = 'CF_NOCF_MARGIN'
-JOIN indicator_values_raw r ON r.entity_type = 'GROUP' AND r.entity_id = h.entity_id AND r.month = '2025-09'
+JOIN indicator_values_raw r ON r.entity_type = 'GROUP' AND r.entity_id = h.entity_id AND r.month = (SELECT m12 FROM p)
  AND r.indicator_id = 'LIQ_RUNWAY'
 ORDER BY 1;
