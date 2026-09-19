@@ -8,6 +8,7 @@ import type {
   Change,
   Driver,
   EntityDetail,
+  EntityEvent,
   IndicatorRow,
   LimitAction,
   LimitDecision,
@@ -38,15 +39,18 @@ import {
   ALERT_LABELS,
   BINDING_LABELS,
   CATEGORY_LABELS,
+  EVENT_TYPE_LABELS,
   LIMIT_ACTION_LABELS,
   PROFILE_LABELS,
   REGIME_LABELS,
+  TRIGGER_LABELS,
   bandOf,
   confidenceLabel,
   formatDelta,
   formatDscr,
   formatEur,
   formatIndicatorValue,
+  formatLead,
   formatNumber,
   formatRate,
   formatScore,
@@ -54,6 +58,7 @@ import {
   indicatorLabel,
   isPendingAnchor,
   monthCode,
+  monthShort,
 } from "../lib/format";
 
 export function EntityPage() {
@@ -162,9 +167,16 @@ export function EntityPage() {
             activeMonth={month}
             height={300}
             markers={data.alerts.map((a) => ({ month: a.month, direction: a.direction, label: ALERT_LABELS[a.code] }))}
+            events={data.events.map((e) => ({
+              month: e.eventMonth,
+              direction: e.eventType === "DETERIORATION" ? "NEGATIVE" : "POSITIVE",
+              label: `${e.eventType === "DETERIORATION" ? "Evento" : "Mejora"}: ${TRIGGER_LABELS[e.trigger].toLowerCase()}`,
+            }))}
           />
         </div>
       </Film>
+
+      <Anticipation events={data.events} />
 
       <EntityAlerts alerts={data.alerts} />
 
@@ -177,6 +189,181 @@ export function EntityPage() {
       <Indicators indicators={data.indicators} />
       {data.companies.length > 0 && <Companies companies={data.companies} />}
       <ProductPanel data={data} />
+    </div>
+  );
+}
+
+/**
+ * How early the score saw each lead-time event of this entity (SPEC §8.4), up to the selected month (decision G8).
+ * The events are proxies: the data has no default label.
+ */
+function Anticipation({ events }: { events: EntityEvent[] }) {
+  const { profile, month } = useGlobalParams();
+  const { data: meta } = useMeta();
+  const linkSearch = useLinkSearch();
+  if (meta && !meta.analyticsReady) {
+    return (
+      <PendingFilm
+        title="Anticipación"
+        block="bloque 8"
+        items={["Eventos de deterioro y de mejora", "Meses de antelación de la señal", "Recorte del límite antes del evento", "Marca del evento en la línea temporal"]}
+      />
+    );
+  }
+  if (events.length === 0) return null;
+  const provisional = events.some((e) => e.trigger === "OVERDUE");
+  return (
+    <Film id="anticipacion" title="Anticipación" meta={`Perfil ${PROFILE_LABELS[profile].name} · eventos hasta ${monthCode(month)}`}>
+      <ul className="-mx-5 -mt-2">
+        {events.map((e) => (
+          <EventRow key={`${e.eventType}-${e.eventMonth}`} event={e} />
+        ))}
+      </ul>
+      <p className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm text-ink-muted">
+        <span>
+          Eventos indirectos (proxy): no hay etiqueta de impago en los datos.{" "}
+          <Link to={`/methodology${linkSearch}#anticipacion`} className="underline underline-offset-4 hover:text-ink">
+            Definición en Metodología
+          </Link>
+          .
+        </span>
+        {provisional && (
+          <span title="El disparador de impagos usa dos umbrales pendientes de revisión" className="border border-dashed border-ink-muted/60 px-1.5 whitespace-nowrap">
+            impagos: umbral provisional
+          </span>
+        )}
+      </p>
+    </Film>
+  );
+}
+
+/** One event: what happened and when, a caliper strip from the first signal to the event, and the lead, big. */
+function EventRow({ event: e }: { event: EntityEvent }) {
+  const down = e.eventType === "DETERIORATION";
+  const Icon = down ? IconDown : IconUp;
+  const lead = e.leadMonths;
+  return (
+    <li className="grid items-center gap-x-10 gap-y-5 border-b border-rule px-5 py-6 last:border-b-0 md:grid-cols-[minmax(0,4fr)_minmax(0,5fr)_minmax(0,3fr)]">
+      <div className="grid gap-2">
+        <p className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1 border border-rule px-2 py-0.5 text-sm font-medium">
+            <Icon width={14} height={14} className={down ? "text-down" : "text-up"} />
+            {EVENT_TYPE_LABELS[e.eventType]}
+          </span>
+          <span className="text-lg font-semibold">{TRIGGER_LABELS[e.trigger]}</span>
+          {e.trigger === "OVERDUE" && (
+            <span title="Umbrales pendientes de revisión" className="border border-dashed border-ink-muted/60 px-1.5 text-sm whitespace-nowrap text-ink-muted">
+              umbral provisional
+            </span>
+          )}
+        </p>
+        <p className="text-[15px] text-ink-muted">
+          Evento en <span className="font-semibold text-ink">{monthShort(e.eventMonth)}</span> · {monthCode(e.eventMonth)}
+          <br />
+          {e.signalMonth === null ? (
+            "Sin señal de la nota en la ventana"
+          ) : (
+            <>
+              Primera señal en <span className="font-semibold text-ink">{monthShort(e.signalMonth)}</span> · {monthCode(e.signalMonth)}
+            </>
+          )}
+        </p>
+      </div>
+      <Caliper event={e} />
+      <div className="grid gap-1 md:justify-items-end md:text-right">
+        {lead === null ? (
+          <p className="text-lg font-semibold text-ink-muted">no detectado antes del evento</p>
+        ) : lead === 0 ? (
+          <p className="text-2xl font-semibold [font-stretch:88%]">detectado el mismo mes</p>
+        ) : (
+          <p className="flex items-baseline gap-2 md:justify-end" title="Meses entre la primera señal de la nota y el evento">
+            <span className="text-[15px]">detectado</span>
+            <span className="text-6xl leading-none font-semibold [font-stretch:80%]">{lead}</span>
+            <span className="text-[15px]">{lead === 1 ? "mes antes" : "meses antes"}</span>
+          </p>
+        )}
+        {e.limitLeadMonths !== null && (
+          <a href="#limite" className="text-[15px] font-semibold text-down underline decoration-down/50 underline-offset-4 hover:decoration-down">
+            {e.limitLeadMonths === 0 ? "el límite se recortó el mismo mes" : `el límite se recortó ${formatLead(e.limitLeadMonths)} antes`}
+          </a>
+        )}
+      </div>
+    </li>
+  );
+}
+
+/** Months shown at least on a caliper strip, so a short lead still reads as a span. */
+const CALIPER_MIN_MONTHS = 7;
+
+/**
+ * A strip of months with the limit cut (red triangle), the first signal (ink square) and the event (dashed line).
+ * An ink caliper spans signal → event: its length is the lead.
+ */
+function Caliper({ event: e }: { event: EntityEvent }) {
+  const at = (m: string | null) => (m === null ? null : MONTHS.indexOf(m));
+  const ev = at(e.eventMonth)!;
+  const sig = at(e.signalMonth);
+  const cut = at(e.limitSignalMonth);
+  const earliest = Math.min(ev, sig ?? ev, cut ?? ev);
+  let first = Math.max(0, earliest - 1);
+  const last = Math.min(MONTHS.length - 1, ev + 1);
+  first = Math.max(0, Math.min(first, last - CALIPER_MIN_MONTHS + 1));
+  const span = last - first + 1;
+  const x = (i: number) => `${((i - first + 0.5) / span) * 100}%`;
+  const color = e.eventType === "DETERIORATION" ? "var(--color-down)" : "var(--color-up)";
+  const months = Array.from({ length: span }, (_, k) => first + k);
+  const described = [
+    cut !== null && `recorte del límite en ${monthCode(MONTHS[cut])}`,
+    sig !== null && `señal en ${monthCode(MONTHS[sig])}`,
+    `evento en ${monthCode(e.eventMonth)}`,
+  ].filter(Boolean);
+  return (
+    <div role="img" aria-label={described.join(", ")} className="min-w-0">
+      <div className="relative h-14">
+        {/* Month ticks on the track. */}
+        <span aria-hidden className="absolute inset-x-0 top-9 h-px bg-ink/30" />
+        {months.map((i) => (
+          <span key={i} aria-hidden className="absolute top-[33px] h-2 w-px -translate-x-1/2 bg-ink/30" style={{ left: x(i) }} />
+        ))}
+        {sig !== null && sig < ev && (
+          <span
+            aria-hidden
+            className="absolute top-2 h-3 border-x-2 border-t-2 border-ink"
+            style={{ left: x(sig), width: `${((ev - sig) / span) * 100}%` }}
+          />
+        )}
+        <span aria-hidden className="absolute top-0 bottom-0 w-0 -translate-x-1/2 border-l-[1.5px] border-dashed" style={{ left: x(ev), borderColor: color }} />
+        {cut !== null && (
+          <svg aria-hidden width="12" height="10" className="absolute top-[21px] -translate-x-1/2" style={{ left: x(cut) }}>
+            <path d="M0 0h12L6 9.6z" fill="var(--color-down)" />
+          </svg>
+        )}
+        {sig !== null && <span aria-hidden className="absolute top-[32px] h-2.5 w-2.5 -translate-x-1/2 bg-ink" style={{ left: x(sig) }} />}
+      </div>
+      <div className="mt-1 flex justify-between text-sm text-ink-muted">
+        <span>{monthShort(MONTHS[first])}</span>
+        <span>{monthShort(MONTHS[last])}</span>
+      </div>
+      <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-muted">
+        {cut !== null && (
+          <li className="flex items-center gap-1.5">
+            <svg aria-hidden width="10" height="9">
+              <path d="M0 0h10L5 8z" fill="var(--color-down)" />
+            </svg>
+            Recorte {monthCode(MONTHS[cut])}
+          </li>
+        )}
+        {sig !== null && (
+          <li className="flex items-center gap-1.5">
+            <span aria-hidden className="h-2 w-2 bg-ink" />
+            Señal {monthCode(MONTHS[sig])}
+          </li>
+        )}
+        <li className="flex items-center gap-1.5">
+          <span aria-hidden className="h-3 w-0 border-l-[1.5px] border-dashed" style={{ borderColor: color }} />
+          Evento {monthCode(e.eventMonth)}
+        </li>
+      </ul>
     </div>
   );
 }
@@ -700,7 +887,7 @@ function BankPanel({ data, limit }: { data: EntityDetail; limit: LimitDecision }
   const ActionIcon = limit.action === "INCREASE" ? IconUp : CUT_ACTIONS.includes(limit.action) ? IconDown : null;
   const reference = methodology?.limitEngine;
   return (
-    <Film title="Límite de circulante" meta={`Perfil ${limit.profile === "BANK" ? "Banco" : limit.profile} · recalculado cada mes · ${monthCode(limit.month)}`}>
+    <Film id="limite" title="Límite de circulante" meta={`Perfil ${limit.profile === "BANK" ? "Banco" : limit.profile} · recalculado cada mes · ${monthCode(limit.month)}`}>
       <dl className="grid gap-px border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-4">
         <Stat
           big
@@ -764,7 +951,11 @@ function BankPanel({ data, limit }: { data: EntityDetail; limit: LimitDecision }
       <div className="mt-10 grid gap-x-12 gap-y-10 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
         <section className="min-w-0">
           <h3 className="mb-3 text-[15px] font-semibold">Historia del límite</h3>
-          <LimitHistoryChart points={data.timeline} activeMonth={month} />
+          <LimitHistoryChart
+            points={data.timeline}
+            activeMonth={month}
+            eventMonth={data.events.filter((e) => e.eventType === "DETERIORATION").at(-1)?.eventMonth ?? null}
+          />
           <p className="mt-2 text-sm text-ink-muted">El límite se recalcula cada mes con datos hasta ese mes.</p>
         </section>
         <LimitSimulator id={data.id} limit={limit} />

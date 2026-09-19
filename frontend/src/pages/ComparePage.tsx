@@ -273,7 +273,14 @@ function Overlay({ a, b, month }: { a: EntityDetail; b: EntityDetail; month: str
                   stroke={COLORS[key]}
                   strokeWidth={1.5}
                   strokeDasharray="5 3"
-                  label={{ value: "evento", position: key === "a" ? "insideTopLeft" : "insideBottomLeft", fill: "var(--color-ink-muted)", fontSize: 13 }}
+                  label={{
+                    value: "evento",
+                    // Past the middle of the axis the label sits left of its line, so it never runs off the plot.
+                    position: `inside${key === "a" ? "Top" : "Bottom"}${data.findIndex((d) => d.month === e.eventMonth) > data.length / 2 ? "Right" : "Left"}`,
+                    fill: COLORS[key],
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}
                 />
               )),
             )}

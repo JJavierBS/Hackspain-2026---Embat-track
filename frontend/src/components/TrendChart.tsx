@@ -26,6 +26,14 @@ interface TrendChartProps {
   height?: number;
   /** Alerts to mark along the top edge. Several in one month share one mark. */
   markers?: TrendMarker[];
+  /** Lead-time events: a full-height dashed line in the direction color, labelled at the foot of the plot. */
+  events?: TrendEvent[];
+}
+
+export interface TrendEvent {
+  month: string;
+  direction: "NEGATIVE" | "POSITIVE";
+  label: string;
 }
 
 export interface TrendMarker {
@@ -63,6 +71,32 @@ function AlertMark({ cx, cy, mark }: { cx?: number; cy?: number; mark: MonthMark
   );
 }
 
+/**
+ * The label of an event line, set at the foot of the plot so it never meets the alert marks on the top rule.
+ * A film-colored halo keeps it readable over the series.
+ */
+function EventLabel({ viewBox, text, color }: { viewBox?: { x?: number; y?: number; height?: number }; text: string; color: string }) {
+  const x = viewBox?.x;
+  const y = viewBox?.y;
+  const h = viewBox?.height;
+  if (x === undefined || y === undefined || h === undefined) return <g />;
+  return (
+    <text
+      x={x - 5}
+      y={y + h - 8}
+      textAnchor="end"
+      fill={color}
+      fontSize={13}
+      fontWeight={600}
+      stroke="var(--color-film)"
+      strokeWidth={4}
+      paintOrder="stroke"
+    >
+      {text}
+    </text>
+  );
+}
+
 const SERIES = [
   { key: "final", name: "Final", color: "var(--color-ink)", width: 3, dash: undefined },
   { key: "level", name: "Nivel", color: "var(--color-series-level)", width: 2.25, dash: undefined },
@@ -91,7 +125,7 @@ function labelOffsets(last: TrendPoint | undefined, height: number): Record<stri
 }
 
 /** Score over time against the band zones, with the active month marked. */
-export function TrendChart({ data, activeMonth, height = 260, markers = [] }: TrendChartProps) {
+export function TrendChart({ data, activeMonth, height = 260, markers = [], events = [] }: TrendChartProps) {
   const offsets = labelOffsets(data[data.length - 1], height);
   const marks = groupMarkers(markers);
   const markLabel = new Map(marks.map((m) => [m.month, m.label]));
@@ -119,6 +153,14 @@ export function TrendChart({ data, activeMonth, height = 260, markers = [] }: Tr
               <path d="M1 9.5h10L6 1z" fill="var(--color-up)" />
             </svg>
             Alertas
+          </li>
+        )}
+        {events.length > 0 && (
+          <li className="flex items-center gap-2">
+            <svg width="10" height="14" aria-hidden>
+              <line x1="5" y1="0" x2="5" y2="14" stroke="var(--color-ink-muted)" strokeWidth={1.5} strokeDasharray="4 2" />
+            </svg>
+            Evento
           </li>
         )}
       </ul>
@@ -157,7 +199,9 @@ export function TrendChart({ data, activeMonth, height = 260, markers = [] }: Tr
             <Tooltip
               labelFormatter={(m) => {
                 const alerts = markLabel.get(String(m));
-                return `${monthShort(String(m))} · ${monthCode(String(m))}${alerts ? ` — ${alerts}` : ""}`;
+                const evs = events.filter((e) => e.month === String(m)).map((e) => e.label);
+                const notes = [...(alerts ? [alerts] : []), ...evs].join(" · ");
+                return `${monthShort(String(m))} · ${monthCode(String(m))}${notes ? ` — ${notes}` : ""}`;
               }}
               formatter={(v) => formatScore(Number(v))}
               contentStyle={{
@@ -167,6 +211,19 @@ export function TrendChart({ data, activeMonth, height = 260, markers = [] }: Tr
                 fontVariantNumeric: "tabular-nums",
               }}
             />
+            {events.map((e) => {
+              const color = e.direction === "NEGATIVE" ? "var(--color-down)" : "var(--color-up)";
+              return (
+                <ReferenceLine
+                  key={`${e.month}-${e.label}`}
+                  x={e.month}
+                  stroke={color}
+                  strokeWidth={1.5}
+                  strokeDasharray="4 2"
+                  label={<EventLabel text={e.label} color={color} />}
+                />
+              );
+            })}
             {marks.map((mark) => (
               <ReferenceDot
                 key={mark.month}
