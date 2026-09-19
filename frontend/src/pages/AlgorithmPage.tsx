@@ -21,7 +21,10 @@ import { BANDS, CATEGORY_LABELS, monthCode } from "../lib/format";
 export function AlgorithmPage() {
   const { data, error, isLoading } = useAlgorithmConfig();
   const apply = useApplyConfig(data?.bootId);
-  const [draft, setDraft] = useState<ConfigTree | null>(null);
+  // Both seed from the same first render. On a second visit the query cache already holds the config,
+  // and structural sharing keeps its identity across the refetch, so `data !== synced` never becomes
+  // true: seeding the draft with null there left the page on its loading state for ever.
+  const [draft, setDraft] = useState<ConfigTree | null>(() => data?.config ?? null);
   const [invalid, setInvalid] = useState<Set<string>>(() => new Set());
   const [synced, setSynced] = useState(data);
   useHashScroll(draft !== null);
