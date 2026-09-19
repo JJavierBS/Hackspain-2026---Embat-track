@@ -21,8 +21,8 @@ frozen tables stay correct after any edit.
 | file | size | in git |
 |---|---|---|
 | `data/xray.duckdb` | 450 MB | no |
-| `backend/demo/xray-demo.duckdb` | 104 MB | no |
-| `backend/demo/xray-demo.duckdb.gz` | 46 MB | **yes** |
+| `backend/demo/xray-demo.duckdb` | 112 MB | no |
+| `backend/demo/xray-demo.duckdb.gz` | 49 MB | **yes** |
 
 The `.gz` is committed because Render builds from the repo and has no other way to get it, and it
 sits under `backend/` because a Dockerfile cannot copy anything outside its build context. The

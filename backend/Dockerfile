@@ -16,7 +16,7 @@ RUN useradd --system --create-home --uid 10001 xray
 
 COPY --from=build /build/app.jar app.jar
 # The image ships the slice scripts/ExportDemoDb.java writes: the results tables plus the S30 inputs
-# (~46 MB gzipped), not the full pipeline database (~450 MB). It is expanded at startup, not here:
+# (~49 MB gzipped), not the full pipeline database (~450 MB). It is expanded at startup, not here:
 # that keeps the image small and leaves a mounted volume's own copy untouched.
 COPY --chown=xray:xray demo/xray-demo.duckdb.gz /opt/xray/xray-demo.duckdb.gz
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
