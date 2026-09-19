@@ -272,3 +272,13 @@ scoring:
     up-min-traj: 65
     down-max-traj: 35
     top-n: 10
+
+  # Phase 7 score projection (decisions H11–H16). Method and values from the backtest in docs/FORECAST.md:
+  # AR(1) toward the entity's own median beats persistence from h = 2; the damped linear trend loses to it.
+  # Output only: nothing in scoring, products, alerts or analytics reads forecast_points.
+  forecast:
+    mean-reversion: 0.85            # rho: best h1..h3 MAE on GROUP and COMPANY (FORECAST.md table 1)
+    max-horizon-months: 6           # past 6 the projection is the median; MAE ~16 pts, above one band width
+    min-points: 3                   # fewer scored months: no projection at all
+    min-history-months: 6           # below: LOW (h1 MAE 12-20 pts, no better than persistence)
+    medium-history-months: 8        # below: MEDIUM; from here on the error is close to the 12+ months level

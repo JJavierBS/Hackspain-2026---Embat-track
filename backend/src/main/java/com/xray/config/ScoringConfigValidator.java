@@ -153,6 +153,28 @@ final class ScoringConfigValidator {
         }
     }
 
+    /** Phase 7 keys: the forecast block (decisions H11, H14, H15). */
+    static void validatePhase7(ScoringConfig.ForecastConfig forecast) {
+        if (forecast == null) {
+            throw fail("scoring.forecast is missing");
+        }
+        if (!(forecast.meanReversion() > 0 && forecast.meanReversion() <= 1)) {
+            throw fail("scoring.forecast.mean-reversion " + forecast.meanReversion() + " must be in (0, 1]");
+        }
+        positive("scoring.forecast.max-horizon-months", forecast.maxHorizonMonths());
+        positive("scoring.forecast.min-points", forecast.minPoints());
+        positive("scoring.forecast.min-history-months", forecast.minHistoryMonths());
+        positive("scoring.forecast.medium-history-months", forecast.mediumHistoryMonths());
+        if (!(forecast.minPoints() <= forecast.minHistoryMonths())) {
+            throw fail("scoring.forecast.min-points " + forecast.minPoints()
+                    + " must be at most min-history-months " + forecast.minHistoryMonths());
+        }
+        if (!(forecast.minHistoryMonths() < forecast.mediumHistoryMonths())) {
+            throw fail("scoring.forecast.min-history-months " + forecast.minHistoryMonths()
+                    + " must be below medium-history-months " + forecast.mediumHistoryMonths());
+        }
+    }
+
     private static void positive(String key, int value) {
         if (value < 1) {
             throw fail(key + " " + value + " must be >= 1");

@@ -6,6 +6,7 @@ import com.xray.domain.model.FlowClass;
 import com.xray.domain.model.HealthStatus;
 import com.xray.domain.model.IndicatorId;
 import com.xray.domain.model.Profile;
+import com.xray.domain.service.ForecastCalculator;
 import com.xray.domain.service.LeadTimeAnalyzer;
 import com.xray.domain.service.MomentumScreen;
 import com.xray.domain.service.ShowcaseFinder;
@@ -50,12 +51,14 @@ public record ScoringConfig(
         ProductsConfig products,
         AlertsConfig alerts,
         LeadTimeConfig leadTime,
-        ShowcaseConfig showcase) {
+        ShowcaseConfig showcase,
+        ForecastConfig forecast) {
 
     public ScoringConfig {
         ScoringConfigValidator.validate(indicators, profiles);
         ScoringConfigValidator.validatePhase5(products, alerts, limitEngine);
         ScoringConfigValidator.validatePhase6(leadTime, showcase);
+        ScoringConfigValidator.validatePhase7(forecast);
     }
 
     public record MonthRange(String start, String end) {
@@ -192,6 +195,20 @@ public record ScoringConfig(
 
         public ShowcaseFinder.Params toParams() {
             return new ShowcaseFinder.Params(maxFinalGap, upMinTraj, downMaxTraj, topN);
+        }
+    }
+
+    /**
+     * Score projection (phase 7 decisions H11–H15, docs/FORECAST.md). Output only: nothing scores from it (H16).
+     * meanReversion = rho of the AR(1) toward the entity's own median. minPoints = fewest scored months to
+     * project at all; below minHistoryMonths the forecast is LOW, below mediumHistoryMonths MEDIUM, else HIGH.
+     */
+    public record ForecastConfig(double meanReversion, int maxHorizonMonths, int minPoints, int minHistoryMonths,
+                                 int mediumHistoryMonths) {
+
+        public ForecastCalculator.Params toParams() {
+            return new ForecastCalculator.Params(meanReversion, maxHorizonMonths, minPoints, minHistoryMonths,
+                    mediumHistoryMonths);
         }
     }
 }

@@ -158,18 +158,48 @@ class ScoringConfigValidationTest {
         assertEquals(10, base.showcase().topN());
     }
 
+    @Test
+    void phase7KeysBind() {
+        var f = base.forecast();
+        assertNotNull(f);
+        assertTrue(f.meanReversion() > 0 && f.meanReversion() <= 1);
+        assertTrue(f.maxHorizonMonths() >= 1);
+        assertTrue(f.minPoints() <= f.minHistoryMonths());
+        assertTrue(f.minHistoryMonths() < f.mediumHistoryMonths());
+    }
+
+    @Test
+    void badForecastBlockFails() {
+        var f = base.forecast();
+        var zeroRho = new ScoringConfig.ForecastConfig(0.0, f.maxHorizonMonths(), f.minPoints(),
+                f.minHistoryMonths(), f.mediumHistoryMonths());
+        var ex = assertThrows(IllegalStateException.class,
+                () -> copyWith(base.indicators(), base.profiles(), base.alerts(), zeroRho));
+        assertTrue(ex.getMessage().contains("mean-reversion"), ex.getMessage());
+        var inverted = new ScoringConfig.ForecastConfig(f.meanReversion(), f.maxHorizonMonths(), f.minPoints(),
+                f.mediumHistoryMonths(), f.minHistoryMonths());
+        ex = assertThrows(IllegalStateException.class,
+                () -> copyWith(base.indicators(), base.profiles(), base.alerts(), inverted));
+        assertTrue(ex.getMessage().contains("min-history-months"), ex.getMessage());
+    }
+
     private static ScoringConfig copyWith(Map<IndicatorId, IndicatorConfig> ind, Map<Profile, ProfileConfig> prof) {
         return copyWith(ind, prof, base.alerts());
     }
 
     private static ScoringConfig copyWith(Map<IndicatorId, IndicatorConfig> ind, Map<Profile, ProfileConfig> prof,
                                           ScoringConfig.AlertsConfig alerts) {
+        return copyWith(ind, prof, alerts, base.forecast());
+    }
+
+    private static ScoringConfig copyWith(Map<IndicatorId, IndicatorConfig> ind, Map<Profile, ProfileConfig> prof,
+                                          ScoringConfig.AlertsConfig alerts, ScoringConfig.ForecastConfig forecast) {
         return new ScoringConfig(base.unit(), base.months(), base.cashProductTypes(), base.semiLiquidTypes(),
                 base.bookedStatusValues(), base.runwayCapMonths(), base.trajectory(), base.flowClasses(),
                 base.defaultFlowClass(), base.otherSignFallback(), ind, prof, base.regimes(), base.bands(),
                 base.limitEngine(), base.insurer(), base.debtDscr(), base.dataRules(),
                 base.levDebtToCf(), base.momentum(), base.concentration(), base.windows(), base.taxRegularity(),
                 base.statuses(), base.confidence(), base.explanation(), base.products(), alerts,
-                base.leadTime(), base.showcase());
+                base.leadTime(), base.showcase(), forecast);
     }
 }
