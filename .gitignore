@@ -39,3 +39,7 @@ frontend/dist/
 
 # Impeccable review captures (local only)
 .impeccable/review/
+
+# Python bytecode
+__pycache__/
+*.pyc

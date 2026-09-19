@@ -33,10 +33,11 @@ public class EntityDetailQuery {
     private final ProductQuery products;
     private final AlertReads alerts;
     private final AnalyticsQuery analytics;
+    private final ForecastQuery forecast;
 
     public EntityDetailQuery(SqlRunner sql, ApiParams params, EntityLookup lookup, PortfolioQuery portfolio,
                              ProfilesQuery profiles, TimelineQuery timeline, ProductQuery products,
-                             AlertReads alerts, AnalyticsQuery analytics) {
+                             AlertReads alerts, AnalyticsQuery analytics, ForecastQuery forecast) {
         this.sql = sql;
         this.params = params;
         this.lookup = lookup;
@@ -46,9 +47,10 @@ public class EntityDetailQuery {
         this.products = products;
         this.alerts = alerts;
         this.analytics = analytics;
+        this.forecast = forecast;
     }
 
-    public EntityDetailDto detail(String id, String profileRaw, String monthRaw) {
+    public EntityDetailDto detail(String id, String profileRaw, String monthRaw, Integer horizon) {
         Profile p = params.profile(profileRaw);
         String month = params.month(monthRaw);
         EntityLookup.Entity e = lookup.find(id);
@@ -69,7 +71,7 @@ public class EntityDetailQuery {
                 products.momentum(e.type(), id, month),
                 alerts.read("entity_type = ? AND entity_id = ? AND profile = ? AND month <= ? ORDER BY month DESC, "
                         + AlertReads.SEVERITY_ORDER + ", code LIMIT " + MAX_ALERTS, e.type(), id, p.name(), month),
-                analytics.events(e.type(), id, p, month));
+                analytics.events(e.type(), id, p, month), forecast.forecast(e.type(), id, p, month, horizon));
     }
 
     private List<CategoryDto> categories(String type, String id, Profile p, String month, boolean explained) {

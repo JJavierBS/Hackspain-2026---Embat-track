@@ -207,14 +207,45 @@ function MethodologyFilms() {
     <>
       <AlertCatalogue data={data} />
       <ProductParameters data={data} />
+      {data.forecast && <ForecastMethod forecast={data.forecast} />}
     </>
+  );
+}
+
+/** Phase 7 projection (plan B-4). Every number comes from /api/methodology, i.e. scoring.forecast. */
+function ForecastMethod({ forecast: f }: { forecast: NonNullable<Methodology["forecast"]> }) {
+  return (
+    <Film title="Proyección" meta="Parámetros de la configuración actual">
+      <div className="grid gap-x-12 gap-y-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+        <section className="min-w-0">
+          <p className="max-w-[62ch] text-[15px] text-ink-muted">
+            Cada mes proyectado se acerca a la mediana de la propia entidad: proyección = mediana + ρ × (mes anterior −
+            mediana). La mediana usa solo los meses hasta el mes elegido, nunca meses posteriores. Este método ganó al de
+            tendencia lineal en la prueba sobre los datos reales: la tendencia lineal es peor que repetir el último valor.
+          </p>
+          <p className="mt-4 max-w-[62ch] text-[15px] font-semibold">
+            La proyección es una señal de orientación, no una medición.
+          </p>
+        </section>
+        <Params
+          rows={[
+            { label: "Factor de retorno ρ", hint: "1 = sin retorno a la mediana", value: formatNumber(f.meanReversion) },
+            { label: "Horizonte máximo", value: `${f.maxHorizonMonths} meses` },
+            { label: "Sin proyección", hint: "meses puntuados", value: `menos de ${f.minPoints}` },
+            { label: "Fiabilidad baja", hint: "meses puntuados", value: `menos de ${f.minHistoryMonths}` },
+            { label: "Fiabilidad limitada", hint: "meses puntuados", value: `menos de ${f.mediumHistoryMonths}` },
+            { label: "Histórico suficiente", hint: "meses puntuados", value: `${f.mediumHistoryMonths} o más` },
+          ]}
+        />
+      </div>
+    </Film>
   );
 }
 
 const PROVISIONAL_TAG = "border border-dashed border-ink-muted/60 px-1.5 text-sm whitespace-nowrap text-ink-muted";
 
 function AlertCatalogue({ data }: { data: Methodology }) {
-  const { minCritical, minWarn } = data.watchlist;
+  const { minCritical, minWarn, confirmMonths, recentMonths } = data.watchlist;
   return (
     <Film title="Alertas tempranas" meta={`${data.alertRules.length} reglas · marco EBA/GL/2020/06`}>
       <p className="max-w-[62ch] text-[15px] text-ink-muted">
@@ -271,7 +302,9 @@ function AlertCatalogue({ data }: { data: Methodology }) {
         <span className="font-semibold">Lista de vigilancia:</span>{" "}
         <span className="text-ink-muted">
           entra una entidad con al menos {minCritical} {minCritical === 1 ? "alerta crítica" : "alertas críticas"} o {minWarn} avisos
-          negativos activos ese mes.
+          negativos nuevos y confirmados. Una alerta está confirmada cuando sigue activa {confirmMonths} meses seguidos (la misma
+          regla que los eventos de deterioro) y es nueva durante {recentMonths} meses. La lista muestra movimientos, no estados:
+          una situación que dura más se ve en el estado de la entidad.
         </span>
       </p>
     </Film>
@@ -395,7 +428,10 @@ function AnticipationFilm({ data }: { data: LeadTime }) {
     <Film id="anticipacion" title="Anticipación" meta={`Perfil ${name} · eventos proxy · ventana de ${data.windowMonths} meses`}>
       <p className="max-w-[70ch] text-[15px] text-ink-muted">
         Cuántos meses antes de un evento la nota ya avisaba. Medido contra <span className="font-semibold text-ink">eventos proxy</span>:
-        los datos no traen etiquetas de impago. Las cifras son del perfil {name} y cambian con el perfil.
+        los datos no traen etiquetas de impago. La nota detecta bien el deterioro cuando llega: el mismo mes o el anterior.
+        Con dos meses de antelación el aviso es útil pero débil. Con tres meses o más, en estos 24 meses de datos, la nota no
+        ordena mejor que el azar qué entidades van a entrar en riesgo (docs/DATA_FINDINGS.md, R3). Las cifras son del perfil{" "}
+        {name} y cambian con el perfil.
       </p>
 
       <LeadBlock block={data.deterioration} horizon={data.horizonMonths} className="mt-8" />
@@ -441,7 +477,7 @@ function LeadBlock({ block, horizon, className = "" }: { block: LeadTimeBlock; h
         <Icon width={18} height={18} className={down ? "text-down" : "text-up"} />
         {EVENT_TYPE_LABELS[block.eventType]}
       </h3>
-      <dl className="mt-4 grid gap-px border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-5">
+      <dl className="mt-4 grid gap-px border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-3">
         <Figure label="Eventos" title="Entidades con un evento proxy de este tipo" value={block.events} />
         <Figure
           label="Detectados con antelación"
@@ -458,10 +494,17 @@ function LeadBlock({ block, horizon, className = "" }: { block: LeadTimeBlock; h
           value={block.falseAlarmRate === null ? "—" : formatShare(block.falseAlarmRate)}
           sub={`${block.evaluable} de ${block.signals} señales evaluables`}
         />
+        <Figure
+          label="Frente al azar"
+          title={`Acierto de la señal dividido por la tasa base: cualquier mes fuera del evento seguido del evento en ${horizon} meses. Por encima de 1, la señal aporta.`}
+          value={block.lift === null ? "—" : `×${formatNumber(block.lift)}`}
+          sub={`señal ${block.hitRate === null ? "—" : formatShare(block.hitRate)} · base ${block.baseRate === null ? "—" : formatShare(block.baseRate)}`}
+        />
       </dl>
       <p className="mt-2 text-sm text-ink-muted">
         Falsa alarma: señal sin evento en los {horizon} meses siguientes; solo se cuentan las evaluables (con {horizon} meses de datos
-        después, o ya seguidas de un evento).
+        después, o ya seguidas de un evento). Frente al azar: el acierto de la señal comparado con la tasa base del mismo evento, así
+        la cifra se lee igual con cualquier conjunto de datos.
       </p>
 
       <div className="mt-8 grid gap-x-12 gap-y-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
@@ -571,7 +614,8 @@ function Definitions({ data }: { data: LeadTime }) {
           los datos: <span className="text-ink">caja</span> para muy pocos meses de forma sostenida, <span className="text-ink">DSCR</span>{" "}
           insuficiente para cubrir la deuda de forma sostenida, <span className="text-ink">impagos</span> altos a la vez en cobros y
           pagos, o una <span className="text-ink">nota</span> muy baja. Una mejora es un <span className="text-ink">cruce de nivel</span>{" "}
-          hacia una zona sana tras un periodo débil. Los umbrales están en la configuración.
+          hacia una zona sana tras un periodo débil, sostenido los mismos meses que se exigen a la caja y al DSCR: la misma prueba en las
+          dos direcciones. Los umbrales están en la configuración.
         </>
       ),
     },

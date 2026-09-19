@@ -37,13 +37,16 @@ public class EntityController {
 
     @GetMapping("/{id}")
     public EntityDetailDto detail(@PathVariable String id, @RequestParam(required = false) String profile,
-                                  @RequestParam(required = false) String month) {
-        return detail.detail(id, profile, month);
+                                  @RequestParam(required = false) String month,
+                                  @RequestParam(required = false) Integer horizon) {
+        return detail.detail(id, profile, month, horizon);
     }
 
     @GetMapping("/{id}/timeline")
-    public TimelineDto timeline(@PathVariable String id, @RequestParam(required = false) String profile) {
-        return timeline.timeline(id, profile);
+    public TimelineDto timeline(@PathVariable String id, @RequestParam(required = false) String profile,
+                                @RequestParam(required = false) String month,
+                                @RequestParam(required = false) Integer horizon) {
+        return timeline.timeline(id, profile, month, horizon);
     }
 
     @GetMapping("/{id}/limit")

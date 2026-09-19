@@ -20,6 +20,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -41,7 +42,7 @@ public class S80_Alerts implements PipelineStage {
     static final String STATES_DDL = "entity_type VARCHAR, entity_id VARCHAR, month VARCHAR, profile VARCHAR, "
             + "code VARCHAR, severity VARCHAR, direction VARCHAR, value DOUBLE";
     static final String WATCHLIST_DDL = "entity_type VARCHAR, entity_id VARCHAR, month VARCHAR, profile VARCHAR, "
-            + "n_critical INTEGER, n_warn INTEGER";
+            + "n_critical INTEGER, n_warn INTEGER, codes VARCHAR";
 
     private final ResultWriter writer;
     private final List<AlertRule> rules;
@@ -79,27 +80,36 @@ public class S80_Alerts implements PipelineStage {
 
         List<Object[]> alertRows = new ArrayList<>();
         List<Object[]> stateRows = new ArrayList<>();
-        Map<WatchKey, int[]> counts = new LinkedHashMap<>();
+        Map<WatchKey, Watch> watches = new LinkedHashMap<>();
         for (AlertEngine.Output out : outputs) {
             for (Alert a : out.alerts()) {
                 alertRows.add(new Object[]{a.key().type().name(), a.key().id(), months.get(a.month()).toString(),
                         a.profile().name(), a.code(), a.severity().name(), a.direction().name(), a.message(),
                         a.value()});
             }
+            // Negative run length per code: the run goes on while the code is negative in consecutive months.
+            Map<String, int[]> runs = new HashMap<>();
             for (AlertState s : out.states()) {
                 stateRows.add(new Object[]{s.key().type().name(), s.key().id(), months.get(s.month()).toString(),
                         s.profile().name(), s.code(), s.severity().name(), s.direction().name(), s.value()});
-                if (s.direction() == AlertDirection.NEGATIVE) {
-                    int[] c = counts.computeIfAbsent(new WatchKey(s.key(), s.month(), s.profile()), k -> new int[2]);
-                    c[s.severity() == Severity.CRITICAL ? 0 : 1]++;
+                if (s.direction() != AlertDirection.NEGATIVE) {
+                    continue;
+                }
+                int[] run = runs.get(s.code());
+                int length = run != null && run[0] == s.month() - 1 ? run[1] + 1 : 1;
+                runs.put(s.code(), new int[]{s.month(), length});
+                if (length >= wl.confirmMonths() && length < wl.confirmMonths() + wl.recentMonths()) {
+                    Watch w = watches.computeIfAbsent(new WatchKey(s.key(), s.month(), s.profile()), k -> new Watch());
+                    w.count[s.severity() == Severity.CRITICAL ? 0 : 1]++;
+                    w.codes.add(s.code());
                 }
             }
         }
         List<Object[]> watchRows = new ArrayList<>();
-        counts.forEach((k, c) -> {
-            if (c[0] >= wl.minCritical() || c[1] >= wl.minWarn()) {
+        watches.forEach((k, w) -> {
+            if (w.count[0] >= wl.minCritical() || w.count[1] >= wl.minWarn()) {
                 watchRows.add(new Object[]{k.key().type().name(), k.key().id(), months.get(k.month()).toString(),
-                        k.profile().name(), c[0], c[1]});
+                        k.profile().name(), w.count[0], w.count[1], String.join(",", w.codes)});
             }
         });
 
@@ -112,5 +122,11 @@ public class S80_Alerts implements PipelineStage {
     }
 
     private record WatchKey(EntityKey key, int month, Profile profile) {
+    }
+
+    /** Confirmed and new negative alerts of one entity-month-profile: counts by severity and their codes. */
+    private static final class Watch {
+        final int[] count = new int[2];
+        final List<String> codes = new ArrayList<>();
     }
 }

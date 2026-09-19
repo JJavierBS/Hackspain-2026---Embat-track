@@ -76,5 +76,5 @@ Swagger UI: `http://localhost:8080/swagger-ui.html`.
 ## Open items (don't guess — check or ask)
 - Scoring unit, labels and submission format → Embat (hidden test, Sunday). Input format = same CSVs as `data/raw/`.
 - 10 `⏳ PENDING` anchors → Fran / José Javier after block 3 quantiles.
-- Profile weights → external review; config edit only.
+- Profile weights → **closed 2026-09-19** (Embat CTO). Keep them. `docs/WEIGHTS_JUSTIFICATION.md` gives the reasons and the only cases that justify a change.
 - `limit-engine.reference-rate` in `scoring-config.yml` (0.035) is an **example value**, not agreed with the experts yet. It feeds the limit engine, the simulator and `LEV_FUNDING_COST`. Any agent may change it when the user's instructions say otherwise; record the new value and its source in `docs/THRESHOLDS.md`.

@@ -17,6 +17,7 @@ import type {
   Direction,
   EntityDetail,
   EntityEvent,
+  Forecast,
   EventTrigger,
   LeadTime,
   LeadTimeBlock,
@@ -354,8 +355,36 @@ const PARAMS: Omit<Methodology, "alertRules"> = {
   },
   insurer: { basePremiumRate: 0.0025, multiplierByBand: { A: 0.8, B: 1, C: 1.4, D: 2 } },
   momentum: { risingStarMaxLevel: 60, risingStarMinTraj: 70 },
-  watchlist: { minCritical: 1, minWarn: 2 },
+  watchlist: { minCritical: 1, minWarn: 2, confirmMonths: 2, recentMonths: 3 },
+  forecast: {
+    method: "MEAN_REVERSION_AR1",
+    meanReversion: 0.85,
+    maxHorizonMonths: 6,
+    minPoints: 3,
+    minHistoryMonths: 6,
+    mediumHistoryMonths: 8,
+  },
 };
+
+/** The backend's projection (ForecastCalculator) on the synthetic series: AR(1) toward the median up to m. */
+function mockForecast(finals: number[], origin: string, horizonRaw?: number): Forecast {
+  const f = PARAMS.forecast!;
+  const horizon = Math.max(1, Math.min(f.maxHorizonMonths, horizonRaw ?? f.maxHorizonMonths));
+  const empty: Forecast = { origin, reliability: null, history: null, median: null, horizon, maxHorizon: f.maxHorizonMonths, points: [] };
+  if (finals.length < f.minPoints) return empty;
+  const sorted = [...finals].sort((a, b) => a - b);
+  const k = Math.floor(sorted.length / 2);
+  const median = sorted.length % 2 ? sorted[k] : (sorted[k - 1] + sorted[k]) / 2;
+  const reliability = finals.length < f.minHistoryMonths ? "LOW" : finals.length < f.mediumHistoryMonths ? "MEDIUM" : "HIGH";
+  const [y, mo] = origin.split("-").map(Number);
+  let v = finals[finals.length - 1];
+  const points = Array.from({ length: horizon }, (_, i) => {
+    v = Math.max(0, Math.min(100, median + f.meanReversion * (v - median)));
+    const month = new Date(Date.UTC(y, mo - 1 + i + 1, 1)).toISOString().slice(0, 7);
+    return { month, horizon: i + 1, value: Math.round(v * 10) / 10 };
+  });
+  return { ...empty, reliability, history: finals.length, median: Math.round(median * 10) / 10, points };
+}
 
 const L = PARAMS.limitEngine;
 
@@ -734,7 +763,7 @@ export function mockPortfolio(profile: Profile, month: string): Portfolio {
   return { profile, month, unscored: 0, rows };
 }
 
-export function mockEntity(id: string, profile: Profile, month: string): EntityDetail | null {
+export function mockEntity(id: string, profile: Profile, month: string, horizon?: number): EntityDetail | null {
   const m = monthIndex(month);
   const series = allSeries(profile).find((s) => s.seed.id === id);
   if (!series) return null;
@@ -781,6 +810,11 @@ export function mockEntity(id: string, profile: Profile, month: string): EntityD
     alerts: book.alerts.filter((_, k) => book.monthIdx[k] <= m).sort(byMonthSeverity).slice(0, 20),
     // Decision G8: a page at month m never shows a later event.
     events: entityEvents(id, profile).filter((e) => e.eventMonth <= MONTHS[m]),
+    forecast: mockForecast(
+      series.months.slice(0, m + 1).map((p) => p.final),
+      month,
+      horizon,
+    ),
   };
 }
 
@@ -1106,6 +1140,11 @@ function mockBlock(profile: Profile, eventType: EntityEvent["eventType"]): LeadT
     evaluable,
     followed,
     falseAlarmRate: evaluable === 0 ? null : Math.round((1 - followed / evaluable) * 1000) / 1000,
+    hitRate: rate(followed, evaluable),
+    baseEvaluable: evaluable * 10,
+    baseFollowed: Math.round(followed * 6),
+    baseRate: rate(Math.round(followed * 6), evaluable * 10),
+    lift: evaluable === 0 || followed === 0 ? null : Math.round(((followed / evaluable) / ((followed * 6) / (evaluable * 10))) * 100) / 100,
   };
 }
 

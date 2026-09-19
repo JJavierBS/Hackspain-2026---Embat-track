@@ -49,17 +49,20 @@ export function usePortfolio(profile: Profile, month: string) {
   });
 }
 
-export function useEntity(id: string, profile: Profile, month: string) {
+/** horizon: months to project from ?month (phase 7). The backend clamps it to 1..max-horizon-months. */
+export function useEntity(id: string, profile: Profile, month: string, horizon?: number) {
   return useQuery({
-    queryKey: ["entity", id, profile, month],
+    queryKey: ["entity", id, profile, month, horizon],
     enabled: id !== "",
     queryFn: async () => {
       if (!USE_MOCKS) {
-        const detail = await apiGet<EntityDetail>(`/entities/${id}?profile=${profile}&month=${month}`);
-        // A backend before block 6 sends no `alerts`, one before phase 6 no `events`: read them as empty lists.
-        return { ...detail, alerts: detail.alerts ?? [], events: detail.events ?? [] };
+        const h = horizon === undefined ? "" : `&horizon=${horizon}`;
+        const detail = await apiGet<EntityDetail>(`/entities/${id}?profile=${profile}&month=${month}${h}`);
+        // A backend before block 6 sends no `alerts`, one before phase 6 no `events`, one before phase 7 no
+        // `forecast`: read them as empty.
+        return { ...detail, alerts: detail.alerts ?? [], events: detail.events ?? [], forecast: detail.forecast ?? null };
       }
-      const detail = (await mocks()).mockEntity(id, profile, month);
+      const detail = (await mocks()).mockEntity(id, profile, month, horizon);
       if (!detail) throw new Error(`Entidad ${id} no encontrada`);
       return detail;
     },

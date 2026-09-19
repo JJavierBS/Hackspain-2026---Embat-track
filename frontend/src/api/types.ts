@@ -133,6 +133,28 @@ export interface TimelinePoint {
   newAlerts: number;
 }
 
+/** One projected month (phase 7): month = origin + horizon. */
+export interface ForecastPoint {
+  month: string;
+  horizon: number;
+  value: number;
+}
+
+export type ForecastReliability = "LOW" | "MEDIUM" | "HIGH";
+
+/** The projection made at the origin month. reliability null and no points when the origin has no forecast. */
+export interface Forecast {
+  origin: string;
+  reliability: ForecastReliability | null;
+  /** Scored months up to the origin. */
+  history: number | null;
+  /** The value the projection reverts to (the entity's own median up to the origin). */
+  median: number | null;
+  horizon: number;
+  maxHorizon: number;
+  points: ForecastPoint[];
+}
+
 export interface Timeline {
   id: string;
   profile: string;
@@ -142,6 +164,8 @@ export interface Timeline {
   alerts: Alert[];
   /** Lead-time events of this entity, ?profile, all months, oldest first (phase 6). */
   events: EntityEvent[];
+  /** Projection made at ?month, ?horizon months ahead (phase 7). */
+  forecast: Forecast;
 }
 
 export interface Changepoint {
@@ -254,6 +278,8 @@ export interface EntityDetail {
   alerts: Alert[];
   /** Lead-time events of this entity, ?profile, eventMonth <= ?month, oldest first (phase 6, decision G8). */
   events: EntityEvent[];
+  /** Projection made at ?month, ?horizon months ahead (phase 7). null from a backend before phase 7. */
+  forecast: Forecast | null;
 }
 
 export interface Meta {
@@ -381,7 +407,16 @@ export interface Methodology {
   };
   insurer: { basePremiumRate: number; multiplierByBand: Partial<Record<BandLetter, number>> };
   momentum: { risingStarMaxLevel: number; risingStarMinTraj: number };
-  watchlist: { minCritical: number; minWarn: number };
+  watchlist: { minCritical: number; minWarn: number; confirmMonths: number; recentMonths: number };
+  /** Phase 7 projection parameters, from scoring.forecast. Absent from a backend before phase 7. */
+  forecast?: {
+    method: string;
+    meanReversion: number;
+    maxHorizonMonths: number;
+    minPoints: number;
+    minHistoryMonths: number;
+    mediumHistoryMonths: number;
+  };
 }
 
 // Phase 6 analytics (overview contract item 6).
@@ -412,6 +447,14 @@ export interface LeadTimeBlock {
   followed: number;
   /** 1 − followed / evaluable, null when evaluable = 0. */
   falseAlarmRate: number | null;
+  /** followed / evaluable: how often a signal onset was followed by the event. */
+  hitRate: number | null;
+  /** Naive baseline: every month outside the event condition, signal or not. */
+  baseEvaluable: number;
+  baseFollowed: number;
+  baseRate: number | null;
+  /** hitRate / baseRate. Above 1 the signal beats chance. */
+  lift: number | null;
 }
 
 export interface LeadTimeExample {

@@ -1,99 +1,83 @@
 """
-AHP en DOS NIVELES para los 22 indicadores:
-  1) Nivel INDICADOR: dentro de cada categoria, AHP entre sus indicadores.
-  2) Nivel CATEGORIA: AHP entre las 9 categorias, una vez por cada plan.
+Two-level AHP for the scoring weights (phase 7, plan A-2).
 
-Peso final de un indicador = peso_categoria[plan] * peso_intra_categoria[plan]
+  1) Category level: pairwise judgments between the 10 categories, once per profile,
+     derived from per-profile importance ratings (docs/WEIGHTS.md).
+     Output -> scoring.profiles.<P>.weights (x100, 2 decimals, sums to 100).
+  2) Indicator level: pairwise judgments inside each multi-indicator category.
+     Profile-independent (decision H6). Output -> scoring.indicators.<ID>.weight.
 
-Tres planes: bank (Banca), insurance (Aseguradora), fund (Fondo).
+The script prints two YAML fragments to stdout, ready to paste into
+backend/src/main/resources/scoring-config.yml, and the consistency report to stderr.
+It writes no file and the backend never reads it (decisions H3, H17): the config is
+the only source of truth.
+
+Usage:  python3 ahp_w_cat_ind.py            (needs numpy)
+
+The judgments below come from docs/WEIGHTS.md. Change them there first, then here.
 """
+import sys
+
 import numpy as np
+
 from ahp import ahp_weights
 
+MAX_CR = 0.10
+PROFILES = ["BANK", "FUND", "INSURER"]
+
 # ---------------------------------------------------------------------------
-# 1) Los 22 indicadores, agrupados en 9 categorias
+# 1) Categories and their indicators: the identifiers of main (Category, IndicatorId).
+#    MOMENTUM has no indicators; its intra-category weight is 1 (decision H5).
 # ---------------------------------------------------------------------------
 CATEGORIES = {
     "LIQUIDITY": ["LIQ_RUNWAY", "LIQ_BUFFER", "LIQ_MIN_BALANCE"],
-    "CASH_FLOW": ["CF_NOCF_MARGIN", "CF_VOLATILITY", "CF_IN_OUT_RATIO"],
-    "ACTIVITY_GROWTH": ["ACT_GROWTH"],
+    "OPERATING_CASH_FLOW": ["CF_NOCF_MARGIN", "CF_VOLATILITY", "CF_IN_OUT_RATIO"],
+    "ACTIVITY_GROWTH": ["ACT_COLLECTIONS_GROWTH"],
     "DEBT_SERVICE": ["DEBT_DSCR", "DEBT_LINE_UTIL"],
     "LEVERAGE": ["LEV_DEBT_TO_CF", "LEV_FACTORING_RELIANCE", "LEV_FUNDING_COST"],
-    "PAYMENT_BEHAVIOUR": ["PAY_DSO", "PAY_DPO", "PAY_LATENESS", "PAY_OVERDUE"],
+    "PAYMENT_BEHAVIOUR": ["PAY_DSO", "PAY_DPO", "PAY_SUPPLIER_LATENESS", "PAY_OVERDUE_PAYABLES"],
     "DELINQUENCY": ["DEL_OVERDUE_RECEIVABLES", "DEL_AGING_90"],
     "CONCENTRATION": ["CON_HHI_CUSTOMERS", "CON_HHI_SUPPLIERS", "CON_CUSTOMER_CHURN"],
     "TAX_REGULARITY": ["TAX_REGULARITY"],
-}
-CRITERIA = [ind for inds in CATEGORIES.values() for ind in inds]
-PROFILES = ["bank", "insurance", "fund"]
-
-
-def build_pairwise_matrix(criteria: list, judgments: dict) -> np.ndarray:
-    """judgments: {(i,j): valor_saaty} solo para i antes que j; el reciproco
-    se calcula solo. Valor > 1 significa que i es mas importante que j."""
-    n = len(criteria)
-    idx = {c: i for i, c in enumerate(criteria)}
-    matrix = np.ones((n, n))
-    for (ci, cj), value in judgments.items():
-        i, j = idx[ci], idx[cj]
-        matrix[i, j] = value
-        matrix[j, i] = 1.0 / value
-    return matrix
-
-
-def judgments_from_ranking(ranking: list, saaty_for_distance) -> dict:
-    """Genera los C(n,2) juicios de una matriz completa a partir de un orden
-    (de mas a menos importante), usando saaty_for_distance(d) para traducir
-    la distancia de ranking a un valor de la escala."""
-    judgments = {}
-    n = len(ranking)
-    for i in range(n):
-        for j in range(i + 1, n):
-            judgments[(ranking[i], ranking[j])] = saaty_for_distance(j - i)
-    return judgments
-
-
-# Calibrado para que 9 elementos (las categorias) se mantengan consistentes
-# (CR < 0.10). 
-CATEGORY_RANK_TO_SAATY = lambda d: {1: 2, 2: 3, 3: 4}.get(d, 5)
-
-# ---------------------------------------------------------------------------
-# 2) NIVEL CATEGORIA: orden de importancia de las 9 categorias, por plan.
-# ---------------------------------------------------------------------------
-CATEGORY_RANKING = {
-    "bank": [
-        "DEBT_SERVICE", "LIQUIDITY", "CASH_FLOW", "LEVERAGE",
-        "PAYMENT_BEHAVIOUR", "DELINQUENCY", "TAX_REGULARITY",
-        "CONCENTRATION", "ACTIVITY_GROWTH",
-    ],
-    "insurance": [
-        "PAYMENT_BEHAVIOUR", "DELINQUENCY", "CONCENTRATION", "LIQUIDITY",
-        "CASH_FLOW", "LEVERAGE", "DEBT_SERVICE", "TAX_REGULARITY",
-        "ACTIVITY_GROWTH",
-    ],
-    "fund": [
-        "ACTIVITY_GROWTH", "CASH_FLOW", "LIQUIDITY", "CONCENTRATION",
-        "LEVERAGE", "DEBT_SERVICE", "PAYMENT_BEHAVIOUR", "DELINQUENCY",
-        "TAX_REGULARITY",
-    ],
+    "MOMENTUM": [],
 }
 
-# Excepciones puntuales: forzar un par concreto sin tocar el ranking general.
-# Ejemplo: CATEGORY_OVERRIDES["bank"][("LIQUIDITY", "CASH_FLOW")] = 1  # empate
-CATEGORY_OVERRIDES = {"bank": {}, "insurance": {}, "fund": {}}
+# ---------------------------------------------------------------------------
+# 2) Category level, per profile (docs/WEIGHTS.md §2).
+#    CATEGORY_RATINGS: importance of each category for one kind of user, 1..9. The judgment
+#    for the pair (i, j) is rating_i / rating_j snapped to the nearest Saaty value, so each
+#    profile has its own magnitudes, not a fixed decay vector permuted by a ranking.
+#    CATEGORY_JUDGMENTS: explicit Saaty values that override single pairs (i, j), for the
+#    expert review (decision H17). Value > 1 means i is more important than j.
+# ---------------------------------------------------------------------------
+CATEGORY_RATINGS = {
+    "BANK": {
+        "DEBT_SERVICE": 9, "OPERATING_CASH_FLOW": 9, "LIQUIDITY": 8, "LEVERAGE": 6, "DELINQUENCY": 4,
+        "PAYMENT_BEHAVIOUR": 4, "TAX_REGULARITY": 3, "MOMENTUM": 3, "CONCENTRATION": 3, "ACTIVITY_GROWTH": 3,
+    },
+    "FUND": {
+        "ACTIVITY_GROWTH": 9, "MOMENTUM": 7, "OPERATING_CASH_FLOW": 6, "LIQUIDITY": 5, "CONCENTRATION": 5,
+        "LEVERAGE": 3, "DEBT_SERVICE": 2, "PAYMENT_BEHAVIOUR": 2, "DELINQUENCY": 2, "TAX_REGULARITY": 1,
+    },
+    "INSURER": {
+        "PAYMENT_BEHAVIOUR": 9, "LIQUIDITY": 6, "DELINQUENCY": 5, "OPERATING_CASH_FLOW": 5, "CONCENTRATION": 4,
+        "LEVERAGE": 4, "DEBT_SERVICE": 3, "TAX_REGULARITY": 3, "MOMENTUM": 2, "ACTIVITY_GROWTH": 2,
+    },
+}
 
-for name, ranking in CATEGORY_RANKING.items():
-    assert sorted(ranking) == sorted(CATEGORIES.keys()), f"{name}: ranking incompleto"
+CATEGORY_JUDGMENTS = {"BANK": {}, "FUND": {}, "INSURER": {}}
+
+SAATY_SCALE = [1 / v for v in range(9, 1, -1)] + list(range(1, 10))
 
 
-def category_judgments(profile: str) -> dict:
-    judgments = judgments_from_ranking(CATEGORY_RANKING[profile], CATEGORY_RANK_TO_SAATY)
-    judgments.update(CATEGORY_OVERRIDES.get(profile, {}))
-    return judgments
+def snap_to_saaty(ratio):
+    """Nearest Saaty value to a ratio, measured on a log scale (1/3 and 3 are equally far from 1)."""
+    return min(SAATY_SCALE, key=lambda s: abs(np.log(s) - np.log(ratio)))
 
 
 # ---------------------------------------------------------------------------
-# 3) NIVEL INDICADOR: juicios explicitos dentro de cada categoria.
+# 3) Indicator level: profile-independent (decision H6). Pairs (i, j), value > 1 = i matters more.
+#    Single-indicator categories and MOMENTUM need no judgments.
 # ---------------------------------------------------------------------------
 INDICATOR_JUDGMENTS_DEFAULT = {
     "LIQUIDITY": {
@@ -101,13 +85,13 @@ INDICATOR_JUDGMENTS_DEFAULT = {
         ("LIQ_RUNWAY", "LIQ_MIN_BALANCE"): 3,
         ("LIQ_BUFFER", "LIQ_MIN_BALANCE"): 3,
     },
-    "CASH_FLOW": {
+    "OPERATING_CASH_FLOW": {
         ("CF_IN_OUT_RATIO", "CF_NOCF_MARGIN"): 1,
         ("CF_IN_OUT_RATIO", "CF_VOLATILITY"): 3,
         ("CF_NOCF_MARGIN", "CF_VOLATILITY"): 3,
     },
     "DEBT_SERVICE": {
-        ("DEBT_DSCR", "DEBT_LINE_UTIL"): 5,
+        ("DEBT_DSCR", "DEBT_LINE_UTIL"): 3,
     },
     "LEVERAGE": {
         ("LEV_DEBT_TO_CF", "LEV_FACTORING_RELIANCE"): 3,
@@ -115,11 +99,11 @@ INDICATOR_JUDGMENTS_DEFAULT = {
         ("LEV_FACTORING_RELIANCE", "LEV_FUNDING_COST"): 3,
     },
     "PAYMENT_BEHAVIOUR": {
-        ("PAY_LATENESS", "PAY_OVERDUE"): 1,
-        ("PAY_LATENESS", "PAY_DPO"): 3,
-        ("PAY_LATENESS", "PAY_DSO"): 3,
-        ("PAY_OVERDUE", "PAY_DPO"): 3,
-        ("PAY_OVERDUE", "PAY_DSO"): 3,
+        ("PAY_SUPPLIER_LATENESS", "PAY_OVERDUE_PAYABLES"): 1,
+        ("PAY_SUPPLIER_LATENESS", "PAY_DPO"): 3,
+        ("PAY_SUPPLIER_LATENESS", "PAY_DSO"): 3,
+        ("PAY_OVERDUE_PAYABLES", "PAY_DPO"): 3,
+        ("PAY_OVERDUE_PAYABLES", "PAY_DSO"): 3,
         ("PAY_DPO", "PAY_DSO"): 1,
     },
     "DELINQUENCY": {
@@ -130,60 +114,103 @@ INDICATOR_JUDGMENTS_DEFAULT = {
         ("CON_HHI_CUSTOMERS", "CON_CUSTOMER_CHURN"): 3,
         ("CON_HHI_SUPPLIERS", "CON_CUSTOMER_CHURN"): 1,
     },
-    # ACTIVITY_GROWTH y TAX_REGULARITY: 1 solo indicador, no necesitan AHP.
 }
 
-# Excepciones por plan: INDICATOR_JUDGMENTS_OVERRIDES["insurance"]["PAYMENT_BEHAVIOUR"][(...)] = ...
-INDICATOR_JUDGMENTS_OVERRIDES = {"bank": {}, "insurance": {}, "fund": {}}
+
+# ---------------------------------------------------------------------------
+# 4) Computation and checks. Every check fails loudly (plan A-2).
+# ---------------------------------------------------------------------------
+def fail(message):
+    raise SystemExit(f"ahp: {message}")
 
 
-def indicator_judgments_for(profile: str, category: str) -> dict:
-    judgments = dict(INDICATOR_JUDGMENTS_DEFAULT.get(category, {}))
-    judgments.update(INDICATOR_JUDGMENTS_OVERRIDES.get(profile, {}).get(category, {}))
+def build_pairwise_matrix(criteria, judgments):
+    n = len(criteria)
+    idx = {c: i for i, c in enumerate(criteria)}
+    matrix = np.ones((n, n))
+    for (ci, cj), value in judgments.items():
+        if ci not in idx or cj not in idx:
+            fail(f"judgment ({ci}, {cj}) names an unknown criterion")
+        if not 1 / 9 <= value <= 9:
+            fail(f"judgment ({ci}, {cj}) = {value} is outside the Saaty scale 1/9..9")
+        i, j = idx[ci], idx[cj]
+        matrix[i, j] = value
+        matrix[j, i] = 1.0 / value
+    return matrix
+
+
+def category_judgments(profile):
+    ratings = CATEGORY_RATINGS[profile]
+    names = list(ratings)
+    judgments = {}
+    for i in range(len(names)):
+        for j in range(i + 1, len(names)):
+            judgments[(names[i], names[j])] = snap_to_saaty(ratings[names[i]] / ratings[names[j]])
+    judgments.update(CATEGORY_JUDGMENTS.get(profile, {}))
     return judgments
 
 
-# ---------------------------------------------------------------------------
-# 4) Calculo: AHP a los dos niveles, combinacion final
-# ---------------------------------------------------------------------------
-def category_weights(profile: str) -> dict:
-    matrix = build_pairwise_matrix(list(CATEGORIES.keys()), category_judgments(profile))
-    result = ahp_weights(matrix)
-    if not result["is_consistent"]:
-        print(f"  [!] categorias/{profile}: CR={result['CR']:.3f} >= 0.10, revisar CATEGORY_RANKING")
-    return dict(zip(CATEGORIES.keys(), result["weights"]))
+def checked_weights(label, criteria, judgments, report):
+    result = ahp_weights(build_pairwise_matrix(criteria, judgments))
+    report.append((label, result["CR"]))
+    if not result["CR"] < MAX_CR:
+        fail(f"{label}: CR = {result['CR']:.4f} >= {MAX_CR}")
+    weights = dict(zip(criteria, result["weights"]))
+    for c, w in weights.items():
+        if not w > 0:
+            fail(f"{label}: weight of {c} is {w}, must be > 0 (decision H4)")
+    return weights
 
 
-def indicator_weights_within_category(profile: str, category: str) -> dict:
-    indicators = CATEGORIES[category]
-    if len(indicators) == 1:
-        return {indicators[0]: 1.0}
-    matrix = build_pairwise_matrix(indicators, indicator_judgments_for(profile, category))
-    result = ahp_weights(matrix)
-    if not result["is_consistent"]:
-        print(f"  [!] {category}/{profile}: CR={result['CR']:.3f} >= 0.10, revisar judgments")
-    return dict(zip(indicators, result["weights"]))
+def category_weights_x100(profile, report):
+    ratings = CATEGORY_RATINGS[profile]
+    if sorted(ratings) != sorted(CATEGORIES):
+        fail(f"{profile}: the ratings must hold the {len(CATEGORIES)} categories exactly once")
+    if not all(1 <= r <= 9 for r in ratings.values()):
+        fail(f"{profile}: every rating must be in 1..9")
+    weights = checked_weights(f"categories/{profile}", list(ratings), category_judgments(profile), report)
+    rounded = {c: round(w * 100, 2) for c, w in weights.items()}
+    largest = max(rounded, key=rounded.get)
+    rounded[largest] = round(rounded[largest] + 100 - sum(rounded.values()), 2)   # residual -> largest
+    if abs(sum(rounded.values()) - 100) > 0.01:
+        fail(f"{profile}: weights sum to {sum(rounded.values())}, expected 100")
+    if min(rounded.values()) <= 0:
+        fail(f"{profile}: a category rounds to 0 (decision H4)")
+    return rounded
 
 
-def final_weights(profile: str) -> dict:
-    cat_w = category_weights(profile)
-    weights = {}
-    for cat, indicators in CATEGORIES.items():
-        intra_w = indicator_weights_within_category(profile, cat)
+def indicator_weights(report):
+    out = {}
+    for category, indicators in CATEGORIES.items():
+        if len(indicators) <= 1:
+            out.update({ind: 1.0 for ind in indicators})
+            continue
+        weights = checked_weights(f"indicators/{category}", indicators,
+                                  INDICATOR_JUDGMENTS_DEFAULT.get(category, {}), report)
+        out.update({ind: round(w, 4) for ind, w in weights.items()})
+    return out
+
+
+def main():
+    report = []
+    # Decision H6: one judgment set for every profile, so the intra weights are identical by construction.
+    intra = indicator_weights(report)
+    profiles = {p: category_weights_x100(p, report) for p in PROFILES}
+
+    print("# ---- fragment 1: scoring.profiles.<P>.weights (keep each profile's lambda) ----")
+    for p in PROFILES:
+        body = ", ".join(f"{c}: {w:g}" for c, w in sorted(profiles[p].items(), key=lambda x: -x[1]))
+        print(f"    {p}: {{ weights: {{ {body} }} }}")
+    print()
+    print("# ---- fragment 2: scoring.indicators.<ID>.weight ----")
+    for category, indicators in CATEGORIES.items():
         for ind in indicators:
-            weights[ind] = cat_w[cat] * intra_w[ind]
-    return weights, cat_w
+            print(f"    {ind}: {{ weight: {intra[ind]:g} }}")
+
+    print("consistency ratios (all < 0.10):", file=sys.stderr)
+    for label, cr in report:
+        print(f"  {label:34s} CR = {cr:.4f}", file=sys.stderr)
 
 
 if __name__ == "__main__":
-    for profile in PROFILES:
-        weights, cat_w = final_weights(profile)
-        print(f"=== PLAN: {profile.upper()} ===")
-        print("Pesos de categoria:")
-        for cat, w in sorted(cat_w.items(), key=lambda x: -x[1]):
-            print(f"  {cat:20s} {w:.3f}")
-        print("Pesos finales de los 22 indicadores:")
-        for ind, w in sorted(weights.items(), key=lambda x: -x[1]):
-            print(f"  {ind:28s} {w:.4f}")
-        print(f"  suma = {sum(weights.values()):.4f}")
-        print()
+    main()

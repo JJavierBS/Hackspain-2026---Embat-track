@@ -28,7 +28,22 @@ interface TrendChartProps {
   markers?: TrendMarker[];
   /** Lead-time events: a full-height dashed line in the direction color, labelled at the foot of the plot. */
   events?: TrendEvent[];
+  /**
+   * The projected final score after the last month of data (phase 7), oldest first. Drawn dotted inside a shaded
+   * "Proyección" zone, so it never reads as a measurement.
+   */
+  projection?: ProjectionPoint[];
 }
+
+export interface ProjectionPoint {
+  month: string;
+  value: number;
+}
+
+/** A row of the plot: the measured series, or the projection (null on measured months, except the join). */
+type ChartRow = TrendPoint & { projected: number | null };
+
+const PROJECTION = { name: "Proyección", color: "var(--color-ink)", width: 2.5, dash: "1 6" } as const;
 
 export interface TrendEvent {
   month: string;
@@ -125,8 +140,18 @@ function labelOffsets(last: TrendPoint | undefined, height: number): Record<stri
 }
 
 /** Score over time against the band zones, with the active month marked. */
-export function TrendChart({ data, activeMonth, height = 260, markers = [], events = [] }: TrendChartProps) {
+export function TrendChart({ data, activeMonth, height = 260, markers = [], events = [], projection = [] }: TrendChartProps) {
   const offsets = labelOffsets(data[data.length - 1], height);
+  const last = data[data.length - 1];
+  // The projection starts at the last measured final, so the dotted line leaves from the measured point.
+  const projecting = projection.length > 0 && last !== undefined && last.final !== null;
+  const rows: ChartRow[] = [
+    ...data.map((p, i) => ({ ...p, projected: projecting && i === data.length - 1 ? p.final : null })),
+    ...(projecting
+      ? projection.map((p) => ({ month: p.month, final: null, level: null, trajectory: null, projected: p.value }))
+      : []),
+  ];
+  const projectionEnd = projecting ? projection[projection.length - 1] : undefined;
   const marks = groupMarkers(markers);
   const markLabel = new Map(marks.map((m) => [m.month, m.label]));
   return (
@@ -140,6 +165,15 @@ export function TrendChart({ data, activeMonth, height = 260, markers = [], even
             {s.name}
           </li>
         ))}
+        {projecting && (
+          <li className="flex items-center gap-2">
+            <svg width="22" height="8" aria-hidden>
+              <line x1="1.5" y1="4" x2="21" y2="4" stroke={PROJECTION.color} strokeWidth={PROJECTION.width}
+                strokeDasharray={PROJECTION.dash} strokeLinecap="round" />
+            </svg>
+            Proyección (no es un dato medido)
+          </li>
+        )}
         <li className="flex items-center gap-2">
           <span aria-hidden className="h-3 w-2.5 bg-scan/40" />
           Mes seleccionado
@@ -166,7 +200,7 @@ export function TrendChart({ data, activeMonth, height = 260, markers = [], even
       </ul>
       <div style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: marks.length > 0 ? 14 : 8, right: 92, bottom: 0, left: -8 }}>
+          <LineChart data={rows} margin={{ top: marks.length > 0 ? 14 : 8, right: 92, bottom: 0, left: -8 }}>
             {BANDS.map((b, i) => (
               <ReferenceArea
                 key={b.band}
@@ -179,6 +213,17 @@ export function TrendChart({ data, activeMonth, height = 260, markers = [], even
               />
             ))}
             <CartesianGrid vertical={false} stroke="var(--color-rule)" strokeDasharray="2 4" />
+            {projecting && projectionEnd && (
+              <ReferenceArea
+                x1={last.month}
+                x2={projectionEnd.month}
+                fill="var(--color-ink)"
+                fillOpacity={0.05}
+                stroke="none"
+                label={{ value: "Proyección", position: "insideTopRight", fill: "var(--color-ink-muted)", fontSize: 13 }}
+              />
+            )}
+            {projecting && <ReferenceLine x={last.month} stroke="var(--color-ink-muted)" strokeWidth={1} strokeDasharray="3 3" />}
             <ReferenceLine x={activeMonth} stroke="var(--color-scan)" strokeOpacity={0.22} strokeWidth={14} />
             <XAxis
               dataKey="month"
@@ -203,7 +248,9 @@ export function TrendChart({ data, activeMonth, height = 260, markers = [], even
                 const notes = [...(alerts ? [alerts] : []), ...evs].join(" · ");
                 return `${monthShort(String(m))} · ${monthCode(String(m))}${notes ? ` — ${notes}` : ""}`;
               }}
-              formatter={(v) => formatScore(Number(v))}
+              formatter={(v, name) =>
+                name === PROJECTION.name ? `${formatScore(Number(v))} (proyectado)` : formatScore(Number(v))
+              }
               contentStyle={{
                 border: "1px solid var(--color-rule)",
                 borderRadius: 0,
@@ -245,7 +292,8 @@ export function TrendChart({ data, activeMonth, height = 260, markers = [], even
                 activeDot={{ r: 4 }}
                 isAnimationActive={false}
                 label={(props: { index?: number; x?: number | string; y?: number | string }) =>
-                  props.index === data.length - 1 && data[props.index][s.key] !== null ? (
+                  // With a projection the zone to the right is taken: the legend names the series instead.
+                  !projecting && props.index === data.length - 1 && data[props.index][s.key] !== null ? (
                     <text
                       key={s.key}
                       x={Number(props.x) + 8}
@@ -262,6 +310,20 @@ export function TrendChart({ data, activeMonth, height = 260, markers = [], even
                 }
               />
             ))}
+            {projecting && (
+              <Line
+                dataKey="projected"
+                name={PROJECTION.name}
+                stroke={PROJECTION.color}
+                strokeWidth={PROJECTION.width}
+                strokeDasharray={PROJECTION.dash}
+                strokeLinecap="round"
+                dot={{ r: 3.5, fill: "var(--color-film)", stroke: PROJECTION.color, strokeWidth: 1.5 }}
+                activeDot={{ r: 4.5 }}
+                isAnimationActive={false}
+                connectNulls={false}
+              />
+            )}
           </LineChart>
         </ResponsiveContainer>
       </div>

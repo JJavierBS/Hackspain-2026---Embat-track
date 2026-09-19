@@ -24,7 +24,8 @@ public final class LeadTimeAnalyzer {
     public record Params(int minHistoryMonths, int windowMonths, int horizonMonths,
                          double runwayBelow, int runwayMonths, double dscrBelow, int dscrMonths,
                          double overdueMaxLevel, double scoreBelow,
-                         double improvementCross, double improvementBelow, int improvementBelowMonths,
+                         double improvementCross, int improvementCrossMonths, double improvementBelow,
+                         int improvementBelowMonths,
                          Set<HealthStatus> deteriorationStatuses, double deteriorationMaxTraj,
                          Set<HealthStatus> improvementStatuses, double improvementMinTraj,
                          int maxGapMonths) {
@@ -42,7 +43,14 @@ public final class LeadTimeAnalyzer {
     public record Signal(EventType type, int month, boolean evaluable, boolean followed) {
     }
 
-    public record Result(List<Event> events, List<Signal> signals) {
+    /**
+     * The naive baseline of one event type: over all months outside the condition, how many were followed by
+     * the condition within the horizon. A signal is useful only when its followed rate is above this rate.
+     */
+    public record Baseline(EventType type, int evaluable, int followed) {
+    }
+
+    public record Result(List<Event> events, List<Signal> signals, List<Baseline> baselines) {
     }
 
     private LeadTimeAnalyzer() {
@@ -52,10 +60,11 @@ public final class LeadTimeAnalyzer {
         int n = s.finalScore().length;
         int first = firstScored(s.finalScore());
         if (first < 0) {
-            return new Result(List.of(), List.of());
+            return new Result(List.of(), List.of(), List.of());
         }
         List<Event> events = new ArrayList<>();
         List<Signal> signals = new ArrayList<>();
+        List<Baseline> baselines = new ArrayList<>();
         for (EventType type : EventType.values()) {
             EventTrigger[] cond = new EventTrigger[n];
             for (int m = 0; m < n; m++) {
@@ -63,8 +72,9 @@ public final class LeadTimeAnalyzer {
             }
             firstEvent(s, cond, first, type, p).ifPresent(events::add);
             signals.addAll(signalOnsets(s, cond, first, type, p));
+            baselines.add(baseline(cond, first, type, p));
         }
-        return new Result(List.copyOf(events), List.copyOf(signals));
+        return new Result(List.copyOf(events), List.copyOf(signals), List.copyOf(baselines));
     }
 
     /** The first onset of the condition with min-history-months of months before it (G3, G4). */
@@ -128,17 +138,40 @@ public final class LeadTimeAnalyzer {
         for (int m = first; m < cond.length; m++) {
             boolean on = signal(s, type, m, p);
             if (on && !previous && cond[m] == null) {
-                boolean followed = false;
-                int last = Math.min(cond.length - 1, m + p.horizonMonths());
-                for (int k = m + 1; k <= last; k++) {
-                    followed |= cond[k] != null;
-                }
+                boolean followed = followedWithin(cond, m, p.horizonMonths());
                 boolean evaluable = followed || m + p.horizonMonths() <= cond.length - 1;
                 out.add(new Signal(type, m, evaluable, followed));
             }
             previous = on;
         }
         return out;
+    }
+
+    /** Every month outside the condition counts, with the same horizon and evaluability rule as a signal onset. */
+    private static Baseline baseline(EventTrigger[] cond, int first, EventType type, Params p) {
+        int evaluable = 0;
+        int followed = 0;
+        for (int m = first; m < cond.length; m++) {
+            if (cond[m] != null) {
+                continue;
+            }
+            boolean next = followedWithin(cond, m, p.horizonMonths());
+            if (next || m + p.horizonMonths() <= cond.length - 1) {
+                evaluable++;
+                followed += next ? 1 : 0;
+            }
+        }
+        return new Baseline(type, evaluable, followed);
+    }
+
+    private static boolean followedWithin(EventTrigger[] cond, int m, int horizon) {
+        int last = Math.min(cond.length - 1, m + horizon);
+        for (int k = m + 1; k <= last; k++) {
+            if (cond[k] != null) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean signal(Series s, EventType type, int m, Params p) {
@@ -170,18 +203,28 @@ public final class LeadTimeAnalyzer {
         return f != null && f < p.scoreBelow() ? EventTrigger.SCORE : null;
     }
 
-    /** Level crosses up through the threshold after a run below the low threshold inside the window (G4). */
+    /**
+     * Level holds at or above the threshold for improvementCrossMonths in a row, ending at m, after a run below
+     * the low threshold inside the window (G4). The hold matches runway-months and dscr-months of deterioration:
+     * both directions need the same proof, so a one-month rebound is not an improvement.
+     */
     private static EventTrigger improvement(Series s, int m, Params p) {
-        if (m == 0) {
+        int start = m - p.improvementCrossMonths() + 1;
+        if (start < 1) {
             return null;
         }
-        Double now = s.level()[m];
-        Double before = s.level()[m - 1];
-        if (now == null || before == null || now < p.improvementCross() || before >= p.improvementCross()) {
+        Double before = s.level()[start - 1];
+        if (before == null || before >= p.improvementCross()) {
             return null;
+        }
+        for (int k = start; k <= m; k++) {
+            Double lv = s.level()[k];
+            if (lv == null || lv < p.improvementCross()) {
+                return null;
+            }
         }
         int run = 0;
-        for (int k = Math.max(0, m - p.windowMonths()); k < m; k++) {
+        for (int k = Math.max(0, start - p.windowMonths()); k < start; k++) {
             Double lv = s.level()[k];
             run = lv != null && lv < p.improvementBelow() ? run + 1 : 0;
             if (run >= p.improvementBelowMonths()) {

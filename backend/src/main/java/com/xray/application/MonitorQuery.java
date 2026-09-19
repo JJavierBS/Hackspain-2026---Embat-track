@@ -78,27 +78,21 @@ public class MonitorQuery {
     public List<WatchlistRowDto> watchlist(Profile p, String month) {
         String unit = params.unit().name();
         if (!DuckDbTables.exists(sql, "watchlist")) return List.of();
-        record W(String id, int critical, int warn) {
+        record W(String id, int critical, int warn, List<String> codes) {
         }
+        // codes: the confirmed and new negative alerts that put the entity on the list (S80).
         List<W> listed = sql.query(
-                "SELECT entity_id, n_critical, n_warn FROM watchlist WHERE entity_type = ? AND profile = ? AND month = ?",
-                (rs, i) -> new W(rs.getString(1), rs.getInt(2), rs.getInt(3)), unit, p.name(), month);
+                "SELECT entity_id, n_critical, n_warn, codes FROM watchlist "
+                        + "WHERE entity_type = ? AND profile = ? AND month = ?",
+                (rs, i) -> new W(rs.getString(1), rs.getInt(2), rs.getInt(3), codes(rs.getString(4))),
+                unit, p.name(), month);
         if (listed.isEmpty()) return List.of();
         Map<String, PortfolioRowDto> rows = portfolio.rows(unit, null, null, p, month).stream()
                 .collect(Collectors.toMap(PortfolioRowDto::id, Function.identity()));
-        Map<String, List<String>> codes = new HashMap<>();
-        if (DuckDbTables.exists(sql, "alert_states")) {
-            sql.query("""
-                    SELECT DISTINCT entity_id, code FROM alert_states
-                    WHERE entity_type = ? AND profile = ? AND month = ? AND direction = 'NEGATIVE'
-                    ORDER BY entity_id, code""",
-                    (rs, i) -> codes.computeIfAbsent(rs.getString(1), k -> new ArrayList<>()).add(rs.getString(2)),
-                    unit, p.name(), month);
-        }
         return listed.stream()
                 .filter(w -> rows.containsKey(w.id()))
                 .map(w -> new WatchlistRowDto(rows.get(w.id()), w.critical(), w.warn(),
-                        codes.getOrDefault(w.id(), List.of())))
+                        w.codes()))
                 .sorted(Comparator.comparingInt(WatchlistRowDto::criticalAlerts).reversed()
                         .thenComparing(Comparator.comparingInt(WatchlistRowDto::warnAlerts).reversed())
                         .thenComparingDouble(r -> r.row().finalScore()))
@@ -121,6 +115,10 @@ public class MonitorQuery {
                 .filter(m -> m.compareTo(from) >= 0 && m.compareTo(to) <= 0)
                 .map(m -> new ReplayFrameDto(m, byMonth.getOrDefault(m, List.of()), sizes.getOrDefault(m, 0)))
                 .toList();
+    }
+
+    private static List<String> codes(String csv) {
+        return csv == null || csv.isBlank() ? List.of() : List.of(csv.split(","));
     }
 
     private static String choice(String name, String raw, Set<String> allowed) {
