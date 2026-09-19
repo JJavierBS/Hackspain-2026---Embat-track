@@ -22,6 +22,7 @@ import java.util.Map;
 public class EntityDetailQuery {
 
     private static final int TOP_DRIVERS = 5;
+    private static final int MAX_ALERTS = 20;
 
     private final SqlRunner sql;
     private final ApiParams params;
@@ -29,15 +30,20 @@ public class EntityDetailQuery {
     private final PortfolioQuery portfolio;
     private final ProfilesQuery profiles;
     private final TimelineQuery timeline;
+    private final ProductQuery products;
+    private final AlertReads alerts;
 
     public EntityDetailQuery(SqlRunner sql, ApiParams params, EntityLookup lookup, PortfolioQuery portfolio,
-                             ProfilesQuery profiles, TimelineQuery timeline) {
+                             ProfilesQuery profiles, TimelineQuery timeline, ProductQuery products,
+                             AlertReads alerts) {
         this.sql = sql;
         this.params = params;
         this.lookup = lookup;
         this.portfolio = portfolio;
         this.profiles = profiles;
         this.timeline = timeline;
+        this.products = products;
+        this.alerts = alerts;
     }
 
     public EntityDetailDto detail(String id, String profileRaw, String monthRaw) {
@@ -57,7 +63,10 @@ public class EntityDetailQuery {
                 indicators(e.type(), id, month),
                 timeline.points(e.type(), id, p, month),
                 timeline.changepoints(e.type(), id, p, month),
-                companies, null, null, null);
+                companies, products.limitOrNull(e.type(), id, month), products.premiumOrNull(e.type(), id, month),
+                products.momentum(e.type(), id, month),
+                alerts.read("entity_type = ? AND entity_id = ? AND profile = ? AND month <= ? ORDER BY month DESC, "
+                        + AlertReads.SEVERITY_ORDER + ", code LIMIT " + MAX_ALERTS, e.type(), id, p.name(), month));
     }
 
     private List<CategoryDto> categories(String type, String id, Profile p, String month, boolean explained) {

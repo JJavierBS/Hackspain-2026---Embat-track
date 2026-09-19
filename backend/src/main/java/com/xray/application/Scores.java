@@ -17,6 +17,24 @@ public final class Scores {
         return Math.round(v * 10.0) / 10.0;
     }
 
+    /** Rates, factors and ratios at the API boundary. */
+    public static Double round(Double v, int decimals) {
+        if (v == null) return null;
+        double f = Math.pow(10, decimals);
+        return Math.round(v * f) / f;
+    }
+
+    /** EUR amounts are integers at the API boundary. */
+    public static Long eur(Double v) {
+        return v == null ? null : Math.round(v);
+    }
+
+    /** A nullable INTEGER column. */
+    public static Integer integer(ResultSet rs, String column) throws SQLException {
+        int v = rs.getInt(column);
+        return rs.wasNull() ? null : v;
+    }
+
     /** A nullable DOUBLE column. */
     public static Double dbl(ResultSet rs, String column) throws SQLException {
         double v = rs.getDouble(column);
