@@ -1,6 +1,6 @@
 # Full stack as deployed (SPEC §14). Put the CSVs in ./data/raw first.
 #   docker compose up --build
-#   XRAY_DEMO_MODE=true docker compose up -d     # frozen xray.duckdb, pipeline disabled
+#   XRAY_DEMO_MODE=true docker compose up -d     # config and pipeline locked
 name: xray
 
 services:

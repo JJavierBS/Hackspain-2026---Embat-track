@@ -1,19 +1,28 @@
 # Deploy (SPEC §14)
 
-The deployed stack runs in demo mode on a frozen database: no ingest, no pipeline, no CSVs.
-`data/raw/` (~617 MB) never leaves your laptop.
+The deployed stack starts from a frozen database and has no CSVs. `data/raw/` (~617 MB) never leaves
+your laptop. The Algorithm page can still edit the config in prod, and "Recalcular ahora" (or
+`POST /api/pipeline/run`) reruns the pipeline there: S00..S25 skip without the CSVs, and S30 onwards
+reads the input tables that ship in the frozen database.
+
+Edits in prod live on the container disk. A redeploy or a restart of the Render service goes back to the
+shipped config and the shipped data. `XRAY_DEMO_MODE=true` locks the config and the pipeline again, for
+example during the jury presentation.
 
 ## The frozen database
 
-The API only ever reads results tables. The full `data/xray.duckdb` (~247 MB) is mostly staging that
-no query touches — `daily_product_balance` (3.5M rows), `stg_transactions` (2.5M), `daily_cash`,
-`stg_invoices`. `scripts/ExportDemoDb.java` writes the slice that is actually served:
+The full `data/xray.duckdb` (~450 MB) is mostly staging that neither the API nor S30 onwards reads:
+`daily_product_balance` (3.5M rows), `stg_transactions` (2.5M), `daily_cash`, `stg_invoices`.
+`scripts/ExportDemoDb.java` writes the slice that is actually served: the results tables plus the
+tables that sql/28..39 read (`monthly_*`, `debt_snapshot`, `monthly_line_tx`, `monthly_interest`, ...).
+The output of S00..S25 depends only on the data rules, which the Algorithm page does not edit, so these
+frozen tables stay correct after any edit.
 
 | file | size | in git |
 |---|---|---|
-| `data/xray.duckdb` | 247 MB | no |
-| `backend/demo/xray-demo.duckdb` | 75 MB | no |
-| `backend/demo/xray-demo.duckdb.gz` | 31 MB | **yes** |
+| `data/xray.duckdb` | 450 MB | no |
+| `backend/demo/xray-demo.duckdb` | 104 MB | no |
+| `backend/demo/xray-demo.duckdb.gz` | 46 MB | **yes** |
 
 The `.gz` is committed because Render builds from the repo and has no other way to get it, and it
 sits under `backend/` because a Dockerfile cannot copy anything outside its build context. The
@@ -31,9 +40,10 @@ git add backend/demo/xray-demo.duckdb.gz && git commit -m "chore(data): refresh 
 
 Export again after any change to the scoring config (the Algorithm page, a preset, or a hand edit).
 `pipeline_runs.config_hash` holds the config fingerprint (`docs/ALGORITHM_PAGE.md` D3). The Algorithm
-page compares it with the active config, and shows "Pendientes de recalcular" in demo mode when they
+page compares it with the active config, and shows "Pendientes de recalcular" when they
 differ. A slice exported before PR #17 stores the old hash format, so export it once from a run on the
-new code. Demo mode never writes `data/scoring-overrides.yml`: the deployed config is always the shipped one.
+new code. An edit in prod writes `/data/scoring-overrides.yml` on the container disk only: export the
+slice again to make it the shipped state.
 
 A new query over a table not yet in the slice returns a 500 in the deployed app and a 200 locally.
 `ExportDemoDb.KEEP` is the list; add the table there when you add the query.
@@ -51,14 +61,23 @@ It needs no persistent disk and no manual upload — the database rides inside t
 - `plan: starter` keeps the service warm. `free` also works but spins down after 15 minutes idle,
   and a cold start in front of the jury is a ~1 minute blank page.
 - Memory is set with `-XX:MaxRAMPercentage=55` rather than `-Xmx`, so the same image fits whatever
-  instance size it lands on and leaves the rest to DuckDB's buffer pool.
+  instance size it lands on. DuckDB is capped with `XRAY_DUCKDB_MEMORY_LIMIT=96MB`: its default
+  (80% of the RAM it sees) leaves no room for the JVM. Measured in a 512 MB / 0.5 CPU container, like
+  starter: a pipeline run needs ~280 MB of heap, the process holds ~480 MB, and three runs in a row
+  plus a save and a reset from the Algorithm page end with no OOM kill.
+- A pipeline run works on a copy (`xray.run.duckdb`) and replaces the served tables in one transaction
+  at the end (`RunDatabase`). A failed run changes nothing that the app shows. A heap
+  `OutOfMemoryError` stops the JVM (`-XX:+ExitOnOutOfMemoryError`), and Render restarts it from the
+  shipped database.
+- Neither the image nor `render.yaml` sets `XRAY_DEMO_MODE`, so the app default (`false`) applies. A
+  service created from the dashboard keeps its own env vars: delete `XRAY_DEMO_MODE` there.
 
 Checks once it is live:
 
 ```bash
 curl https://<service>.onrender.com/actuator/health          # {"status":"UP"}
 curl https://<service>.onrender.com/api/pipeline/status       # IDLE
-curl -X POST https://<service>.onrender.com/api/pipeline/run  # 409, demo mode refuses it
+curl -X POST https://<service>.onrender.com/api/pipeline/run  # 202 {"runId": ...}, ~1 min on starter
 ```
 
 ## Vercel (frontend)
@@ -87,8 +106,8 @@ created from the dashboard keeps whatever plan it was created with.
 ## Full stack with Docker Compose
 
 `docker compose up --build`, then open `http://localhost`. Compose bind-mounts `./data`, so the
-backend uses your own full `xray.duckdb` and the baked demo slice is left alone. To rehearse the
-deployed configuration instead: `XRAY_DEMO_MODE=true docker compose up --build -d`.
+backend uses your own full `xray.duckdb` and the baked demo slice is left alone. To lock the config
+and the pipeline: `XRAY_DEMO_MODE=true docker compose up --build -d`.
 
 ## Checks from another device
 - `/` loads in under 1 s.

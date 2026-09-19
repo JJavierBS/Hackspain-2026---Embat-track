@@ -15,7 +15,7 @@ import java.util.zip.GZIPOutputStream;
  * Writes the deployable slice of xray.duckdb: the tables the API reads, nothing else.
  * The full database carries the staging tables (daily_product_balance, stg_transactions, daily_cash,
  * stg_invoices) that no query in application/ or infrastructure/duckdb/ ever touches, and they are
- * ~70% of its bytes. Demo mode (SPEC §14) never ingests, so they do not need to reach the image.
+ * ~70% of its bytes. The deployed app never ingests, so they do not need to reach the image.
  * Single-file program, no build needed:
  *   J=$(ls ~/.m2/repository/org/duckdb/duckdb_jdbc/1.5.5.1/duckdb_jdbc-1.5.5.1.jar)
  *   java --enable-native-access=ALL-UNNAMED -cp $J scripts/ExportDemoDb.java data/xray.duckdb backend/demo/xray-demo.duckdb
@@ -26,6 +26,9 @@ public class ExportDemoDb {
     /**
      * Every table named in a FROM or JOIN under application/ and infrastructure/duckdb/, plus two
      * reference tables that cost no bytes. Adding a query over a new table means adding it here.
+     * The second part is what sql/28..39 read: with it, the deployed app reruns S30 onwards after an
+     * edit on the Algorithm page. S00..S25 skip without the CSVs, and their output only depends on the
+     * data rules, which the page does not edit.
      */
     private static final List<String> KEEP = List.of(
             "entities", "pipeline_runs", "profile_weights",
@@ -34,7 +37,10 @@ public class ExportDemoDb {
             "alerts", "alert_states", "watchlist", "changepoints",
             "limit_decisions", "premium_quotes", "momentum_screen",
             "lead_time_events", "lead_time_signals", "lead_time_baseline", "showcase_pairs",
-            "forecast_points", "months", "threshold_quantiles");
+            "forecast_points", "months", "threshold_quantiles",
+            "stg_companies", "raw_debt_products", "fx_to_eur", "debt_snapshot",
+            "monthly_flows", "monthly_cash", "monthly_invoices", "monthly_counterparty",
+            "monthly_line_tx", "monthly_interest");
 
     public static void main(String[] args) throws Exception {
         if (args.length < 2) {
