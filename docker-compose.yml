@@ -1,6 +1,6 @@
-# Full stack as deployed (SPEC §14). Put the CSVs in ./data/raw first.
+# Full stack as deployed (SPEC §14): demo mode, precomputed data, no pipeline run.
 #   docker compose up --build
-#   XRAY_DEMO_MODE=true docker compose up -d     # config and pipeline locked
+#   XRAY_DEMO_MODE=false docker compose up -d    # allow "Aplicar y recalcular" (needs the CSVs in ./data/raw)
 name: xray
 
 services:
@@ -9,7 +9,7 @@ services:
     restart: unless-stopped
     environment:
       XRAY_DATA_DIR: /data
-      XRAY_DEMO_MODE: ${XRAY_DEMO_MODE:-false}
+      XRAY_DEMO_MODE: ${XRAY_DEMO_MODE:-true}
     volumes:
       - ./data:/data
     ports:
