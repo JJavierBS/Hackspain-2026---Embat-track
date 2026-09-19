@@ -108,8 +108,12 @@ Check after a deploy:
   (18 months x 1200 ms), and it is the one call that a proxy can buffer. Months must arrive one at a
   time, not all at once at the end. If they do not, the fallback is a `VITE_API_BASE` build-time
   variable plus CORS on the backend, so the stream goes straight to Render.
-- If a deep link such as `/monitor` 404s on reload, add an SPA fallback rewrite after the `/api` one.
-  Vercel's Vite preset normally handles this.
+- **The SPA fallback is in `vercel.json` and has to stay there.** A custom `rewrites` array replaces
+  the Vite preset's own fallback, so without the catch-all `"/:path*" -> "/index.html"` every deep
+  link (`/monitor`, `/entity/GROUP_0011`, `/algorithm`) returns 404 on reload. It sits after the
+  `/api` rule, and Vercel checks the filesystem before any rewrite, so `/assets/*` and `/fallback/*`
+  still serve their own files. `nginx.conf` does the same with `try_files $uri /index.html`, which is
+  why Docker Compose never showed the problem.
 
 The first request after an idle period takes ~12 s: that is Render's free plan spinning the service
 back up, not the app being slow. `render.yaml` asks for `plan: starter`, which stays warm; a service
