@@ -24,10 +24,12 @@ public final class EntityPanel {
     private final List<Changepoint> changepoints = new ArrayList<>();                                  // S70
     private final Map<SignalId, Double[]> signals = new EnumMap<>(SignalId.class);                     // S30
     private LimitDecision[] limits;                                                                    // S75
+    private final boolean[] dataGap;                                                                   // S30
 
     public EntityPanel(EntityKey key, List<Month> months) {
         this.key = key;
         this.months = List.copyOf(months);
+        this.dataGap = new boolean[months.size()];
         for (IndicatorId id : IndicatorId.values()) {
             RawIndicator[] series = new RawIndicator[months.size()];
             Arrays.fill(series, RawIndicator.missing(id));
@@ -117,6 +119,24 @@ public final class EntityPanel {
 
     public void addChangepoint(Changepoint c) {
         changepoints.add(c);
+    }
+
+    /**
+     * True when the 3-month window ending at m holds an active month without any booked transaction
+     * (entity_months.data_gap, sql/28). Levels there read missing flows as zero, so the variations of months
+     * with full data never use them as a base.
+     */
+    public boolean dataGap(int m) {
+        return dataGap[m];
+    }
+
+    /** A copy of dataGap for every month ordinal. */
+    public boolean[] dataGaps() {
+        return dataGap.clone();
+    }
+
+    public void setDataGap(int m, boolean value) {
+        dataGap[m] = value;
     }
 
     /** Contract item 2. Null = missing (never zero). */

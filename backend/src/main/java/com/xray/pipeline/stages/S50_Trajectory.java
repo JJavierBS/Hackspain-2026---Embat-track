@@ -10,7 +10,10 @@ import com.xray.pipeline.PipelineStage;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
-/** Trajectory sub-score of every indicator from its level series (SPEC §7.2). Causal per TrajectoryCalculator. */
+/**
+ * Trajectory sub-score of every indicator from its level series (SPEC §7.2). Causal per TrajectoryCalculator.
+ * Months with full data never compare against data-gap months (EntityPanel.dataGap, rule 3).
+ */
 @Component
 @Order(50)
 public class S50_Trajectory implements PipelineStage {
@@ -34,13 +37,14 @@ public class S50_Trajectory implements PipelineStage {
     }
 
     private static void trajectories(EntityPanel panel, TrajectoryCalculator.Params params) {
+        boolean[] dataGap = panel.dataGaps();
         for (IndicatorId id : IndicatorId.values()) {
             SubScore[] s = panel.subScores(id);
             Double[] levels = new Double[s.length];
             for (int m = 0; m < s.length; m++) {
                 levels[m] = s[m].available() ? s[m].level() : null;
             }
-            Double[] traj = TrajectoryCalculator.compute(levels, params);
+            Double[] traj = TrajectoryCalculator.compute(levels, dataGap, params);
             for (int m = 0; m < s.length; m++) {
                 if (s[m].available()) {
                     panel.setSubScore(id, m, s[m].withTrajectory(traj[m]));

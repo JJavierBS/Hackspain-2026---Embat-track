@@ -3,6 +3,7 @@
 -- Nets per class, so small reversed rows (collection_refund inflows, ...) net out. COMPANY rows include
 -- intragroup flows (standalone view), GROUP rows have them removed already (25_entity_rollup.sql).
 -- Months before is_active have no flows, so the window sums cover active months only. act_Nm counts them.
+-- data_3m counts the months of the 3m window with a booked transaction (has_data, sql/28).
 CREATE OR REPLACE TABLE ind30_base AS
 WITH f AS (
   SELECT entity_type, entity_id, month,
@@ -14,7 +15,7 @@ WITH f AS (
   FROM monthly_flows
   GROUP BY 1, 2, 3),
 g AS (
-  SELECT em.entity_type, em.entity_id, em.month, em.month_idx, em.is_active,
+  SELECT em.entity_type, em.entity_id, em.month, em.month_idx, em.is_active, em.has_data,
          COALESCE(f.op_in, 0) AS op_in, COALESCE(f.op_out, 0) AS op_out, COALESCE(f.tax, 0) AS tax,
          COALESCE(f.debt_service, 0) AS debt_service, COALESCE(f.tax_paid, 0) AS tax_paid,
          c.cash_eom, c.cash_min
@@ -24,6 +25,7 @@ g AS (
 SELECT *,
        op_in - op_out - tax                                   AS nocf,
        SUM(is_active::INTEGER) OVER w3                        AS act_3m,
+       SUM(has_data::INTEGER) OVER w3                         AS data_3m,
        SUM(is_active::INTEGER) OVER w6                        AS act_6m,
        SUM(is_active::INTEGER) OVER w12                       AS act_12m,
        SUM(op_in) OVER w3                                     AS op_in_3m,
