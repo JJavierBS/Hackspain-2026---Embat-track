@@ -88,6 +88,11 @@ export function formatValue(value: unknown): string {
     if (value.every((v) => Array.isArray(v))) return (value as Anchor[]).map(([x, y]) => `(${formatValue(x)}; ${formatValue(y)})`).join(" ");
     return value.map((v) => ENUM_LABELS[String(v)] ?? String(v)).join(", ") || "ninguno";
   }
+  if (typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([k, v]) => `${k} ${formatValue(v)}`)
+      .join(" · ");
+  }
   return ENUM_LABELS[String(value)] ?? String(value);
 }
 
@@ -104,6 +109,7 @@ export const round = (v: number, digits = 4) => Math.round(v * 10 ** digits) / 1
 
 /** Sections of the page, in reading order. Each owns one or more config keys. */
 export const SECTIONS: { id: string; title: string; keys: string[] }[] = [
+  { id: "presets", title: "Presets por cliente", keys: [] },
   { id: "pesos", title: "Pesos por perfil", keys: ["profiles"] },
   { id: "indicadores", title: "Indicadores y anclas", keys: ["indicators"] },
   { id: "reglas", title: "Reglas de indicadores", keys: ["runwayCapMonths", "debtDscr", "levDebtToCf", "concentration", "windows", "taxRegularity"] },

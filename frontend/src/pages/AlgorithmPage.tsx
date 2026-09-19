@@ -5,6 +5,7 @@ import { AlertLevels } from "../components/algorithm/AlertLevels";
 import { AlgorithmContext, type AlgorithmState } from "../components/algorithm/AlgorithmContext";
 import { IndicatorRow } from "../components/algorithm/AnchorEditor";
 import { ChangeTray } from "../components/algorithm/ChangeTray";
+import { PresetPicker } from "../components/algorithm/PresetPicker";
 import { SectionNav } from "../components/algorithm/SectionNav";
 import { BandMapField, FieldGrid } from "../components/algorithm/Fields";
 import { WeightsTable } from "../components/algorithm/WeightsTable";
@@ -89,6 +90,10 @@ export function AlgorithmPage() {
           <SectionNav changes={changes} />
 
           <div className="grid min-w-0 gap-12">
+            <Film id="presets" className={JUMP} title="Presets por cliente" meta="4 clientes · cada valor con su fuente">
+              <PresetPicker />
+            </Film>
+
             <Film id="pesos" className={JUMP} title="Pesos por perfil" meta="10 categorías · suma 100 por perfil">
               <p className="mb-6 max-w-[70ch] text-ink-muted">
                 Cuánto cuenta cada categoría en la puntuación de cada comprador. Una categoría sin datos se excluye y el

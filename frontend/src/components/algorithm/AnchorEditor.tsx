@@ -23,7 +23,7 @@ function anchorProblems(anchors: Anchor[]): string[] {
  * The level curve of one indicator: a piecewise-linear function of the raw value, clamped outside the anchors
  * (no extrapolation). Band zones sit behind it because the output is a 0–100 health level.
  */
-function AnchorChart({ anchors, shipped, percent }: { anchors: Anchor[]; shipped: Anchor[] | null; percent: boolean }) {
+export function AnchorChart({ anchors, shipped, percent }: { anchors: Anchor[]; shipped: Anchor[] | null; percent: boolean }) {
   const all = [...anchors, ...(shipped ?? [])].map(([x]) => x);
   let lo = Math.min(...all);
   let hi = Math.max(...all);

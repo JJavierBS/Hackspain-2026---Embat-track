@@ -101,3 +101,51 @@ export function useApplyConfig(bootId: string | undefined) {
     clear: () => setPhase({ kind: "idle" }),
   };
 }
+
+export interface PresetSource {
+  publisher: string;
+  title: string;
+  url: string;
+  /** Exact words of the source. */
+  quote?: string;
+  /** A figure read from a table. */
+  finding?: string;
+  read: string;
+}
+
+export interface PresetChange {
+  path: string;
+  value: unknown;
+  status: "sourced" | "derived" | "placeholder";
+  why: string;
+  sources: string[];
+}
+
+export interface Preset {
+  id: string;
+  name: string;
+  client: string;
+  profile: "BANK" | "FUND" | "INSURER";
+  weights: string;
+  weightsSources?: string[];
+  changes: PresetChange[];
+}
+
+export interface PresetCatalog {
+  sources: Record<string, PresetSource>;
+  presets: Preset[];
+}
+
+/** Client presets with their evidence (backend presets.yml). */
+export function usePresets() {
+  return useQuery({
+    queryKey: ["algorithm-presets"],
+    queryFn: async () => {
+      const res = await fetch("/api/config/presets");
+      if (!res.ok) throw new ApiError(res.status, await res.text());
+      return (await res.json()) as PresetCatalog;
+    },
+    staleTime: Infinity,
+    retry: 1,
+  });
+}
