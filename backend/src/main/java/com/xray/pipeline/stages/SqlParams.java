@@ -38,6 +38,10 @@ final class SqlParams {
                 "CASE WHEN pc.currency = c.currency THEN 1 ELSE t.exchange_rate END", r));
         m.put("inv_amount_eur", amountEur("ABS(i.amount)",
                 "CASE WHEN i.currency = i.accounting_currency THEN 1 ELSE i.exchange_rate END", r));
+        boolean nativeCcy = r.fxConvention() == DataRules.FxConvention.NONE;
+        // A product missing from both product files falls back to the company currency (DATA_FINDINGS Q4).
+        m.put("tx_local_ccy", nativeCcy ? "COALESCE(pc.currency, c.currency)" : "c.currency");
+        m.put("inv_local_ccy", nativeCcy ? "i.currency" : "i.accounting_currency");
         m.put("invoice_direction", r.invoiceDirection().name());
         m.put("invoice_issued_sign", String.valueOf(r.invoiceIssuedSign()));
         m.put("invoice_excluded_types", listOrNone(r.invoiceExcludedDocumentTypes()));
@@ -45,6 +49,9 @@ final class SqlParams {
         m.put("invoice_paid_status", listOrNone(r.invoicePaidStatusValues()));
         m.put("intragroup_rule", r.intragroupRule().name());
         m.put("intragroup_max_lag_days", String.valueOf(r.intragroupMaxLagDays()));
+        m.put("own_account_max_lag_days", String.valueOf(r.ownAccountMaxLagDays()));
+        m.put("tx_excluded_abs_amounts", r.txExcludedAbsAmounts() == null || r.txExcludedAbsAmounts().isEmpty()
+                ? "-1" : r.txExcludedAbsAmounts().stream().map(String::valueOf).collect(Collectors.joining(", ")));
         return m;
     }
 

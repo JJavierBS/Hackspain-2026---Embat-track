@@ -14,12 +14,17 @@ public record DataRules(
         List<String> invoiceExcludedStatusValues,
         List<String> invoicePaidStatusValues,
         IntragroupRule intragroupRule,
-        int intragroupMaxLagDays) {
+        int intragroupMaxLagDays,
+        int ownAccountMaxLagDays,
+        List<Double> txExcludedAbsAmounts) {
 
-    /** How exchange_rate applies to amount. NONE = amounts are already in the target currency. */
+    /** How exchange_rate applies to amount. NONE = ignore exchange_rate; fx-to-eur converts the native amount. */
     public enum FxConvention { MULTIPLY, DIVIDE, NONE }
 
-    /** EUR: amount (op) exchange_rate is EUR. LOCAL: it is the company or accounting currency; fx-to-eur converts it. */
+    /**
+     * EUR: amount (op) exchange_rate is EUR. LOCAL: fx-to-eur converts it. The local currency is the company
+     * (transactions) or accounting (invoices) currency, or with NONE the product or invoice currency.
+     */
     public enum FxTarget { EUR, LOCAL }
 
     /** AMOUNT_SIGN: sign of amount gives the direction. COUNTERPARTY_FLOW: the counterparty's net transaction sign does. */

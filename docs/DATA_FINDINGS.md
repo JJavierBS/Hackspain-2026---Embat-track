@@ -135,19 +135,27 @@ sides but a rate ≠ 1 (for example 0.0003 or 6500). 242 same-currency invoices
 have a null rate. 184,941 transactions are on debt products (mostly credit
 lines), not on banking products.
 
-**Decision:** `DIVIDE`, target `LOCAL`. Transactions convert to the company
-currency, then to EUR with `fx-to-eur`. Invoices convert to the accounting
-currency, then to EUR. When the two currencies are equal, the rate is forced
-to 1 (the same-currency outliers above are noise). The product currency comes
-from `banking_products` or `debt_products`. Cross-currency outliers
-(for example a USD→EUR rate of 11,931) stay: they are < 0.01 % of rows.
+**Decision:** The convention of `exchange_rate` is `DIVIDE` towards the
+local currency. But the column is not reliable: the first staging run gave
+24 bn EUR for one 25 M USD collection (COMP_0761, USD→CHF rate 0.0011).
+So the pipeline ignores `exchange_rate` (`fx-convention: NONE`). It converts
+the native amount with the static rate of its own currency:
+- Transactions: the product currency (`banking_products` or `debt_products`).
+  14 companies have 1,314 transactions on products that are in neither file:
+  they use the company currency.
+- Invoices: the invoice `currency`.
 
-`fx-to-eur` holds EUR per one unit of currency, for the 40 currencies seen
-as company, product, accounting or debt currency:
-- 25 currencies: ECB euro reference rates of 2026-09-01
+The balance reconstruction converts with the same product-currency rate, so
+flows and balances stay consistent. Set `fx-convention: DIVIDE` to go back to
+the column (then the local currency is the company or accounting currency,
+and a rate is forced to 1 when both currencies are equal).
+
+`fx-to-eur` holds EUR per one unit of currency, for the 44 currencies seen
+as company, product, invoice, accounting or debt currency (EUR = 1.0):
+- 28 currencies: ECB euro reference rates of 2026-09-01
   (`https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml`).
-- 14 currencies without an ECB rate (AED, AOA, ARS, BAM, CLP, COP, GHS, MAD,
-  MZN, NAD, PEN, RUB, VND, XOF): the dated open dataset
+- 15 currencies without an ECB rate (AED, AOA, ARS, BAM, CLP, COP, GHS, MAD,
+  MZN, NAD, PEN, RUB, SAR, VND, XOF): the dated open dataset
   `@fawazahmed0/currency-api@2026-09-01` (jsDelivr). BAM and XOF match their
   fixed euro pegs. CLP, PEN, AOA, MAD and AED are within 5 % of the data's
   own median cross rates.
@@ -155,8 +163,8 @@ as company, product, accounting or debt currency:
 The rates are static. SPEC §5.2 asks for EUR amounts only for comparison, and
 ratios are computed inside one entity.
 
-**Config change:** `data-rules.fx-convention: DIVIDE`, `fx-target: LOCAL`,
-`fx-to-eur` = 40 entries.
+**Config change:** `data-rules.fx-convention: NONE`, `fx-target: LOCAL`,
+`fx-to-eur` = 44 entries.
 
 ## Q5 — Intragroup counterparties ⚠ (rule)
 **Query:** Q5, Q5b, Q5c in `scripts/profiling.sql`
@@ -180,6 +188,29 @@ another: intragroup trade and cash pooling. Small coincidental pairs exist
 **Decision:** `MIRROR_MATCH` with a 2-day lag. Both sides of a pair are tagged.
 **Config change:** `data-rules.intragroup-rule: MIRROR_MATCH`,
 `intragroup-max-lag-days: 2`.
+
+## Q5d — Own-account transfers (same company, two products)
+**Query:** Q5d in `scripts/profiling.sql`
+**Result:** An outflow on one product and the same amount as inflow on another
+product of the same company:
+
+| lag (days) | pairs | outflows | companies | EUR |
+|---:|---:|---:|---:|---:|
+| −1 | 4,371 | 3,054 | 296 | 7.6 bn |
+| 0 | 47,118 | 32,907 | 672 | 44.2 bn |
+| +1 | 12,504 | 8,990 | 508 | 6.8 bn |
+
+Top category pairs (lag 0): payment ↔ collection 10,461, transfer ↔ transfer
+10,341, payment ↔ transfer 5,834 (median 15,000 EUR). These are sweeps
+between the company's own accounts, but the bank categories call them
+payment and collection. Without this rule they count as revenue and cost.
+**Decision:** SPEC §4.5 fallback. Both sides of a pair within 1 day get flow
+class `INTERNAL` (in `11_intragroup.sql`). They leave NOCF and the
+counterparty tables. After this rule 213,004 transactions are `INTERNAL`.
+**Config change:** `data-rules.own-account-max-lag-days: 1` (−1 turns it off).
+**Known gap:** COMP_1185 still has 48 bn EUR of operating flows in 2 years.
+Its "TRASPAS AUTOMATIC" sweeps do not have exact mirror amounts. Its flow
+ratios are distorted. Block 3 must check this company.
 
 ## Q6 — Debt products with transactions
 **Query:** Q6 in `scripts/profiling.sql`
@@ -281,3 +312,12 @@ credit balance, not debt. 87 schedules (75 loans, 7 leasing).
 outstanding means nothing is owed. `granted_eur = ABS(granted)`,
 `liquidity_eur = ABS(liquidity)`.
 **Config change:** None. Expression in `24_debt_snapshot.sql`.
+
+## Q12 — Sentinel amounts
+**Query:** Q12 in `scripts/profiling.sql`
+**Result:** 5 transactions (2 companies, COMP_0538 and COMP_0604) have
+`|amount| = 999,999,999`, all inflows, category `-`, narrative
+"MANUAL QUITAR RETENCION". They give +4 bn EUR to COMP_0604 in one day, and
+the backward balance rebuild would put its cash at −4 bn before that day.
+**Decision:** Drop them in staging.
+**Config change:** `data-rules.tx-excluded-abs-amounts: [999999999]`.

@@ -189,3 +189,19 @@ SELECT MIN(CAST(date AS DATE)), MAX(CAST(date AS DATE)) FROM tx;
 .print '## Q1b uncategorised - by sign and counterparty presence'
 SELECT category, SIGN(amount) s, COUNT(*) n, SUM(CASE WHEN counterparty_id IS NULL THEN 0 ELSE 1 END) n_cp, MEDIAN(ABS(amount)) med
 FROM tx WHERE category IN ('-', 'transfer') OR category IS NULL GROUP BY 1,2 ORDER BY 1,2;
+
+.print '## Q5d own-account transfers (same company, other product, opposite amount, lag -1..1 day)'
+WITH t AS (
+  SELECT transaction_id, company_id, product_id, CAST(date AS DATE) AS d, amount, category
+  FROM tx WHERE status = 'booked')
+SELECT date_diff('day', a.d, b.d) AS lag, COUNT(*) AS pairs, COUNT(DISTINCT a.transaction_id) AS n_out,
+       COUNT(DISTINCT a.company_id) AS n_companies, ROUND(SUM(-a.amount) / 1e9, 1) AS bn
+FROM t a JOIN t b
+  ON b.company_id = a.company_id AND b.product_id <> a.product_id
+ AND b.amount = -a.amount AND ABS(date_diff('day', a.d, b.d)) <= 1
+WHERE a.amount < 0 GROUP BY 1 ORDER BY 1;
+
+.print '## Q12 sentinel and very large amounts'
+SELECT ABS(amount) AS abs_amount, COUNT(*) AS n, COUNT(DISTINCT company_id) AS n_companies,
+       any_value(category) AS category, any_value(description) AS description
+FROM tx WHERE ABS(amount) >= 1e8 GROUP BY 1 ORDER BY 2 DESC LIMIT 12;
