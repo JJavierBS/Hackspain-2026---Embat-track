@@ -19,8 +19,8 @@ public final class MomentumScreen {
     public record Params(double risingStarMaxLevel, double risingStarMinTraj) {
     }
 
-    /** One scored entity of the same type and month. traj and growth may be null. */
-    public record Peer(String entityId, double finalScore, double level, Double traj, Double growth) {
+    /** One scored entity of the same type and month. level, traj and growth may be null. */
+    public record Peer(String entityId, double finalScore, Double level, Double traj, Double growth) {
     }
 
     public static Map<String, MomentumPoint> screen(List<Peer> peers, Params p) {
@@ -29,7 +29,7 @@ public final class MomentumScreen {
         Map<String, MomentumPoint> out = new HashMap<>();
         for (Peer peer : peers) {
             int rank = 1 + (int) peers.stream().filter(o -> o.finalScore() > peer.finalScore()).count();
-            boolean risingStar = peer.traj() != null && peer.level() < p.risingStarMaxLevel()
+            boolean risingStar = peer.traj() != null && peer.level() != null && peer.level() < p.risingStarMaxLevel()
                     && peer.traj() >= p.risingStarMinTraj();
             out.put(peer.entityId(), new MomentumPoint(rank, peers.size(), percentile(peer.traj(), trajs),
                     percentile(peer.growth(), growths), risingStar));

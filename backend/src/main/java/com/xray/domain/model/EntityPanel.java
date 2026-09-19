@@ -23,6 +23,7 @@ public final class EntityPanel {
     private final Map<Profile, DynamicsPoint[]> dynamics = new EnumMap<>(Profile.class);                // S70
     private final List<Changepoint> changepoints = new ArrayList<>();                                  // S70
     private final Map<SignalId, Double[]> signals = new EnumMap<>(SignalId.class);                     // S30
+    private LimitDecision[] limits;                                                                    // S75
 
     public EntityPanel(EntityKey key, List<Month> months) {
         this.key = key;
@@ -125,5 +126,14 @@ public final class EntityPanel {
 
     public void setSignal(SignalId id, int m, Double value) {
         signals.get(id)[m] = value;
+    }
+
+    /** S75, limit profile only. Null until S75 runs; an element is null for a month with no decision. */
+    public LimitDecision[] limits() {
+        return limits;
+    }
+
+    public void setLimits(LimitDecision[] limits) {
+        this.limits = limits;
     }
 }
