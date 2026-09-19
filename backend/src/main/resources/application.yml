@@ -2,7 +2,10 @@ spring:
   application:
     name: xray
   config:
-    import: classpath:scoring-config.yml
+    # The expert overrides written by PUT /api/config win over the shipped defaults (later import wins).
+    import:
+      - classpath:scoring-config.yml
+      - optional:file:${XRAY_DATA_DIR:../data}/scoring-overrides.yml
   jackson:
     default-property-inclusion: always
 

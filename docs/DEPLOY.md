@@ -29,6 +29,12 @@ java --enable-native-access=ALL-UNNAMED -cp $J scripts/ExportDemoDb.java data/xr
 git add backend/demo/xray-demo.duckdb.gz && git commit -m "chore(data): refresh the frozen demo database"
 ```
 
+Export again after any change to the scoring config (the Algorithm page, a preset, or a hand edit).
+`pipeline_runs.config_hash` holds the config fingerprint (`docs/ALGORITHM_PAGE.md` D3). The Algorithm
+page compares it with the active config, and shows "Pendientes de recalcular" in demo mode when they
+differ. A slice exported before PR #17 stores the old hash format, so export it once from a run on the
+new code. Demo mode never writes `data/scoring-overrides.yml`: the deployed config is always the shipped one.
+
 A new query over a table not yet in the slice returns a 500 in the deployed app and a 200 locally.
 `ExportDemoDb.KEEP` is the list; add the table there when you add the query.
 

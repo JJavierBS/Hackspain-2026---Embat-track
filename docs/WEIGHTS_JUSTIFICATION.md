@@ -134,6 +134,11 @@ Our test in §2 checks the same property on our own score instead of trusting it
    The generator fails if the matrix becomes inconsistent (CR ≥ 0.10).
 3. **The hidden data fails the test.** The median Spearman under the ±50 % draws falls below 0.90.
 
+**The Algorithm page (2026-09-19).** An expert can now change any weight from `/algorithm`. The page shows
+the closed-decision note above the weights table and keeps the shipped values as the reference. The three
+reasons above are still the only valid reasons. The client presets never change a weight: we found no
+source that gives other weights for the four target clients (`PRESETS.md` §1, `ALGORITHM_PAGE.md` D10–D11).
+
 Do not change a weight to move one entity, one band or one demo number. The pipeline must give an
 honest score on any dataset, not a good-looking one on this dataset.
 

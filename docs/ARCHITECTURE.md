@@ -21,6 +21,8 @@ These were open during design. They are now closed. Do not reopen without updati
 | Supervised calibration (SPEC §7.7) | **Out of scope** until the hidden test is confirmed (Sunday) | Seam preserved (§8.5 below), no implementation. M9 is not planned work |
 | LLM narratives | **Not in the runtime path** | Explanations are template strings. `NarrativeRenderer` port exists so an LLM adapter can be dropped in later without touching callers |
 | Weights | From `scoring-config.yml`, provisional until an expert reviews | Code must never assume the values in §7.4 of the spec |
+| Runtime config edits | Override file `data/scoring-overrides.yml` + Spring context restart + rerun on fingerprint change | `docs/ALGORITHM_PAGE.md` D1–D3. `scoring-config.yml` stays the reviewed baseline |
+| Client presets | `presets.yml`, rules only, never weights, checked at boot | `docs/PRESETS.md`, `docs/ALGORITHM_PAGE.md` D11 |
 
 ---
 
@@ -352,6 +354,8 @@ public record ScoringConfig(
 }
 ```
 
+**Expert overrides.** `application.yml` imports `optional:file:${XRAY_DATA_DIR}/scoring-overrides.yml` after `scoring-config.yml`, so the override values win. Only `PUT /api/config` writes that file, and only with the sections that differ from the shipped defaults. The save runs the same validation (the record's compact constructor), then restarts the context so every bean binds the new values. `pipeline_runs.config_hash` is a fingerprint of the active config (`ConfigFingerprint`). A boot with a different fingerprint runs the pipeline again. Decisions and limits: `docs/ALGORITHM_PAGE.md`.
+
 Profile weights are provisional (an expert reviews them later), so **no code may hardcode or special-case a weight value**. `ProfileScorer` reads the map and renormalizes over available categories; adding a fourth profile is a YAML edit.
 
 ---
@@ -434,8 +438,9 @@ Only these. Skip the rest.
 
 ## 10. Execution & API notes
 
-- **Pipeline trigger:** `POST /api/pipeline/run` runs async on a single-thread executor; `GET /api/pipeline/status` returns the current stage, percentage and per-stage timings. Runs automatically on startup if `pipeline_runs` is empty.
+- **Pipeline trigger:** `POST /api/pipeline/run` runs async on a single-thread executor; `GET /api/pipeline/status` returns the current stage, percentage and per-stage timings. Runs automatically on startup if `pipeline_runs` is empty, or if the latest run used another config fingerprint.
 - **Demo mode:** `xray.demo-mode=true` disables the run endpoint and serves the frozen `xray.duckdb`. This is the deployed configuration.
+- **Config editing:** `GET /api/config` returns the active config, the shipped defaults, `editable`, `overridden`, `appliedToData` and a `bootId`. `PUT` validates, writes the override file and restarts the context. `DELETE` removes the file and restarts. Both return 202, and 409 in demo mode or during a run. `GET /api/config/presets` serves `presets.yml`. The endpoints have no authentication (known risk, `docs/ALGORITHM_PAGE.md` §3).
 - **Reads:** all query endpoints read results tables directly. No recomputation in a request. Target < 1 s per page.
 - **Profile switching:** all three profiles are materialized at pipeline time. `?profile=` is a filter on `profile_scores`, not a recomputation.
 - **SSE replay:** `MonitorReplayUseCase` streams month by month from the persisted `alerts` table with `stepMs` delay. It replays stored causal results; it does not recompute during the stream.

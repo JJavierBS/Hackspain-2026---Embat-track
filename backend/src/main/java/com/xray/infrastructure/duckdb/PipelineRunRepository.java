@@ -28,6 +28,13 @@ public class PipelineRunRepository {
         return n == null || n == 0;
     }
 
+    /** config_hash of the latest run, or null when no run exists. */
+    public String lastConfigHash() {
+        ensureTable();
+        return jdbc.query("SELECT config_hash FROM pipeline_runs ORDER BY finished_at DESC LIMIT 1",
+                rs -> rs.next() ? rs.getString(1) : null);
+    }
+
     public void save(String runId, EntityType unit, Instant startedAt, Instant finishedAt,
                      Map<String, Long> stageTimingsMs, String configHash) {
         ensureTable();

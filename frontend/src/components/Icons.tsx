@@ -65,6 +65,33 @@ export function IconRestart(props: IconProps) {
   );
 }
 
+/** A warning: a drawn triangle with a stroke and a dot. Neutral ink, never a band or direction hue. */
+export function IconWarning(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M8 2 14.5 13.5h-13z" />
+      <path d="M8 6.5v3.25" />
+      <path d="M8 11.75v.01" strokeWidth={2.25} />
+    </svg>
+  );
+}
+
+export function IconPlus(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M8 3v10M3 8h10" />
+    </svg>
+  );
+}
+
+export function IconClose(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M4 4l8 8M12 4l-8 8" />
+    </svg>
+  );
+}
+
 /** Rising star (FUND): a drawn five-point star. */
 export function IconStar(props: IconProps) {
   return (

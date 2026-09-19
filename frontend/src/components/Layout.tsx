@@ -10,7 +10,7 @@ export function Layout() {
   return (
     <div className="flex min-h-screen flex-col">
       <TopBar />
-      <main className="relative flex flex-1 flex-col overflow-hidden bg-panel [container-type:inline-size]">
+      <main className="relative flex flex-1 flex-col overflow-clip bg-panel [container-type:inline-size]">
         <OfflineBanner />
         {/* A new view or a new buyer profile re-scans the panel once. */}
         <span key={`${pathname}|${profile}`} aria-hidden className="scanline" />
