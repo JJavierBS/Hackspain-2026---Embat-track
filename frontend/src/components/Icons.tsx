@@ -65,6 +65,15 @@ export function IconRestart(props: IconProps) {
   );
 }
 
+/** Rising star (FUND): a drawn five-point star. */
+export function IconStar(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M8 1.75l1.9 3.9 4.3.6-3.1 3 .75 4.25L8 11.5l-3.85 2 .75-4.25-3.1-3 4.3-.6z" fill="currentColor" strokeWidth={1.25} />
+    </svg>
+  );
+}
+
 /** The X-Ray mark: a film frame crossed by the scan line. */
 export function XRayMark(props: IconProps) {
   return (

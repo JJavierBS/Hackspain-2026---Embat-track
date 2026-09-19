@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import type {
+  BandLetter,
   Category,
   CategoryScore,
   Change,
@@ -10,14 +11,18 @@ import type {
   LimitAction,
   LimitDecision,
   LimitSimulation,
+  MomentumView,
   PortfolioRow,
+  PremiumQuote,
 } from "../api/types";
 import { ApiError } from "../api/client";
-import { useEntity, useMethodology, useSimulateLimit } from "../api/queries";
+import { useEntity, useMeta, useMethodology, useSimulateLimit } from "../api/queries";
 import { LimitHistoryChart } from "../components/LimitHistoryChart";
+import { PremiumHistoryChart } from "../components/PremiumHistoryChart";
+import { RateLadder } from "../components/RateLadder";
 import { Delta } from "../components/Delta";
 import { Film } from "../components/Film";
-import { IconDown, IconFlat, IconUp } from "../components/Icons";
+import { IconDown, IconFlat, IconStar, IconUp } from "../components/Icons";
 import { LoadState } from "../components/LoadState";
 import { Meter } from "../components/Meter";
 import { PageHeader } from "../components/PageHeader";
@@ -39,7 +44,6 @@ import {
   formatEur,
   formatIndicatorValue,
   formatNumber,
-  formatPct,
   formatRate,
   formatScore,
   formatWeight,
@@ -485,49 +489,173 @@ function ProductPanel({ data }: { data: EntityDetail }) {
   }
 
   if (profile === "INSURER") {
-    if (data.premium === null) {
-      return (
-        <PendingFilm
-          title="Prima de seguro de crédito"
-          block="bloque 7"
-          items={["Tasa de prima", "Límite por comprador", "Historia de la prima"]}
-        />
-      );
-    }
-    const premium = data.premium;
-    const final = data.row!.final;
+    if (data.premium === null)
+      return <ProductPending title="Prima de seguro de crédito" items={["Tasa de prima", "Límite por comprador", "Tarifa por banda", "Historia de la prima"]} />;
+    return <InsurerPanel data={data} premium={data.premium} />;
+  }
+
+  if (data.momentum === null)
+    return <ProductPending title="Momentum" items={["Posición en el ranking", "Percentil de trayectoria", "Percentil de crecimiento", "Estrella emergente"]} />;
+  return <FundPanel momentum={data.momentum} />;
+}
+
+/**
+ * A product with no row this month. When the backend has products (meta.productsReady), the reason is the data;
+ * otherwise the backend predates block 7 and the film is still unexposed.
+ */
+function ProductPending({ title, items }: { title: string; items: string[] }) {
+  const { month } = useGlobalParams();
+  const { data: meta } = useMeta();
+  if (meta?.productsReady) {
     return (
-      <Film title="Prima de seguro de crédito" meta="Prima dinámica · se revisa cada mes">
-        <dl className="grid gap-px border border-rule bg-rule sm:grid-cols-3">
-          <Stat
-            label="Tasa de prima"
-            value={premium.premiumRate === null ? "No asegurable" : formatPct(premium.premiumRate)}
-            sub={premium.previousPremiumRate === null ? "Mes anterior: no asegurable" : `Mes anterior ${formatPct(premium.previousPremiumRate)}`}
-          />
-          <Stat label="Límite recomendado por comprador" value={premium.recommendedBuyerLimitEur === null ? "—" : formatEur(premium.recommendedBuyerLimitEur)} sub="Aproximación a la exposición" />
-          <Stat label="Banda" value={bandOf(final).band} sub={`${formatScore(final)} puntos`} />
-        </dl>
+      <Film title={title} meta={monthCode(month)}>
+        <p className="max-w-[62ch] text-ink-muted">
+          Sin datos suficientes este mes. El producto necesita una nota y tres meses de cobros en {monthCode(month)}; prueba un mes
+          posterior en la tira de meses.
+        </p>
       </Film>
     );
   }
+  return <PendingFilm title={title} block="bloque 7" items={items} />;
+}
 
-  if (data.momentum === null) {
-    return (
-      <PendingFilm title="Momentum" block="bloque 7" items={["Posición en el ranking", "Percentil de trayectoria", "Estrella emergente"]} />
-    );
-  }
-  const momentum = data.momentum;
+/** INSURER: a premium that moves with the score every month (SPEC §10.2), priced on the band ladder. */
+function InsurerPanel({ data, premium }: { data: EntityDetail; premium: PremiumQuote }) {
+  const { month } = useGlobalParams();
+  const { data: methodology } = useMethodology();
+  const insurer = methodology?.insurer;
+  const tariff: Partial<Record<BandLetter, string>> = {};
+  if (insurer)
+    for (const [band, mult] of Object.entries(insurer.multiplierByBand) as [BandLetter, number][])
+      tariff[band] = formatRate(insurer.basePremiumRate * mult);
+  const bandColor = bandOf(premium.final).color;
+  const TierIcon = premium.tierChange === "UP" ? IconUp : premium.tierChange === "DOWN" ? IconDown : null;
   return (
-    <Film title="Momentum" meta="Ranking del perfil Fondo">
+    <Film title="Prima de seguro de crédito" meta={`Perfil Aseguradora · prima revisada cada mes · ${monthCode(premium.month)}`}>
       <dl className="grid gap-px border border-rule bg-rule sm:grid-cols-3">
-        <Stat label="Posición" value={`${momentum.rank} de ${momentum.of}`} />
-        <Stat label="Percentil de trayectoria" value={momentum.trajPercentile === null ? "—" : `P${momentum.trajPercentile}`} sub="Frente al resto de la cartera" />
         <Stat
-          label="Estrella emergente"
-          value={momentum.risingStar ? "Sí" : "No"}
-          sub="Nivel menor de 60 y trayectoria de 70 o más"
+          big
+          label="Tasa de prima"
+          title="Prima anual sobre el importe asegurado: prima base × multiplicador de la banda"
+          value={premium.premiumRate === null ? "No asegurable" : formatRate(premium.premiumRate)}
+          sub={
+            premium.previousBand === null
+              ? "Primera cotización"
+              : premium.previousPremiumRate === null
+                ? "Mes anterior: no asegurable"
+                : `Mes anterior ${formatRate(premium.previousPremiumRate)}`
+          }
+        />
+        <Stat
+          label="Límite por comprador"
+          title="Exposición recomendada frente a esta entidad como compradora"
+          value={premium.recommendedBuyerLimitEur === null ? "—" : formatEur(premium.recommendedBuyerLimitEur)}
+          sub="Aproximación a la exposición (compras medias × DPO)"
+        />
+        <Stat
+          label="Tramo"
+          title="El tramo de prima es la banda de la nota en el perfil Aseguradora"
+          value={
+            <span className="flex items-center gap-2">
+              <span className="inline-flex h-8 w-8 items-center justify-center text-lg font-bold text-white" style={{ background: bandColor }}>
+                {premium.band}
+              </span>
+              <span className="text-2xl" style={{ color: bandColor }}>
+                {formatScore(premium.final)}
+              </span>
+            </span>
+          }
+          sub={
+            premium.tierChange === null ? (
+              premium.previousBand === null ? (
+                "Sin mes anterior"
+              ) : (
+                "Sin cambio de tramo"
+              )
+            ) : (
+              <span className={`inline-flex items-center gap-1 font-medium ${premium.tierChange === "UP" ? "text-up" : "text-down"}`}>
+                {TierIcon && <TierIcon width={14} height={14} />}
+                {premium.tierChange === "UP" ? "Mejora de tramo" : "Empeora de tramo"} (desde {premium.previousBand})
+              </span>
+            )
+          }
         />
       </dl>
+
+      <section className="mt-8">
+        <h3 className="mb-3 text-[15px] font-semibold">Tarifa por banda</h3>
+        {insurer ? (
+          <RateLadder label="Tasa de prima por banda" values={tariff} missing="no asegurable" active={premium.band} />
+        ) : (
+          <p className="text-ink-muted">Cargando la tarifa…</p>
+        )}
+      </section>
+
+      <section className="mt-10">
+        <h3 className="mb-3 text-[15px] font-semibold">Historia de la prima</h3>
+        <PremiumHistoryChart points={data.timeline} activeMonth={month} />
+        <p className="mt-2 text-sm text-ink-muted">La prima se mueve con la nota cada mes, no en la renovación anual.</p>
+      </section>
+    </Film>
+  );
+}
+
+/** A 0–100 percentile against the portfolio: a neutral ink mark on a track with the 50 line. */
+function Percentile({ value }: { value: number | null }) {
+  if (value === null) return <span className="text-ink-muted">—</span>;
+  return (
+    <span className="grid gap-2">
+      <span>P{value}</span>
+      <span className="relative block h-2 bg-panel-grid" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={value}>
+        <span className="absolute inset-y-0 left-0 bg-ink/25" style={{ width: `${value}%` }} />
+        <span aria-hidden className="absolute -top-1 bottom-[-4px] left-1/2 w-px bg-ink/60" />
+        <span aria-hidden className="absolute -top-1.5 bottom-[-6px] w-[3px] -translate-x-1/2 bg-ink" style={{ left: `${value}%` }} />
+      </span>
+    </span>
+  );
+}
+
+/** FUND: where the entity ranks and how fast it moves against the portfolio (SPEC §10.3). Display only. */
+function FundPanel({ momentum }: { momentum: MomentumView }) {
+  const { data: methodology } = useMethodology();
+  const rule = methodology?.momentum;
+  return (
+    <Film title="Momentum" meta={`Perfil Fondo · frente a la cartera · ${monthCode(momentum.month)}`}>
+      <dl className="grid gap-px border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-4">
+        <Stat
+          big
+          label="Posición"
+          title="Puesto por nota final en el perfil Fondo, entre las entidades puntuadas este mes"
+          value={momentum.rank}
+          sub={`de ${momentum.of} entidades`}
+        />
+        <Stat
+          label="Percentil de trayectoria"
+          title="Parte de la cartera con una trayectoria menor"
+          value={<Percentile value={momentum.trajPercentile} />}
+        />
+        <Stat
+          label="Percentil de crecimiento de cobros"
+          title="Parte de la cartera con un crecimiento de cobros menor"
+          value={<Percentile value={momentum.growthPercentile} />}
+        />
+        <Stat
+          label="Estrella emergente"
+          title="Nivel todavía bajo pero trayectoria fuerte: una candidata antes de que la nota lo refleje"
+          value={
+            momentum.risingStar ? (
+              <span className="inline-flex items-center gap-2">
+                <IconStar width={22} height={22} />
+                Sí
+              </span>
+            ) : (
+              "No"
+            )
+          }
+          sub={rule ? `Nivel menor de ${rule.risingStarMaxLevel} y trayectoria de ${rule.risingStarMinTraj} o más` : undefined}
+        />
+      </dl>
+      <p className="mt-3 text-sm text-ink-muted">Percentiles frente a la cartera, solo para contexto: no cambian la nota.</p>
     </Film>
   );
 }
