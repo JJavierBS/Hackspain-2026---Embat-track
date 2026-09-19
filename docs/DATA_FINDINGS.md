@@ -547,3 +547,74 @@ BANK limit cut ahead of the event: 132/139 (mean 5,3 months) → 111/138 (mean 2
 
 **Open.** Two pipeline runs on the same input give a different `final` for one group of 248 (`GROUP_0120`, trajectory 32,8 against 33,3), so the event count moves by one (138 or 139). The cause is outside phase 6 (probably the summation order of a parallel or SQL aggregate). It matters for the hidden-test submission.
 
+
+## Phase 7 R3 — Why forward AUC is below 0.5 (2026-09-19)
+
+**Question.** In the phase 7 plan, the score separates entity-months with a fundamental proxy event
+(trigger `RUNWAY`, `DSCR` or `OVERDUE`) from the others in the same month (AUC 0,58–0,72). It does not
+separate them 1–3 months before the event (AUC 0,39–0,44). This section explains the gap.
+
+**Method.** GROUP unit, entity-months M06..M20 (2025-03 .. 2026-05), lower score = higher risk, data of
+the current config. Script: `data/.work/r3.py` (not committed). The fundamental condition per month is
+rebuilt with the rules of `LeadTimeAnalyzer`: runway < 1,5 for 2 months, DSCR < 1,0 for 2 months, or both
+overdue levels ≤ 20.
+
+**Reproduction.** The plan's table reproduces exactly: BANK `final` 0,725 now and 0,422 forward, `level`
+0,726 and 0,440. FUND 0,579 / 0,390. INSURER 0,659 / 0,429.
+
+**Hypotheses.**
+
+| # | Hypothesis | Result |
+|---|---|---|
+| a | Distressed months count as "clean" | **Confirmed, main cause of the value below 0,5.** `lead_time_events` keeps one event per entity. So 39,6 % of the forward negatives (BANK) are months that are already in the fundamental condition. They have the lowest scores and they count as "no event ahead". If you remove the months at or after the event, BANK goes to 0,478. The value is still not above 0,5. |
+| b | The G3 history rule removes the entities the score catches | **Rejected.** No entity has the condition on for its whole first 7 months. 202 of 250 groups enter the condition at least once. |
+| c | Horizon mismatch | **Partly.** The table below shows it. The signal is strong at 1 month and falls to no signal at 3–6 months. |
+| d | Other causes | **Two found.** (1) Overlap: the condition needs 2 months below the threshold. The first of these months is already inside the score (for example LIQ_RUNWAY level). So "1 month ahead" is almost the same month. (2) Flicker and mean reversion: `DSCR` makes 238 of the 335 onsets, and 97 of 202 entities enter the condition more than once. An onset comes after a recovery, when the score is at a local peak. Over the next 3 months, the change in `final` correlates −0,48 with its distance from the entity's own median (BANK). |
+
+**Recomputation 1 — first onset only.** Label = the first onset of the condition falls in m+1..m+h.
+Months in the condition, and months after the first onset, are removed. AUC of `final`:
+
+| Horizon | BANK | FUND | INSURER |
+|---|---|---|---|
+| 1..1 | 0,938 | 0,798 | 0,726 |
+| 1..2 | 0,700 | 0,598 | 0,563 |
+| 1..3 | 0,607 | 0,502 | 0,486 |
+| 1..4 | 0,574 | 0,471 | 0,466 |
+| 1..5 | 0,547 | 0,446 | 0,446 |
+| 1..6 | 0,522 | 0,428 | 0,425 |
+
+**Recomputation 2 — each horizon on its own (1–6 months).** Label = the condition is on at exactly m+h and
+off at m. Any onset counts. AUC of `final`, and of the 6-month mean of `final`:
+
+| h | BANK | BANK 6m mean | FUND | INSURER | BANK runway only |
+|---|---|---|---|---|---|
+| 1 | 0,916 | 0,575 | 0,712 | 0,703 | 0,842 |
+| 2 | 0,645 | 0,530 | 0,543 | 0,546 | 0,661 |
+| 3 | 0,528 | 0,500 | 0,446 | 0,460 | 0,569 |
+| 4 | 0,509 | 0,514 | 0,429 | 0,460 | 0,558 |
+| 5 | 0,493 | 0,499 | 0,412 | 0,444 | 0,565 |
+| 6 | 0,467 | 0,500 | 0,394 | 0,425 | 0,580 |
+
+If you remove the overlap too (the raw runway or DSCR must not be below its threshold at m yet), the first-onset
+AUC at h = 2..6 is 0,37–0,45 for all three profiles.
+
+**Conclusion.** After the labels are corrected, the score detects distress when it arrives (the same month or
+1 month before). It gives a useful but weak warning at 2 months for BANK (0,65–0,70) and for runway events
+(0,56–0,66 up to 6 months). It does **not** lead fundamental events by 3 months or more in this panel. FUND
+and INSURER fall below 0,5 at 3 months or more. A probable cause (not tested): their weights favour growth
+and payment categories, and a DSCR onset does not show in those categories first. The lead times on the Methodology page are correct
+as a count of signal runs. But they do not prove that the score ranks entities before the event. The
+phase 6 code is not changed (plan R3).
+
+**Proposal for José Javier (accept or reject).** In `MethodologyPage.tsx`, `AnticipationFilm`, the text now says:
+"Cuántos meses antes de un evento la nota ya avisaba. Medido contra eventos proxy: los datos no traen
+etiquetas de impago. Las cifras son del perfil {name} y cambian con el perfil." Proposed replacement:
+
+> Cuántos meses antes de un evento la nota ya avisaba. Medido contra **eventos proxy**: los datos no traen
+> etiquetas de impago. La nota detecta bien el deterioro cuando llega: el mismo mes o el anterior. Con dos
+> meses de antelación el aviso es útil pero débil. Con tres meses o más, en estos 24 meses de datos, la nota
+> no ordena mejor que el azar qué entidades van a entrar en riesgo. Las cifras son del perfil {name} y
+> cambian con el perfil.
+
+Post-demo items: record every onset in `lead_time_events`, not only the first one per entity. Evaluate
+with the overlap removed. Look again at the DSCR event rule (2 months below 1,0 on monthly flows flickers).

@@ -426,7 +426,10 @@ function AnticipationFilm({ data }: { data: LeadTime }) {
     <Film id="anticipacion" title="Anticipación" meta={`Perfil ${name} · eventos proxy · ventana de ${data.windowMonths} meses`}>
       <p className="max-w-[70ch] text-[15px] text-ink-muted">
         Cuántos meses antes de un evento la nota ya avisaba. Medido contra <span className="font-semibold text-ink">eventos proxy</span>:
-        los datos no traen etiquetas de impago. Las cifras son del perfil {name} y cambian con el perfil.
+        los datos no traen etiquetas de impago. La nota detecta bien el deterioro cuando llega: el mismo mes o el anterior.
+        Con dos meses de antelación el aviso es útil pero débil. Con tres meses o más, en estos 24 meses de datos, la nota no
+        ordena mejor que el azar qué entidades van a entrar en riesgo (docs/DATA_FINDINGS.md, R3). Las cifras son del perfil{" "}
+        {name} y cambian con el perfil.
       </p>
 
       <LeadBlock block={data.deterioration} horizon={data.horizonMonths} className="mt-8" />
