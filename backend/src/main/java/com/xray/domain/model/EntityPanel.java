@@ -19,7 +19,6 @@ public final class EntityPanel {
     private final Map<IndicatorId, SubScore[]> subScores = new EnumMap<>(IndicatorId.class);   // S40, S50
     private final Map<Category, CategoryScore[]> categories = new EnumMap<>(Category.class);  // S60
     private final Map<Profile, ProfileScore[]> profileScores = new EnumMap<>(Profile.class);  // S60
-    private final Map<Profile, List<List<Contribution>>> contributions = new EnumMap<>(Profile.class); // S65
     private final Map<Profile, DynamicsPoint[]> dynamics = new EnumMap<>(Profile.class);                // S70
     private final List<Changepoint> changepoints = new ArrayList<>();                                  // S70
     private final Map<SignalId, Double[]> signals = new EnumMap<>(SignalId.class);                     // S30
@@ -91,15 +90,6 @@ public final class EntityPanel {
 
     public void setProfileScores(Profile p, ProfileScore[] series) {
         profileScores.put(p, series);
-    }
-
-    /** One list per month ordinal, empty when final is null. Null until S65 runs. */
-    public List<List<Contribution>> contributions(Profile p) {
-        return contributions.get(p);
-    }
-
-    public void setContributions(Profile p, List<List<Contribution>> series) {
-        contributions.put(p, series);
     }
 
     /** Null until S70 runs. An element is null for a month with no final score. */
