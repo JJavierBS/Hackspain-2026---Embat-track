@@ -405,6 +405,8 @@ insurer:
 
 ## 10. Product layer (what we sell, to whom)
 
+> **Superseded on 2026-09-19:** the primary buyer is the SME that uses Embat; lenders and insurers pay second, with the SME's consent. Reasons and price structure: `PRODUCT.md`, section "Buyer". The text below stays for history.
+
 **Primary buyer: banks / lenders.** Pitch line: incumbents (Informa D&B, Axesor) score on annual filed accounts; we score monthly real cash flow, with trajectory, measured anticipation and per-entity explanation, re-weightable per buyer. Secondary distribution: Embat itself (it owns the data and the customer relationship; the scored company can also buy its own report/"health seal" to negotiate better terms).
 
 ### 10.1 BANK — Self-recalculating working-capital limit engine (core product)
