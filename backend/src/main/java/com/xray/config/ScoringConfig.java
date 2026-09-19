@@ -12,6 +12,7 @@ import com.xray.domain.service.MomentumScreen;
 import com.xray.domain.service.ShowcaseFinder;
 import com.xray.domain.service.PremiumEngine;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 
 import java.util.EnumMap;
 import java.util.List;
@@ -48,17 +49,38 @@ public record ScoringConfig(
         StatusConfig statuses,
         ConfidenceConfig confidence,
         ExplanationConfig explanation,
+        RecommendationsConfig recommendations,
         ProductsConfig products,
         AlertsConfig alerts,
         LeadTimeConfig leadTime,
         ShowcaseConfig showcase,
         ForecastConfig forecast) {
 
+    @ConstructorBinding
     public ScoringConfig {
         ScoringConfigValidator.validate(indicators, profiles);
         ScoringConfigValidator.validatePhase5(products, alerts, limitEngine);
         ScoringConfigValidator.validatePhase6(leadTime, showcase);
         ScoringConfigValidator.validatePhase7(forecast);
+    }
+
+    /** Source compatibility for focused tests and callers that predate entity-page recommendations. */
+    public ScoringConfig(EntityType unit, MonthRange months, List<String> cashProductTypes,
+                         List<String> semiLiquidTypes, List<String> bookedStatusValues, double runwayCapMonths,
+                         TrajectoryConfig trajectory, Map<String, FlowClass> flowClasses, FlowClass defaultFlowClass,
+                         boolean otherSignFallback, Map<IndicatorId, IndicatorConfig> indicators,
+                         Map<Profile, ProfileConfig> profiles, RegimeConfig regimes, BandConfig bands,
+                         LimitEngineConfig limitEngine, InsurerConfig insurer, DebtDscrConfig debtDscr,
+                         DataRules dataRules, LevDebtToCfConfig levDebtToCf, MomentumConfig momentum,
+                         ConcentrationConfig concentration, WindowConfig windows, TaxRegularityConfig taxRegularity,
+                         StatusConfig statuses, ConfidenceConfig confidence, ExplanationConfig explanation,
+                         ProductsConfig products, AlertsConfig alerts, LeadTimeConfig leadTime,
+                         ShowcaseConfig showcase, ForecastConfig forecast) {
+        this(unit, months, cashProductTypes, semiLiquidTypes, bookedStatusValues, runwayCapMonths, trajectory,
+                flowClasses, defaultFlowClass, otherSignFallback, indicators, profiles, regimes, bands, limitEngine,
+                insurer, debtDscr, dataRules, levDebtToCf, momentum, concentration, windows, taxRegularity, statuses,
+                confidence, explanation, new RecommendationsConfig(3, 40, 40, Map.of()), products, alerts, leadTime,
+                showcase, forecast);
     }
 
     public record MonthRange(String start, String end) {
@@ -87,6 +109,15 @@ public record ScoringConfig(
 
     /** SPEC §7.5 narratives (phase 4 decision E6). */
     public record ExplanationConfig(int narrativeTopN, double minNarratedDelta) {
+    }
+
+    /** Entity-page recommendations. These affect prioritisation and urgency, not the score itself. */
+    public record RecommendationsConfig(int topN, double urgentLevelBelow, double urgentTrajectoryBelow,
+                                         Map<String, RecommendationRule> rules) {
+    }
+
+    public record RecommendationRule(boolean enabled, int priority, double maxLevel, double maxTrajectory,
+                                     List<Profile> profiles, String title, String action) {
     }
 
     /** Lower bounds of bands A..D. Below d is band E. */

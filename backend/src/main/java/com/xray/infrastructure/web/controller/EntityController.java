@@ -1,10 +1,13 @@
 package com.xray.infrastructure.web.controller;
 
 import com.xray.application.EntityDetailQuery;
+import com.xray.application.ActionPlanService;
 import com.xray.application.ProductQuery;
 import com.xray.application.SimulateLimitUseCase;
 import com.xray.application.TimelineQuery;
 import com.xray.infrastructure.web.dto.EntityDetailDto;
+import com.xray.infrastructure.web.dto.ActionPlanDto;
+import com.xray.infrastructure.web.dto.ActionPlanRequest;
 import com.xray.infrastructure.web.dto.LimitDecisionDto;
 import com.xray.infrastructure.web.dto.LimitSimulationDto;
 import com.xray.infrastructure.web.dto.PremiumQuoteDto;
@@ -26,13 +29,15 @@ public class EntityController {
     private final TimelineQuery timeline;
     private final ProductQuery products;
     private final SimulateLimitUseCase simulator;
+    private final ActionPlanService actionPlans;
 
     public EntityController(EntityDetailQuery detail, TimelineQuery timeline, ProductQuery products,
-                            SimulateLimitUseCase simulator) {
+                            SimulateLimitUseCase simulator, ActionPlanService actionPlans) {
         this.detail = detail;
         this.timeline = timeline;
         this.products = products;
         this.simulator = simulator;
+        this.actionPlans = actionPlans;
     }
 
     @GetMapping("/{id}")
@@ -57,6 +62,11 @@ public class EntityController {
     @PostMapping("/{id}/limit/simulate")
     public LimitSimulationDto simulate(@PathVariable String id, @RequestBody(required = false) SimulateLimitRequest body) {
         return simulator.simulate(id, body);
+    }
+
+    @PostMapping("/{id}/action-plan")
+    public ActionPlanDto actionPlan(@PathVariable String id, @RequestBody ActionPlanRequest request) {
+        return actionPlans.generate(request);
     }
 
     @GetMapping("/{id}/premium")

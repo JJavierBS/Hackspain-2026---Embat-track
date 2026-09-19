@@ -17,6 +17,12 @@ xray:
   data-dir: ${XRAY_DATA_DIR:../data}
   demo-mode: ${XRAY_DEMO_MODE:false}
 
+helmcode:
+  base-url: ${HELMCODE_BASE_URL:https://api.helmcode.com/v1}
+  model: ${HELMCODE_MODEL:qwen3.6}
+  api-key: ${HELMCODE_API_KEY:}
+  enabled: ${HELMCODE_ENABLED:false}
+
 management:
   endpoints:
     web:

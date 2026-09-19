@@ -211,6 +211,22 @@ scoring:
     narrative-top-n: 5
     min-narrated-delta: 0.05
 
+  # Entity page priorities. This changes only which recommendations are shown and marked urgent; it does not change scoring.
+  recommendations:
+    top-n: 3
+    urgent-level-below: 40
+    urgent-trajectory-below: 40
+    rules:
+      LIQUIDITY: { enabled: true, priority: 1, max-level: 100, max-trajectory: 100, profiles: [BANK, FUND, INSURER], title: "Proteger la caja disponible", action: "Preparar una previsión de tesorería de 13 semanas y congelar gastos no esenciales hasta recuperar margen." }
+      OPERATING_CASH_FLOW: { enabled: true, priority: 2, max-level: 100, max-trajectory: 100, profiles: [BANK, FUND, INSURER], title: "Recuperar la generación de caja", action: "Separar cobros comprometidos de cobros inciertos y priorizar las operaciones que convierten ventas en caja." }
+      DEBT_SERVICE: { enabled: true, priority: 3, max-level: 100, max-trajectory: 100, profiles: [BANK, FUND, INSURER], title: "Reducir la presión financiera", action: "Revisar vencimientos y negociar plazos antes de asumir nueva deuda o aumentar el uso de líneas." }
+      DELINQUENCY: { enabled: true, priority: 4, max-level: 100, max-trajectory: 100, profiles: [BANK, FUND, INSURER], title: "Acelerar cobros y ordenar pagos", action: "Contactar primero con los saldos vencidos de mayor importe y fijar responsables y fechas de cobro." }
+      PAYMENT_BEHAVIOUR: { enabled: true, priority: 5, max-level: 100, max-trajectory: 100, profiles: [BANK, FUND, INSURER], title: "Acelerar cobros y ordenar pagos", action: "Contactar primero con los saldos vencidos de mayor importe y fijar responsables y fechas de cobro." }
+      LEVERAGE: { enabled: true, priority: 6, max-level: 100, max-trajectory: 100, profiles: [BANK, FUND, INSURER], title: "Reducir la presión financiera", action: "Revisar vencimientos y negociar plazos antes de asumir nueva deuda o aumentar el uso de líneas." }
+      TAX_REGULARITY: { enabled: true, priority: 7, max-level: 100, max-trajectory: 100, profiles: [BANK, FUND, INSURER], title: "Regularizar las obligaciones fiscales", action: "Conciliar las obligaciones próximas con la previsión de caja y resolver primero los importes vencidos." }
+      CONCENTRATION: { enabled: true, priority: 8, max-level: 100, max-trajectory: 100, profiles: [BANK, FUND, INSURER], title: "Diversificar clientes y proveedores", action: "Definir un plan para reducir la dependencia de las principales contrapartes y medirlo cada mes." }
+      ACTIVITY_GROWTH: { enabled: true, priority: 9, max-level: 100, max-trajectory: 100, profiles: [BANK, FUND, INSURER], title: "Revisar el ritmo de actividad", action: "Validar que el crecimiento tiene margen y caja suficientes antes de acelerarlo." }
+
   # Phase 5 decision F5: which profile each product reads. SPEC §10: BANK limit, INSURER premium, FUND momentum.
   products:
     limit-profile: BANK

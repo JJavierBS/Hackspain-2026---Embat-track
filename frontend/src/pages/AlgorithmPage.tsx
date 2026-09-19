@@ -9,6 +9,7 @@ import { PresetPicker } from "../components/algorithm/PresetPicker";
 import { SectionNav } from "../components/algorithm/SectionNav";
 import { BandMapField, FieldGrid } from "../components/algorithm/Fields";
 import { WeightsTable } from "../components/algorithm/WeightsTable";
+import { RecommendationRules } from "../components/algorithm/RecommendationRules";
 import { Film } from "../components/Film";
 import { IconWarning } from "../components/Icons";
 import { LoadState } from "../components/LoadState";
@@ -119,6 +120,13 @@ export function AlgorithmPage() {
                   ))}
                 </section>
               ))}
+            </Film>
+
+            <Film id="recomendaciones" className={JUMP} title="Recomendaciones de entidad" meta="Prioridades de la sección Qué hacer ahora">
+              <p className="mb-6 max-w-[70ch] text-ink-muted">
+                Controla qué indicadores aparecen primero y cuándo se consideran urgentes. Estos parámetros cambian la orientación de la página de entidad, pero no modifican la puntuación ni las alertas.
+              </p>
+              <RecommendationRules />
             </Film>
 
             <Film id="reglas" className={JUMP} title="Reglas de indicadores" meta="Casos límite y disponibilidad">
