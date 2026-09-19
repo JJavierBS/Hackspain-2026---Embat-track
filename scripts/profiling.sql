@@ -205,3 +205,59 @@ WHERE a.amount < 0 GROUP BY 1 ORDER BY 1;
 SELECT ABS(amount) AS abs_amount, COUNT(*) AS n, COUNT(DISTINCT company_id) AS n_companies,
        any_value(category) AS category, any_value(description) AS description
 FROM tx WHERE ABS(amount) >= 1e8 GROUP BY 1 ORDER BY 2 DESC LIMIT 12;
+
+-- Q13-Q15 read the staged tables of a pipeline run (data/xray.duckdb, backend stopped).
+ATTACH 'data/xray.duckdb' AS x (READ_ONLY);
+USE x;
+
+.print '## Q13 credit lines: which snapshot explains the gap between balances.balance and outstanding'
+CREATE OR REPLACE TEMP TABLE q13 AS
+WITH d AS (SELECT d.product_id, d.granted, d.outstanding, d.liquidity, b.balance, CAST(b.date AS DATE) AS bdate
+           FROM raw_debt_products d JOIN raw_balances b USING (product_id) WHERE d.type = 'lineofcredit'),
+t AS (SELECT t.product_id, SUM(amount) FILTER (WHERE t.is_booked AND t.date > d.bdate) AS after_b
+      FROM stg_transactions t JOIN d USING (product_id) GROUP BY 1)
+SELECT d.*, t.product_id IS NOT NULL AS has_tx, COALESCE(after_b, 0) AS tx_after FROM d LEFT JOIN t USING (product_id);
+SELECT has_tx, COUNT(*) AS n, SUM((ABS(balance - outstanding) < 0.01)::INT) AS eq_outstanding,
+       SUM((ABS(balance - outstanding) >= 0.01 AND ABS(balance + tx_after - outstanding) < 0.01)::INT) AS out_eq_bal_plus_after,
+       SUM((ABS(balance - outstanding) >= 0.01 AND ABS(balance - tx_after - outstanding) < 0.01)::INT) AS out_eq_bal_minus_after,
+       SUM((ABS(balance - outstanding) >= 0.01 AND ABS(balance - liquidity) < 0.01)::INT) AS bal_eq_liquidity,
+       SUM((ABS(balance - outstanding) >= 0.01 AND ABS(balance + outstanding) < 0.01)::INT) AS bal_eq_neg_outstanding,
+       MIN(bdate) AS min_date, MAX(bdate) AS max_date
+FROM q13 GROUP BY 1;
+
+.print '## Q14 rebuilt drawn / granted within [0, 1.2] at every month end, per snapshot'
+CREATE OR REPLACE TEMP TABLE q14 AS
+WITH lines AS (
+  SELECT d.product_id, ABS(d.granted) AS g, d.outstanding AS s_out, b.balance AS s_bal
+  FROM raw_debt_products d LEFT JOIN raw_balances b USING (product_id) WHERE d.type = 'lineofcredit'),
+tx AS (SELECT product_id, month, SUM(amount) AS amt FROM stg_transactions WHERE is_booked GROUP BY 1, 2)
+SELECT l.product_id, l.g, m.month,
+       -(l.s_out - COALESCE(SUM(tx.amt) FILTER (WHERE tx.month > m.month), 0)) AS drawn_out,
+       -(l.s_bal - COALESCE(SUM(tx.amt) FILTER (WHERE tx.month > m.month), 0)) AS drawn_bal
+FROM lines l CROSS JOIN months m LEFT JOIN tx ON tx.product_id = l.product_id
+WHERE l.product_id IN (SELECT product_id FROM tx)
+GROUP BY l.product_id, l.g, m.month, l.s_out, l.s_bal;
+SELECT 'outstanding' AS snap, COUNT(*) AS lines, SUM(ok::INT) AS lines_all_in, ROUND(AVG(ok::INT), 3) AS share_lines,
+       SUM(neg::INT) AS lines_credit_below_minus_20pct, SUM(far::INT) AS lines_above_2
+FROM (SELECT product_id, bool_and(GREATEST(drawn_out, 0) / g <= 1.2) AS ok,
+             bool_or(drawn_out / g < -0.2) AS neg, bool_or(drawn_out / g > 2) AS far
+      FROM q14 WHERE g > 0 GROUP BY 1)
+UNION ALL
+SELECT 'balances', COUNT(*), SUM(ok::INT), ROUND(AVG(ok::INT), 3), SUM(neg::INT), SUM(far::INT)
+FROM (SELECT product_id, bool_and(GREATEST(drawn_bal, 0) / g <= 1.2) AS ok,
+             bool_or(drawn_bal / g < -0.2) AS neg, bool_or(drawn_bal / g > 2) AS far
+      FROM q14 WHERE g > 0 AND drawn_bal IS NOT NULL GROUP BY 1);
+SELECT COUNT(DISTINCT product_id) FILTER (WHERE g IS NULL OR g = 0) AS rebuilt_lines_without_granted FROM q14;
+
+.print '## Q15 interest flows (LEV_FUNDING_COST numerator)'
+SELECT category, COUNT(*) AS n, SUM((amount_eur < 0)::INT) AS n_out, ROUND(SUM(-amount_eur)) AS eur_net_out,
+       COUNT(DISTINCT company_id) AS n_companies, COUNT(DISTINCT company_id || month) AS n_company_months
+FROM stg_transactions WHERE is_booked AND category = 'interest_charge' GROUP BY 1;
+WITH debtco AS (SELECT entity_id, SUM(outstanding_eur) AS debt FROM debt_snapshot
+                WHERE entity_type = 'COMPANY' GROUP BY 1 HAVING SUM(outstanding_eur) > 0),
+i AS (SELECT company_id, SUM(-amount_eur) AS int12 FROM stg_transactions
+      WHERE is_booked AND category = 'interest_charge' AND month > '2025-08' GROUP BY 1)
+SELECT COUNT(*) AS companies_with_debt, SUM((i.company_id IS NULL OR int12 <= 0)::INT) AS no_interest_12m,
+       ROUND(quantile_cont(int12 / debt, 0.5), 4) AS p50_interest_over_debt,
+       ROUND(quantile_cont(int12 / debt, 0.95), 4) AS p95_interest_over_debt
+FROM debtco d LEFT JOIN i ON i.company_id = d.entity_id;

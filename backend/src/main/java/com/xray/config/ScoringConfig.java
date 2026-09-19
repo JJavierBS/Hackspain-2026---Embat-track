@@ -32,7 +32,9 @@ public record ScoringConfig(
         DataRules dataRules,
         LevDebtToCfConfig levDebtToCf,
         MomentumConfig momentum,
-        ConcentrationConfig concentration) {
+        ConcentrationConfig concentration,
+        WindowConfig windows,
+        TaxRegularityConfig taxRegularity) {
 
     public ScoringConfig {
         ScoringConfigValidator.validate(indicators, profiles);
@@ -74,5 +76,14 @@ public record ScoringConfig(
      * of the window's operating flow (phase 3 decision D9; only 4.9 % of inflow amount has a counterparty).
      */
     public record ConcentrationConfig(double minCounterpartyCoverage) {
+    }
+
+    /** 12m windows annualize over active months (phase 3 contract item 6). */
+    public record WindowConfig(int annualizeMinMonths) {
+    }
+
+    /** TAX_REGULARITY cadence rule (phase 3 decision D2). */
+    public record TaxRegularityConfig(int windowMonths, double monthlyMaxMedianGap, int monthlyCadenceMonths,
+                                      int quarterlyCadenceMonths, int minTaxMonths) {
     }
 }

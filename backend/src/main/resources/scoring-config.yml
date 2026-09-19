@@ -101,6 +101,9 @@ scoring:
     intragroup-max-lag-days: 2       # Q5b
     own-account-max-lag-days: 1      # Q5d: opposite amounts on two products of one company -> INTERNAL; -1 = off
     tx-excluded-abs-amounts: [999999999]   # Q12: sentinel amounts, dropped from staging
+    interest-categories: [interest_charge]             # LEV_FUNDING_COST numerator (DATA_FINDINGS Q1)
+    credit-line-debt-types: [lineofcredit]             # DEBT_LINE_UTIL (DATA_FINDINGS Q6)
+    factoring-debt-types: [factoring, confirming]      # LEV_FACTORING_RELIANCE (SPEC §6)
 
   indicators:
     LIQ_RUNWAY:             { category: LIQUIDITY, method: anchors, status: closed, source: "runway literature", anchors: [[0,0],[1,20],[3,50],[6,75],[12,100]] }
@@ -167,3 +170,15 @@ scoring:
   # CON_* are unavailable below this coverage of the window's operating flow. PROVISIONAL value, review after block 3.
   concentration:
     min-counterparty-coverage: 0.5
+
+  # Phase 3 contract item 6: 12m windows annualize over active months; fewer than this -> unavailable.
+  windows:
+    annualize-min-months: 6
+
+  # Phase 3 decision D2: cadence from the median gap between months with a TAX outflow.
+  tax-regularity:
+    window-months: 12
+    monthly-max-median-gap: 1.5      # median gap <= this -> monthly cadence (1), else quarterly (3)
+    monthly-cadence-months: 1
+    quarterly-cadence-months: 3
+    min-tax-months: 2                # fewer TAX months in the history up to m -> cadence unknown -> unavailable
