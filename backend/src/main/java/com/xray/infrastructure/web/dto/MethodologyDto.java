@@ -5,7 +5,8 @@ import java.util.Map;
 
 /** GET /api/methodology (phase 5 contract item 8, decision F20). No weights: those come from /api/profiles. */
 public record MethodologyDto(List<AlertRuleDto> alertRules, Products products, LimitEngine limitEngine,
-                             Insurer insurer, Momentum momentum, Watchlist watchlist) {
+                             Insurer insurer, Momentum momentum, Watchlist watchlist,
+                             Forecast forecast) {
 
     /** trigger is Spanish, built from the config thresholds. fired = alerts of the unit in the last run. */
     public record AlertRuleDto(String code, String direction, boolean event, String trigger, long fired) {
@@ -27,5 +28,10 @@ public record MethodologyDto(List<AlertRuleDto> alertRules, Products products, L
     }
 
     public record Watchlist(int minCritical, int minWarn) {
+    }
+
+    /** Phase 7 projection: method name and scoring.forecast values, so the UI never hardcodes them (B-4). */
+    public record Forecast(String method, double meanReversion, int maxHorizonMonths, int minPoints,
+                           int minHistoryMonths, int mediumHistoryMonths) {
     }
 }

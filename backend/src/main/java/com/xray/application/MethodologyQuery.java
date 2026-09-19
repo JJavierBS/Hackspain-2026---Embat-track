@@ -55,6 +55,7 @@ public class MethodologyQuery {
         ScoringConfig.ProductsConfig p = config.products();
         LimitEngineConfig l = config.limitEngine();
         ScoringConfig.WatchlistConfig w = config.alerts().watchlist();
+        ScoringConfig.ForecastConfig f = config.forecast();
         return new MethodologyDto(alertRules,
                 new MethodologyDto.Products(p.limitProfile().name(), p.premiumProfile().name(),
                         p.momentumProfile().name()),
@@ -64,6 +65,8 @@ public class MethodologyQuery {
                         l.spreadBpsByBand(), l.actionThreshold(), l.roundingEur()),
                 new MethodologyDto.Insurer(config.insurer().basePremiumRate(), config.insurer().multiplierByBand()),
                 new MethodologyDto.Momentum(p.momentum().risingStarMaxLevel(), p.momentum().risingStarMinTraj()),
-                new MethodologyDto.Watchlist(w.minCritical(), w.minWarn()));
+                new MethodologyDto.Watchlist(w.minCritical(), w.minWarn()),
+                new MethodologyDto.Forecast("MEAN_REVERSION_AR1", f.meanReversion(), f.maxHorizonMonths(),
+                        f.minPoints(), f.minHistoryMonths(), f.mediumHistoryMonths()));
     }
 }
