@@ -112,7 +112,6 @@ export const SECTIONS: { id: string; title: string; keys: string[] }[] = [
   { id: "presets", title: "Presets por cliente", keys: [] },
   { id: "pesos", title: "Pesos por perfil", keys: ["profiles"] },
   { id: "indicadores", title: "Indicadores y anclas", keys: ["indicators"] },
-  { id: "recomendaciones", title: "Recomendaciones de entidad", keys: ["recommendations"] },
   { id: "reglas", title: "Reglas de indicadores", keys: ["runwayCapMonths", "debtDscr", "levDebtToCf", "concentration", "windows", "taxRegularity"] },
   { id: "trayectoria", title: "Trayectoria y regímenes", keys: ["trajectory", "regimes", "momentum"] },
   { id: "estados", title: "Estados y confianza", keys: ["statuses", "confidence", "explanation"] },
@@ -153,9 +152,6 @@ const share = { percent: true, min: 0, max: 1 } as const;
 
 /** Label, unit and bounds of every editable number, keyed by dotted path. A missing entry falls back to the key. */
 export const FIELDS: Record<string, FieldMeta> = {
-  "recommendations.topN": { label: "Número de prioridades", hint: "Cuántas recomendaciones aparecen en la entidad.", integer: true, min: 1, max: 9 },
-  "recommendations.urgentLevelBelow": { label: "Nivel que marca urgencia", hint: "Un indicador por debajo de este nivel se marca como urgente.", ...points },
-  "recommendations.urgentTrajectoryBelow": { label: "Trayectoria que marca urgencia", hint: "Una trayectoria por debajo de este nivel se marca como urgente.", ...points },
   // Indicator rules
   runwayCapMonths: { label: "Tope de meses de caja", hint: "Meses de caja por encima de este valor cuentan como este valor.", unit: "meses", min: 1 },
   "debtDscr.noDebtLevel": { label: "DSCR sin deuda: nivel", hint: "Nivel del indicador cuando la entidad no paga deuda.", ...points },

@@ -140,8 +140,6 @@ export function useShowcasePairs(profile: Profile, month: string) {
 }
 
 /** The one request that computes (F8): O(1) arithmetic on the stored limit decision. It writes nothing. */
-import type { ActionPlan, ActionPlanRequest } from "./types";
-
 export function useSimulateLimit(id: string) {
   return useMutation({
     mutationFn: async (body: SimulateLimitRequest) =>
@@ -151,11 +149,6 @@ export function useSimulateLimit(id: string) {
   });
 }
 
-export function useActionPlan(id: string) {
-  return useMutation({
-    mutationFn: async (body: ActionPlanRequest) => apiPost<ActionPlan>(`/entities/${id}/action-plan`, body),
-  });
-}
 export function useMeta() {
   return useQuery({
     queryKey: ["meta"],

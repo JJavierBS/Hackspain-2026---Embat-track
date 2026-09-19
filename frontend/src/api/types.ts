@@ -250,47 +250,6 @@ export interface MomentumView {
   growthPercentile: number | null;
   risingStar: boolean;
 }
-export interface ActionPlanRequest {
-  entityId: string;
-  entityName: string;
-  month: string;
-  profile: string;
-  score: number;
-  level: number | null;
-  trajectory: number | null;
-  status: string | null;
-  regime: string | null;
-  activeAlerts: number;
-  changes: string[];
-  recommendations: Array<{
-    category: string;
-    title: string;
-    action: string;
-    indicator: string;
-    value: number | null;
-    level: number;
-    trajectory: number | null;
-  }>;
-}
-
-export interface ActionPlan {
-  source: "HELMcode" | "RULES";
-  objective?: string;
-  diagnosis?: string;
-  risks?: string[];
-  summary: string;
-  steps: Array<{
-    phase?: string;
-    priority: string;
-    title: string;
-    why?: string;
-    action: string;
-    firstStep?: string;
-    timeframe: string;
-    owner?: string;
-    metric: string;
-  }>;
-}
 
 export interface EntityDetail {
   id: string;

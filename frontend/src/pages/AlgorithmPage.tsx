@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Category } from "../api/types";
 import { useAlgorithmConfig, useApplyConfig } from "../api/useAlgorithmConfig";
 import { AlertLevels } from "../components/algorithm/AlertLevels";
@@ -9,7 +9,6 @@ import { PresetPicker } from "../components/algorithm/PresetPicker";
 import { SectionNav } from "../components/algorithm/SectionNav";
 import { BandMapField, FieldGrid } from "../components/algorithm/Fields";
 import { WeightsTable } from "../components/algorithm/WeightsTable";
-import { RecommendationRules } from "../components/algorithm/RecommendationRules";
 import { Film } from "../components/Film";
 import { IconWarning } from "../components/Icons";
 import { LoadState } from "../components/LoadState";
@@ -23,15 +22,14 @@ export function AlgorithmPage() {
   const apply = useApplyConfig(data?.bootId);
   const [draft, setDraft] = useState<ConfigTree | null>(null);
   const [invalid, setInvalid] = useState<Set<string>>(() => new Set());
-  const [synced, setSynced] = useState<typeof data>();
+  const [synced, setSynced] = useState(data);
   useHashScroll(draft !== null);
 
-  // A new server config (first load, or after a restart) replaces the draft after the render commits.
-  useEffect(() => {
-    if (data === synced) return;
+  // A new server config (first load, or after a restart) replaces the draft.
+  if (data !== synced) {
     setSynced(data);
     setDraft(data?.config ?? null);
-  }, [data, synced]);
+  }
 
   const reportInvalid = useCallback((key: string, bad: boolean) => {
     setInvalid((prev) => {
@@ -121,13 +119,6 @@ export function AlgorithmPage() {
                   ))}
                 </section>
               ))}
-            </Film>
-
-            <Film id="recomendaciones" className={JUMP} title="Recomendaciones de entidad" meta="Prioridades de la sección Qué hacer ahora">
-              <p className="mb-6 max-w-[70ch] text-ink-muted">
-                Controla qué indicadores aparecen primero y cuándo se consideran urgentes. Estos parámetros cambian la orientación de la página de entidad, pero no modifican la puntuación ni las alertas.
-              </p>
-              <RecommendationRules />
             </Film>
 
             <Film id="reglas" className={JUMP} title="Reglas de indicadores" meta="Casos límite y disponibilidad">

@@ -2,7 +2,6 @@ import { type FormEvent, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import type {
   Alert,
-  ActionPlan,
   BandLetter,
   Category,
   CategoryScore,
@@ -19,8 +18,7 @@ import type {
   PremiumQuote,
 } from "../api/types";
 import { ApiError, isServerDown } from "../api/client";
-import { useActionPlan, useEntity, useMeta, useMethodology, useSimulateLimit } from "../api/queries";
-import { useAlgorithmConfig } from "../api/useAlgorithmConfig";
+import { useEntity, useMeta, useMethodology, useSimulateLimit } from "../api/queries";
 import { AlertList } from "../components/AlertList";
 import { LimitHistoryChart } from "../components/LimitHistoryChart";
 import { PremiumHistoryChart } from "../components/PremiumHistoryChart";
@@ -197,20 +195,6 @@ export function EntityPage() {
         <Changes changes={data.changes3m} against={against} />
       </div>
 
-      <Recommendations
-        indicators={data.indicators}
-        entityId={data.id}
-        entityName={data.name}
-        month={data.month}
-        profile={data.profile}
-        score={row.final}
-        level={row.level}
-        trajectory={row.traj}
-        status={row.status}
-        regime={row.regime}
-        activeAlerts={row.activeAlerts}
-        changes={data.changes3m.slice(0, 5).map((change) => `${indicatorLabel(change.driverId)}: ${change.narrative}`)}
-      />
       <Categories categories={data.categories} />
       <Indicators indicators={data.indicators} />
       {data.companies.length > 0 && <Companies companies={data.companies} />}
@@ -521,204 +505,6 @@ function Changes({ changes, against }: { changes: Change[]; against: string }) {
       )}
     </Film>
   );
-}
-
-function Recommendations({
-  indicators, entityId, entityName, month, profile, score, level, trajectory, status, regime, activeAlerts, changes,
-}: {
-  indicators: IndicatorRow[]; entityId: string; entityName: string; month: string; profile: string; score: number;
-  level: number | null; trajectory: number | null; status: string | null; regime: string | null; activeAlerts: number; changes: string[];
-}) {
-  const actionPlan = useActionPlan(entityId);
-  const { data: algorithmConfig } = useAlgorithmConfig();
-  const configured = algorithmConfig?.config.recommendations as
-    | {
-        topN?: number;
-        urgentLevelBelow?: number;
-        urgentTrajectoryBelow?: number;
-        rules?: Record<string, { enabled?: boolean; priority?: number; maxLevel?: number; maxTrajectory?: number; profiles?: string[]; title?: string; action?: string }>;
-      }
-    | undefined;
-  const topN = configured?.topN ?? 3;
-  const urgentLevelBelow = configured?.urgentLevelBelow ?? 40;
-  const urgentTrajectoryBelow = configured?.urgentTrajectoryBelow ?? 40;
-  const rules = configured?.rules ?? {};
-  const rows = indicators
-    .filter((indicator) => indicator.available && indicator.level !== null && recommendationIsEnabled(indicator, rules, profile))
-    .sort((a, b) => {
-      const priority = (rules[a.category]?.priority ?? 99) - (rules[b.category]?.priority ?? 99);
-      return priority || (a.level ?? 100) - (b.level ?? 100) || (a.traj ?? 50) - (b.traj ?? 50);
-    })
-    .filter((indicator, index, all) => all.findIndex((candidate) => candidate.category === indicator.category) === index)
-    .slice(0, topN);
-
-  return (
-    <Film title="Qué hacer ahora" meta="Prioridades para recuperar la salud financiera">
-      {rows.length === 0 ? (
-        <p className="text-ink-muted">No hay indicadores disponibles para proponer acciones.</p>
-      ) : (
-        <ol className="grid gap-4">
-          {rows.map((indicator, index) => {
-            const urgent = (indicator.level ?? 100) < urgentLevelBelow || (indicator.traj ?? 50) < urgentTrajectoryBelow;
-            return (
-              <li key={indicator.indicatorId} className="flex gap-3 border-b border-dashed border-rule pb-3 last:border-b-0">
-                <span className="grid h-6 w-6 shrink-0 place-items-center border border-ink/30 text-sm font-semibold">{index + 1}</span>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                    <span className="font-semibold">{recommendationTitle(indicator, rules)}</span>
-                    <span className={urgent ? "text-sm font-semibold text-down" : "text-sm text-ink-muted"}>
-                      nivel {formatScore(indicator.level ?? 0)}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[15px] text-ink-muted">{recommendationAction(indicator, rules)}</p>
-                  <p className="mt-1 text-sm text-ink-muted">
-                    Vigilar {indicatorLabel(indicator.indicatorId).toLowerCase()}: {formatIndicatorValue(indicator.indicatorId, indicator.value)}
-                    {indicator.traj !== null && ` · trayectoria ${formatScore(indicator.traj)}`}
-                  </p>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-      )}
-      {rows.length > 0 && (
-        <div className="mt-6 border-t border-rule pt-5">
-          <button
-            type="button"
-            className="group flex w-full items-center justify-center gap-3 border border-rule bg-paper px-4 py-2.5 text-left text-[15px] font-medium text-ink transition-colors hover:border-ink hover:bg-white disabled:cursor-wait disabled:opacity-55"
-            disabled={actionPlan.isPending}
-            aria-label="Generar un plan de acción personalizado con inteligencia artificial"
-            onClick={() =>
-              actionPlan.mutate({
-                entityId,
-                entityName,
-                month,
-                profile,
-                score,
-                level,
-                trajectory,
-                status,
-                regime,
-                activeAlerts,
-                changes,
-                recommendations: rows.map((indicator) => ({
-                  category: indicator.category,
-                  title: recommendationTitle(indicator, rules),
-                  action: recommendationAction(indicator, rules),
-                  indicator: indicatorLabel(indicator.indicatorId),
-                  value: indicator.value,
-                  level: indicator.level ?? 0,
-                  trajectory: indicator.traj,
-                })),
-              })
-            }
-          >
-            <IconStar width={17} height={17} className="shrink-0 text-ink-muted" />
-            <span>
-              <span className="block">{actionPlan.isPending ? "Generando plan..." : "Generar plan de acción"}</span>
-              <span className="mt-0.5 block text-xs font-normal text-ink-muted">Convierte estas prioridades en pasos concretos</span>
-            </span>
-          </button>
-          {actionPlan.error && <p className="mt-2 text-sm text-down">No se pudo generar el plan. Puedes intentarlo de nuevo.</p>}
-          {actionPlan.data && <ActionPlanView plan={actionPlan.data} />}
-        </div>
-      )}
-    </Film>
-  );
-}
-
-function ActionPlanView({ plan }: { plan: ActionPlan }) {
-  const risks = plan.risks ?? [];
-  return (
-    <div className="mt-6 grid gap-5 border border-rule bg-paper p-5">
-      <div>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-lg font-semibold">Plan de acción personalizado</h3>
-          <span className="border border-rule px-2 py-1 text-xs font-medium uppercase tracking-wide text-ink-muted">
-            {plan.source === "HELMcode" ? "IA · Helmcode" : "Plan base"}
-          </span>
-        </div>
-        <p className="mt-4 border-l-2 border-rule pl-3 font-semibold">Objetivo: {plan.objective ?? "Mejorar las prioridades financieras detectadas"}</p>
-        <p className="mt-2 text-[15px] text-ink-muted"><span className="font-semibold text-ink">Diagnóstico:</span> {plan.diagnosis ?? plan.summary}</p>
-        <p className="mt-1 text-[15px] text-ink-muted">{plan.summary}</p>
-      </div>
-      {risks.length > 0 && (
-        <div className="border-l-2 border-down bg-paper px-4 py-3">
-          <p className="text-sm font-semibold uppercase tracking-wide text-down">Riesgos a vigilar</p>
-          <ul className="mt-2 grid gap-1 text-sm text-ink-muted">
-            {risks.map((risk, index) => <li key={`${risk}-${index}`}>· {risk}</li>)}
-          </ul>
-        </div>
-      )}
-      <ol className="grid list-none gap-4 md:grid-cols-3">
-        {plan.steps.map((step, index) => (
-          <li key={`${step.title}-${index}`} className="border border-rule bg-paper p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-              <span>Fase {index + 1} · {step.phase ?? "Ejecutar"}</span>
-              <span className={step.priority === "HIGH" ? "text-down" : "text-ink"}>{step.priority}</span>
-            </div>
-            <p className="mt-3 font-semibold">{step.title}</p>
-            <p className="mt-2 text-sm text-ink-muted">{step.why ?? "Esta prioridad requiere seguimiento financiero."}</p>
-            <p className="mt-3 text-[15px]">{step.action}</p>
-            <dl className="mt-4 grid gap-2 border-t border-rule pt-3 text-sm">
-              <div className="grid gap-0.5"><dt className="font-semibold">Primer paso</dt><dd className="text-ink-muted">{step.firstStep ?? step.action}</dd></div>
-              <div className="grid gap-0.5"><dt className="font-semibold">Responsable</dt><dd className="text-ink-muted">{step.owner ?? "Dirección financiera"}</dd></div>
-              <div className="grid gap-0.5"><dt className="font-semibold">Plazo</dt><dd className="text-ink-muted">{step.timeframe}</dd></div>
-              <div className="grid gap-0.5"><dt className="font-semibold">Comprobar</dt><dd className="text-ink-muted">{step.metric}</dd></div>
-            </dl>
-          </li>
-        ))}
-      </ol>
-    </div>
-  );
-}
-
-function recommendationTitle(indicator: IndicatorRow, rules: Record<string, { title?: string }> = {}): string {
-  const configuredTitle = rules[indicator.category]?.title;
-  if (configuredTitle) return configuredTitle;
-  switch (indicator.category) {
-    case "LIQUIDITY": return "Proteger la caja disponible";
-    case "OPERATING_CASH_FLOW": return "Recuperar la generación de caja";
-    case "PAYMENT_BEHAVIOUR":
-    case "DELINQUENCY": return "Acelerar cobros y ordenar pagos";
-    case "DEBT_SERVICE":
-    case "LEVERAGE": return "Reducir la presión financiera";
-    case "CONCENTRATION": return "Diversificar clientes y proveedores";
-    case "TAX_REGULARITY": return "Regularizar las obligaciones fiscales";
-    case "ACTIVITY_GROWTH": return "Revisar el ritmo de actividad";
-    default: return `Revisar ${indicatorLabel(indicator.indicatorId).toLowerCase()}`;
-  }
-}
-
-function recommendationIsEnabled(
-  indicator: IndicatorRow,
-  rules: Record<string, { enabled?: boolean; maxLevel?: number; maxTrajectory?: number; profiles?: string[] }> = {},
-  profile: string,
-): boolean {
-  const rule = rules[indicator.category];
-  if (!rule) return true;
-  if (rule.enabled === false) return false;
-  if (rule.profiles && !rule.profiles.includes(profile)) return false;
-  const maxLevel = rule.maxLevel ?? 100;
-  const maxTrajectory = rule.maxTrajectory ?? 100;
-  return (indicator.level ?? 100) <= maxLevel || (indicator.traj ?? 100) <= maxTrajectory;
-}
-
-function recommendationAction(indicator: IndicatorRow, rules: Record<string, { action?: string }> = {}): string {
-  const configuredAction = rules[indicator.category]?.action;
-  if (configuredAction) return configuredAction;
-  switch (indicator.category) {
-    case "LIQUIDITY": return "Preparar una previsión de tesorería de 13 semanas y congelar gastos no esenciales hasta recuperar margen.";
-    case "OPERATING_CASH_FLOW": return "Separar cobros comprometidos de cobros inciertos y priorizar las operaciones que convierten ventas en caja.";
-    case "PAYMENT_BEHAVIOUR":
-    case "DELINQUENCY": return "Contactar primero con los saldos vencidos de mayor importe y fijar responsables y fechas de cobro.";
-    case "DEBT_SERVICE":
-    case "LEVERAGE": return "Revisar vencimientos y negociar plazos antes de asumir nueva deuda o aumentar el uso de líneas.";
-    case "CONCENTRATION": return "Definir un plan para reducir la dependencia de las principales contrapartes y medirlo cada mes.";
-    case "TAX_REGULARITY": return "Conciliar las obligaciones próximas con la previsión de caja y resolver primero los importes vencidos.";
-    case "ACTIVITY_GROWTH": return "Validar que el crecimiento tiene margen y caja suficientes antes de acelerarlo.";
-    default: return "Revisar el detalle del indicador y acordar una acción con responsable y fecha de seguimiento.";
-  }
 }
 
 function Categories({ categories }: { categories: CategoryScore[] }) {

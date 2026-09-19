@@ -22,14 +22,7 @@ async function fetchConfig(): Promise<AlgorithmConfig> {
 }
 
 export function useAlgorithmConfig() {
-  return useQuery({
-    queryKey: ["algorithm-config"],
-    queryFn: fetchConfig,
-    retry: 1,
-    staleTime: 0,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: false,
-  });
+  return useQuery({ queryKey: ["algorithm-config"], queryFn: fetchConfig, retry: 1, refetchOnWindowFocus: false });
 }
 
 export type ApplyPhase =

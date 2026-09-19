@@ -46,8 +46,7 @@ public class AlgorithmConfigUseCase {
     static final List<String> EDITABLE = List.of(
             "profiles", "indicators", "trajectory", "regimes", "statuses", "confidence", "momentum",
             "debtDscr", "levDebtToCf", "concentration", "windows", "taxRegularity", "runwayCapMonths",
-            "limitEngine", "insurer", "products", "alerts", "leadTime", "showcase", "forecast", "explanation",
-            "recommendations");
+            "limitEngine", "insurer", "products", "alerts", "leadTime", "showcase", "forecast", "explanation");
 
     /** Sections whose entries merge key by key across property sources, so only changed entries are written. */
     private static final List<String> ENTRY_MAPS = List.of("profiles", "indicators");

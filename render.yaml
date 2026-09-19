@@ -20,11 +20,3 @@ services:
         value: "true"
       - key: XRAY_DATA_DIR
         value: /data
-      - key: HELMCODE_BASE_URL
-        value: https://api.helmcode.com/v1
-      - key: HELMCODE_MODEL
-        value: qwen3.6
-      - key: HELMCODE_ENABLED
-        value: "true"
-      - key: HELMCODE_API_KEY
-        sync: false
