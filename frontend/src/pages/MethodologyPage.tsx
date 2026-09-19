@@ -539,7 +539,9 @@ function Examples({ examples }: { examples: LeadTime["examples"] }) {
                     <span className="block truncate font-semibold underline-offset-4 group-hover:underline">{e.entityName}</span>
                     <span className="flex items-center gap-1.5 text-sm text-ink-muted">
                       <Icon width={13} height={13} className={down ? "text-down" : "text-up"} />
-                      {e.entityId} · {TRIGGER_LABELS[e.trigger]} · evento en {monthShort(e.eventMonth)}
+                      {/* The data can name an entity by its id: do not print it twice. */}
+                      {e.entityName === e.entityId ? "" : `${e.entityId} · `}
+                      {TRIGGER_LABELS[e.trigger]} · evento en {monthShort(e.eventMonth)}
                     </span>
                   </span>
                   <span className="shrink-0 text-right">
