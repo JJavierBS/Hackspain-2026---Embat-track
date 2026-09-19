@@ -13,7 +13,7 @@ services:
     plan: starter
     region: frankfurt
     dockerfilePath: ./backend/Dockerfile
-    dockerContext: .
+    dockerContext: ./backend
     healthCheckPath: /actuator/health
     envVars:
       - key: XRAY_DEMO_MODE
