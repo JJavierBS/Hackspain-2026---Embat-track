@@ -81,3 +81,21 @@ Limit engine at M23 (BANK): DECLINE 5 → 10 (band E has no spread), MAINTAIN 16
 
 No profile clusters in a ~15-point band, so the anchors stay. INSURER is the tightest: check it again
 after any change to the `PAY_*` anchors.
+
+## Band S — top tier above A (2026-09-19)
+
+**Change.** `scoring.bands` gains `s: 90`: S ≥ 90, A 80–89.9, the rest unchanged. `Band` is now
+`S, A, B, C, D, E` (ordinal = best to worst, so band-step alerts count S → A as one step).
+The config validator requires `100 ≥ s > a > b > c > d > 0`.
+
+**Why.** Product request: a tier that singles out the best entities. At M23 the cut at 90 holds
+3 BANK, 3 FUND and 2 INSURER entities (of 248), so S stays rare; A keeps the rest of the ≥ 80 group.
+
+**Products.** Our assumptions, like the rest of the grid (`docs/WEIGHTS_JUSTIFICATION.md` §4), no source:
+- `limit-engine.spread-bps-by-band.S: 100` (A is 150).
+- `insurer.multiplier-by-band.S: 0.5` (A is 0.7).
+- Insurer preset (`presets.yml`): `S: 0.4`, the same as A. Atradius publishes nothing below 0.10 %,
+  so S shares A's floor instead of inventing a lower rate. A band missing from these maps means
+  DECLINE / not insurable, so every map that lists A must also list S.
+
+**Side effect.** `BandDowngradeRule` counts steps by ordinal: S → B is now 2 steps (CRITICAL), as A → C was.

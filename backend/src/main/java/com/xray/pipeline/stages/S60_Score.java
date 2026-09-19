@@ -62,7 +62,7 @@ public class S60_Score implements PipelineStage {
         Map<IndicatorId, Double> indicatorWeights = CategoryMembers.weights(config);
 
         ScoringConfig.BandConfig b = config.bands();
-        BandThresholds bands = new BandThresholds(b.a(), b.b(), b.c(), b.d());
+        BandThresholds bands = new BandThresholds(b.s(), b.a(), b.b(), b.c(), b.d());
         Map<Profile, ProfileScorer.Params> params = new EnumMap<>(Profile.class);
         for (Profile p : Profile.values()) {
             ProfileConfig pc = config.profiles().get(p);

@@ -84,7 +84,7 @@ presets:
     weightsSources: [ec-late-payment]
     changes:
       - path: insurer.multiplierByBand
-        value: { A: 0.4, B: 1.0, C: 2.0, D: 4.0 }
+        value: { S: 0.4, A: 0.4, B: 1.0, C: 2.0, D: 4.0 }
         status: derived
         why: "Con la prima base de 0,25 %, la banda A paga 0,10 % y la D 1,00 %: los dos extremos del rango que publica Atradius (0,1 % a 1 % de las ventas aseguradas). La banda C (0,50 %) es la media geométrica entre B y D: esa regla es nuestra. Antes, el rango iba de 0,175 % a 0,625 %."
         sources: [atradius-cost, allianz-cost]

@@ -111,7 +111,7 @@ function ReadingGuide() {
             <dl className="grid gap-3 text-[15px]">
               <div>
                 <dt className="font-semibold">Número y letra</dt>
-                <dd className="text-ink-muted">La puntuación final (0–100) toma el color de su banda, de A a E.</dd>
+                <dd className="text-ink-muted">La puntuación final (0–100) toma el color de su banda, de S a E.</dd>
               </div>
               <div>
                 <dt className="font-semibold">Final, nivel y trayectoria</dt>

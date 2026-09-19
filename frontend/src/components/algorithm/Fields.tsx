@@ -260,7 +260,7 @@ const GROUP_TITLES: Record<string, string> = {
 };
 
 /**
- * A number per band A–D (spread, premium multiplier). Band E is absent by design: decline, not insurable.
+ * A number per band S–D (spread, premium multiplier). Band E is absent by design: decline, not insurable.
  * The band chip is a health marker, so it keeps its band hue.
  */
 export function BandMapField({ path, unit, note }: { path: Path; unit: string; note: string }) {
@@ -268,7 +268,7 @@ export function BandMapField({ path, unit, note }: { path: Path; unit: string; n
   const map = (getIn(draft, path) ?? {}) as Record<string, number>;
   return (
     <div className="grid gap-2">
-      <div className="grid grid-cols-2 gap-px border border-rule bg-rule sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-px border border-rule bg-rule sm:grid-cols-3 lg:grid-cols-5">
         {BANDS.filter((b) => b.band in map).map((b) => {
           const p = [...path, b.band];
           const dirty = getIn(saved, p) !== map[b.band];

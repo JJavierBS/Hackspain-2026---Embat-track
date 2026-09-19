@@ -141,7 +141,7 @@ scoring:
   regimes: { cusum-k: 0.5, cusum-h: 4.0, cusum-z-cap: 3.0, persistence-months: 3, slope-threshold: 1.5, dip-z: -2.0, dip-max-months: 2,
              baseline-months: 6, baseline-min-points: 4, sigma-floor: 2.0, dip-recovery-months: 2,
              slope-months: 6, slope-min-points: 4, cusum-indicators: [CF_NOCF_MARGIN, PAY_DSO, LIQ_RUNWAY] }
-  bands: { a: 80, b: 65, c: 50, d: 35 }
+  bands: { s: 90, a: 80, b: 65, c: 50, d: 35 }   # S = top tier (docs/THRESHOLDS.md)
 
   limit-engine:
     base: median_operating_in_3m
@@ -153,13 +153,13 @@ scoring:
     dscr-min: 1.25
     default-term-months: 36
     reference-rate: 0.035           # EXAMPLE value, not agreed with the experts (see CLAUDE.md open items)
-    spread-bps-by-band: { A: 150, B: 250, C: 400, D: 650 }   # E missing = DECLINE
+    spread-bps-by-band: { S: 100, A: 150, B: 250, C: 400, D: 650 }   # E missing = DECLINE
     action-threshold: 0.10
     rounding-eur: 1000              # SPEC §10.1: limit rounded to 1,000 EUR (down, never up)
 
   insurer:
     base-premium-rate: 0.0025
-    multiplier-by-band: { A: 0.7, B: 1.0, C: 1.5, D: 2.5 }   # E missing = not insurable
+    multiplier-by-band: { S: 0.5, A: 0.7, B: 1.0, C: 1.5, D: 2.5 }   # E missing = not insurable
 
   debt-dscr:
     no-debt-level: 100

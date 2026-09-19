@@ -263,7 +263,7 @@ export function TrendChart({ data, activeMonth, height = 260, markers = [], even
             />
             <YAxis
               domain={[0, 100]}
-              ticks={[0, 35, 50, 65, 80, 100]}
+              ticks={[0, 35, 50, 65, 80, 90, 100]}
               tick={{ fill: "var(--color-ink-muted)", fontSize: 14 }}
               tickLine={false}
               axisLine={false}

@@ -42,7 +42,8 @@ export const PROFILE_LABELS: Record<Profile, { name: string; product: string }> 
 
 /** Score bands (SPEC §8.3). One accent color per band. */
 export const BANDS = [
-  { band: "A", min: 80, range: "≥ 80", color: "var(--color-band-a)" },
+  { band: "S", min: 90, range: "≥ 90", color: "var(--color-band-s)" },
+  { band: "A", min: 80, range: "80–89,9", color: "var(--color-band-a)" },
   { band: "B", min: 65, range: "65–79,9", color: "var(--color-band-b)" },
   { band: "C", min: 50, range: "50–64,9", color: "var(--color-band-c)" },
   { band: "D", min: 35, range: "35–49,9", color: "var(--color-band-d)" },

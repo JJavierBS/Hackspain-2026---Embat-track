@@ -9,10 +9,10 @@ interface BandLadderProps {
   hideCounts?: boolean;
 }
 
-/** The full A–E scale, always visible. The current band is lit forward. */
+/** The full S–E scale, always visible. The current band is lit forward. */
 export function BandLadder({ active, counts, hideCounts = false }: BandLadderProps) {
   return (
-    <ol className="grid grid-cols-5 gap-px border border-rule bg-rule" aria-label="Bandas de puntuación">
+    <ol className="grid grid-cols-3 gap-px sm:grid-cols-6 border border-rule bg-rule" aria-label="Bandas de puntuación">
       {BANDS.map(({ band, range, color }) => {
         const lit = active === band;
         const count = counts?.[band];

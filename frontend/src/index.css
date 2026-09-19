@@ -5,7 +5,7 @@
  * Radiology Lightbox, dressed in the Embat identity.
  * A Midnight Ink frame holds a light panel. Content sits on white films with
  * soft level-1 shadows and 8px corners. Action Blue marks "now", focus and actions.
- * Band colors (A–E) name health. Green and red name direction only.
+ * Band colors (S–E) name health. Green and red name direction only.
  * Brand face: HafferSQXH (licensed, not shipped). Hanken Grotesk is the free stand-in.
  */
 @theme {
@@ -34,6 +34,8 @@
   /* Embat coral: warmth for non-semantic markers (the demo-data flag). */
   --color-coral: #f7b2a8;
 
+  /* Band S, the top tier: a deep violet, darker than A and far from Action Blue. */
+  --color-band-s: #5b21b6;
   /* Band A moves to indigo so it never reads as Action Blue. */
   --color-band-a: #4338ca;
   --color-band-b: #0b7a88;

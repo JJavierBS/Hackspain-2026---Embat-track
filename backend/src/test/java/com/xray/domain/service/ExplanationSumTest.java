@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** ARCHITECTURE §9: Σ contrib_i = Final − 50 for every entity-month-profile. The weights are this test's own (E1). */
 class ExplanationSumTest {
 
-    private static final BandThresholds BANDS = new BandThresholds(80, 65, 50, 35);
+    private static final BandThresholds BANDS = new BandThresholds(90, 80, 65, 50, 35);
     private static final int MONTHS = 24;
 
     @Test
