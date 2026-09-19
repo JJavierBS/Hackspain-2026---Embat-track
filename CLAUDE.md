@@ -81,3 +81,9 @@ Swagger UI: `http://localhost:8080/swagger-ui.html`.
 - 10 `⏳ PENDING` anchors → Fran / José Javier after block 3 quantiles.
 - Profile weights → **closed 2026-09-19** (Embat CTO). Keep them. `docs/WEIGHTS_JUSTIFICATION.md` gives the reasons and the only cases that justify a change.
 - `limit-engine.reference-rate` in `scoring-config.yml` (0.035) is an **example value**, not agreed with the experts yet. It feeds the limit engine, the simulator and `LEV_FUNDING_COST`. Any agent may change it when the user's instructions say otherwise; record the new value and its source in `docs/THRESHOLDS.md`.
+
+## S7: verificación local de la rama de pruebas
+
+`node scripts/local.mjs setup` ejecuta tests Java, build y preparación de plantillas con la base congelada; `node scripts/local.mjs start` inicia ambos servidores en loopback. `node scripts/smoke.mjs` verifica doce fichas API y, con `CHROME_PATH`, dos fichas en Chrome aislado. Lint: `cd frontend` y `npm run lint`.
+
+S7 solo implementa prioridades de atención, no impactos de actuaciones. La inferencia opcional ocurre exclusivamente en `prepare-ia`, con clave/consentimiento, antes de iniciar el servidor. Las peticiones web leen resultados guardados. No cambiar pesos ni incluir claves/datos locales en Git. README contiene los comandos y límites. No fusionar ni publicar esta rama sin autorización de Luis.

@@ -34,10 +34,11 @@ public class EntityDetailQuery {
     private final AlertReads alerts;
     private final AnalyticsQuery analytics;
     private final ForecastQuery forecast;
+    private final SuggestionStore suggestions;
 
     public EntityDetailQuery(SqlRunner sql, ApiParams params, EntityLookup lookup, PortfolioQuery portfolio,
                              ProfilesQuery profiles, TimelineQuery timeline, ProductQuery products,
-                             AlertReads alerts, AnalyticsQuery analytics, ForecastQuery forecast) {
+                             AlertReads alerts, AnalyticsQuery analytics, ForecastQuery forecast, SuggestionStore suggestions) {
         this.sql = sql;
         this.params = params;
         this.lookup = lookup;
@@ -48,6 +49,7 @@ public class EntityDetailQuery {
         this.alerts = alerts;
         this.analytics = analytics;
         this.forecast = forecast;
+        this.suggestions = suggestions;
     }
 
     public EntityDetailDto detail(String id, String profileRaw, String monthRaw, Integer horizon) {
@@ -71,7 +73,8 @@ public class EntityDetailQuery {
                 products.momentum(e.type(), id, month),
                 alerts.read("entity_type = ? AND entity_id = ? AND profile = ? AND month <= ? ORDER BY month DESC, "
                         + AlertReads.SEVERITY_ORDER + ", code LIMIT " + MAX_ALERTS, e.type(), id, p.name(), month),
-                analytics.events(e.type(), id, p, month), forecast.forecast(e.type(), id, p, month, horizon));
+                analytics.events(e.type(), id, p, month), forecast.forecast(e.type(), id, p, month, horizon),
+                suggestions.read(e.type(), id, p.name(), month));
     }
 
     private List<CategoryDto> categories(String type, String id, Profile p, String month, boolean explained) {

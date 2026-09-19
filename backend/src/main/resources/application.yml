@@ -16,6 +16,10 @@ server:
 xray:
   data-dir: ${XRAY_DATA_DIR:../data}
   demo-mode: ${XRAY_DEMO_MODE:false}
+  suggestions:
+    model: ${HELMCODE_MODEL:glm5.3}
+    entity-ids: ${S7_ENTITY_IDS:GROUP_0039,GROUP_0101}
+    month: ${S7_MONTH:2026-07}
 
 management:
   endpoints:

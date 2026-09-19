@@ -31,6 +31,7 @@ import { Meter } from "../components/Meter";
 import { PageHeader } from "../components/PageHeader";
 import { PendingFilm } from "../components/PendingFilm";
 import { ScoreReadout } from "../components/ScoreReadout";
+import { Suggestions } from "../components/Suggestions";
 import { StatusTag, TrendTag } from "../components/StatusTag";
 import { ForecastControls } from "../components/ForecastControls";
 import { TrendChart } from "../components/TrendChart";
@@ -185,6 +186,8 @@ export function EntityPage() {
           </div>
         </div>
       </Film>
+
+      <Suggestions data={data.suggestions} />
 
       <Anticipation events={data.events} />
 
@@ -550,7 +553,7 @@ function Indicators({ indicators }: { indicators: IndicatorRow[] }) {
   })).filter((g) => g.rows.length > 0);
   const available = indicators.filter((i) => i.available).length;
   return (
-    <Film title="Indicadores" meta={`${available} de ${indicators.length} con datos · nivel 0–100 · trayectoria, 50 = estable`}>
+    <Film id="indicadores" title="Indicadores" meta={`${available} de ${indicators.length} con datos · nivel 0–100 · trayectoria, 50 = estable`}>
       {indicators.length === 0 ? (
         <p className="text-ink-muted">Sin indicadores para este mes.</p>
       ) : (

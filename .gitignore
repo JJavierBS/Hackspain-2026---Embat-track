@@ -36,6 +36,9 @@ frontend/dist/
 
 # Local env
 .env
+.env.*
+.local-maven/
+.local-npm/
 
 # Impeccable review captures (local only)
 .impeccable/review/

@@ -15,6 +15,9 @@ public class XRayApplication {
     public static void main(String[] args) {
         XRayApplication.args = args;
         context = SpringApplication.run(XRayApplication.class, args);
+        if (context.getEnvironment().getProperty("xray.suggestions.prepare", Boolean.class, false)) {
+            context.close();
+        }
     }
 
     /**

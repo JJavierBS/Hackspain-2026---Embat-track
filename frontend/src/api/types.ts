@@ -251,7 +251,38 @@ export interface MomentumView {
   risingStar: boolean;
 }
 
+export interface Suggestions {
+  v: "suggestions.v3";
+  mode: "atencion";
+  state: string;
+  source: "template" | "helmcode" | "none";
+  runId: string | null;
+  model: string | null;
+  generatedAt: string | null;
+  limitation: string;
+  items: {
+    id: string;
+    text: string;
+    refs: string[];
+    impactoCalculado: null;
+    evidence: {
+      ref: string;
+      indicatorId: string;
+      month: string;
+      value: number | null;
+      level: number | null;
+      trajectory: number | null;
+      effectiveWeight: number;
+      isStatic: boolean;
+      fallback: boolean;
+      anchorStatus: string;
+      unit: string;
+    };
+  }[];
+}
+
 export interface EntityDetail {
+  suggestions?: Suggestions | null;
   id: string;
   name: string;
   entityType: EntityType;
