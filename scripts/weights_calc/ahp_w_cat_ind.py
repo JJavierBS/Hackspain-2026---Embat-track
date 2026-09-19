@@ -7,6 +7,8 @@ Peso final de un indicador = peso_categoria[plan] * peso_intra_categoria[plan]
 
 Tres planes: bank (Banca), insurance (Aseguradora), fund (Fondo).
 """
+import json
+from pathlib import Path
 import numpy as np
 from ahp import ahp_weights
 
@@ -175,7 +177,7 @@ def final_weights(profile: str) -> dict:
     return weights, cat_w
 
 
-if __name__ == "__main__":
+"""if __name__ == "__main__":
     for profile in PROFILES:
         weights, cat_w = final_weights(profile)
         print(f"=== PLAN: {profile.upper()} ===")
@@ -186,4 +188,30 @@ if __name__ == "__main__":
         for ind, w in sorted(weights.items(), key=lambda x: -x[1]):
             print(f"  {ind:28s} {w:.4f}")
         print(f"  suma = {sum(weights.values()):.4f}")
-        print()
+        print()"""
+
+
+# ---------------------------------------------------------------------------
+# 5) NUEVA FUNCIÓN DE EXPORTACIÓN A JSON
+# ---------------------------------------------------------------------------
+def export_profiles_weights(profiles: list[str]) -> dict:
+    """Genera la estructura de diccionario anidada para todos los perfiles."""
+    profiles_data = {}
+    for profile in profiles:
+        weights, _ = final_weights(profile)
+        # Opcional: ordenar los pesos de mayor a menor para mayor limpieza visual en el JSON
+        sorted_weights = dict(sorted(weights.items(), key=lambda item: item[1], reverse=True))
+        profiles_data[profile] = {
+            "weights": sorted_weights
+        }
+    return {"profiles": profiles_data}
+
+
+if __name__ == "__main__":
+    output_data = export_profiles_weights(PROFILES)
+    
+    # Guarda el archivo weights.json en la misma carpeta donde reside el script
+    output_path = Path(__file__).resolve().parent / "weights.json"
+    
+    output_path.write_text(json.dumps(output_data, indent=2), encoding="utf-8")
+    print(f"[✓] Archivo de pesos guardado en: {output_path}")
