@@ -1,7 +1,19 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type { Profile } from "../hooks/useGlobalParams";
-import { ApiError, apiGet } from "./client";
-import type { EntityDetail, Meta, MonitorData, Portfolio, Profiles } from "./types";
+import { ApiError, apiGet, apiPost } from "./client";
+import type {
+  Direction,
+  EntityDetail,
+  LimitSimulation,
+  Meta,
+  Methodology,
+  MonitorData,
+  Portfolio,
+  Profiles,
+  Severity,
+  SimulateLimitRequest,
+  Watchlist,
+} from "./types";
 
 /** true when the app runs on synthetic demo data (VITE_MOCKS=true). */
 export const USE_MOCKS = import.meta.env.VITE_MOCKS === "true";
@@ -30,7 +42,11 @@ export function useEntity(id: string, profile: Profile, month: string) {
     queryKey: ["entity", id, profile, month],
     enabled: id !== "",
     queryFn: async () => {
-      if (!USE_MOCKS) return apiGet<EntityDetail>(`/entities/${id}?profile=${profile}&month=${month}`);
+      if (!USE_MOCKS) {
+        const detail = await apiGet<EntityDetail>(`/entities/${id}?profile=${profile}&month=${month}`);
+        // A backend before block 6 sends no `alerts`: read it as an empty list so the page still renders.
+        return { ...detail, alerts: detail.alerts ?? [] };
+      }
       const detail = (await mocks()).mockEntity(id, profile, month);
       if (!detail) throw new Error(`Entidad ${id} no encontrada`);
       return detail;
@@ -40,15 +56,57 @@ export function useEntity(id: string, profile: Profile, month: string) {
   });
 }
 
-export function useMonitor(profile: Profile, month: string) {
+export interface MonitorFilters {
+  severity?: Severity;
+  direction?: Direction;
+}
+
+export function useMonitor(profile: Profile, month: string, filters: MonitorFilters = {}) {
+  const { severity, direction } = filters;
   return useQuery({
-    queryKey: ["monitor", profile, month],
-    queryFn: async () =>
-      USE_MOCKS
-        ? (await mocks()).mockMonitor(profile, month)
-        : apiGet<MonitorData>(`/monitor/alerts?profile=${profile}&month=${month}`),
+    queryKey: ["monitor", profile, month, severity ?? null, direction ?? null],
+    queryFn: async () => {
+      if (USE_MOCKS) return (await mocks()).mockMonitor(profile, month, { severity, direction });
+      // Only the filters that are set go in the query string.
+      const q = new URLSearchParams({ profile, month });
+      if (severity) q.set("severity", severity);
+      if (direction) q.set("direction", direction);
+      return apiGet<MonitorData>(`/monitor/alerts?${q.toString()}`);
+    },
     retry: retryUnless404,
     placeholderData: (previous) => previous,
+  });
+}
+
+export function useWatchlist(profile: Profile, month: string) {
+  return useQuery({
+    queryKey: ["watchlist", profile, month],
+    queryFn: async () =>
+      USE_MOCKS
+        ? (await mocks()).mockWatchlist(profile, month)
+        : apiGet<Watchlist>(`/monitor/watchlist?profile=${profile}&month=${month}`),
+    retry: retryUnless404,
+    placeholderData: (previous) => previous,
+  });
+}
+
+/** Alert catalogue and product parameters of the current config (no weights: those come from /api/profiles). */
+export function useMethodology() {
+  return useQuery({
+    queryKey: ["methodology"],
+    queryFn: async () => (USE_MOCKS ? (await mocks()).mockMethodology() : apiGet<Methodology>("/methodology")),
+    retry: retryUnless404,
+    staleTime: 60_000,
+  });
+}
+
+/** The one request that computes (F8): O(1) arithmetic on the stored limit decision. It writes nothing. */
+export function useSimulateLimit(id: string) {
+  return useMutation({
+    mutationFn: async (body: SimulateLimitRequest) =>
+      USE_MOCKS
+        ? (await mocks()).mockSimulate(id, body)
+        : apiPost<LimitSimulation>(`/entities/${id}/limit/simulate`, body),
   });
 }
 

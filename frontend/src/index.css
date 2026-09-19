@@ -177,8 +177,37 @@ body {
   }
 }
 
+/*
+ * A replayed alert arrives under the scan wash: the same cyan that means "now" fades
+ * from the row as it settles. It is the scan line's echo, not a second effect.
+ */
+.alert-in {
+  animation: alert-in 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes alert-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+    background-color: var(--color-scan-soft);
+  }
+  40% {
+    opacity: 1;
+    background-color: var(--color-scan-soft);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    background-color: transparent;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .scanline {
     display: none;
+  }
+
+  .alert-in {
+    animation: none;
   }
 }

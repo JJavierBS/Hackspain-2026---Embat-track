@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import type { PortfolioRow, Status } from "../api/types";
-import { usePortfolio } from "../api/queries";
+import { useMethodology, usePortfolio } from "../api/queries";
 import { BandLadder } from "../components/BandLadder";
 import { Delta } from "../components/Delta";
 import { Film } from "../components/Film";
-import { IconDown, IconUp } from "../components/Icons";
+import { IconDown, IconStar, IconUp } from "../components/Icons";
 import { LoadState } from "../components/LoadState";
 import { PageHeader } from "../components/PageHeader";
 import { Sparkline } from "../components/Sparkline";
@@ -31,7 +31,7 @@ const COLUMNS: { key: SortKey; label: string; title: string }[] = [
   { key: "delta3m", label: "Δ 3m", title: "Cambio de la puntuación final frente a hace 3 meses" },
   { key: "level", label: "Nivel", title: "Salud actual 0–100" },
   { key: "traj", label: "Trayectoria", title: "Hacia dónde va: 50 = estable, más de 50 mejora" },
-  { key: "activeAlerts", label: "Alertas", title: "Alertas negativas de los últimos 3 meses" },
+  { key: "activeAlerts", label: "Alertas", title: "Alertas negativas activas este mes" },
 ];
 
 export function PortfolioPage() {
@@ -42,6 +42,22 @@ export function PortfolioPage() {
   const linkSearch = useLinkSearch();
 
   const filter = QUESTIONS.find((q) => q.key === params.get("status")) ?? null;
+  // Rising stars are a FUND screen (SPEC §10.3). On other profiles the chip is hidden and ?rising is ignored.
+  const isFund = profile === "FUND";
+  const rising = isFund && params.get("rising") === "1";
+  const { data: methodology } = useMethodology();
+  const risingRule = methodology
+    ? `Estrella emergente: nivel menor de ${methodology.momentum.risingStarMaxLevel} y trayectoria de ${methodology.momentum.risingStarMinTraj} o más`
+    : "Estrella emergente: nivel todavía bajo y trayectoria fuerte";
+
+  function toggleRising() {
+    setParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (next.get("rising") === "1") next.delete("rising");
+      else next.set("rising", "1");
+      return next;
+    });
+  }
 
   function toggleFilter(key: string) {
     setParams((prev) => {
@@ -54,7 +70,9 @@ export function PortfolioPage() {
 
   const rows = useMemo(() => {
     const all = data?.rows ?? [];
-    const filtered = filter ? all.filter((r) => r.status !== null && filter.statuses.includes(r.status)) : all;
+    const filtered = all
+      .filter((r) => !filter || (r.status !== null && filter.statuses.includes(r.status)))
+      .filter((r) => !rising || r.risingStar === true);
     const dir = sort.desc ? -1 : 1;
     // A missing value (no trajectory yet, no score 3 months before) always sorts last.
     return [...filtered].sort((a, b) => {
@@ -65,7 +83,7 @@ export function PortfolioPage() {
       if (y === null) return -1;
       return dir * (x - y);
     });
-  }, [data, filter, sort]);
+  }, [data, filter, rising, sort]);
 
   /** Rank by final score in the active profile, whatever the sort or filter. */
   const rankOf = useMemo(() => {
@@ -124,16 +142,31 @@ export function PortfolioPage() {
                   </button>
                 );
               })}
+              {isFund && (
+                <>
+                  <span aria-hidden className="mx-1 hidden w-px self-stretch bg-rule sm:block" />
+                  <RisingChip
+                    active={rising}
+                    count={data.rows.filter((r) => r.risingStar === true).length}
+                    title={risingRule}
+                    onToggle={toggleRising}
+                  />
+                </>
+              )}
             </div>
           </Film>
 
           <Film
             title="Ranking de entidades"
-            meta={filter ? `${rows.length} de ${data.rows.length} · ${filter.label}` : `${rows.length} entidades`}
+            meta={
+              filter || rising
+                ? `${rows.length} de ${data.rows.length} · ${[filter?.label, rising && "Estrellas emergentes"].filter(Boolean).join(" · ")}`
+                : `${rows.length} entidades`
+            }
           >
             <ul className="-mx-5 lg:hidden">
               {rows.map((r) => (
-                <CompactRow key={r.id} row={r} rank={rankOf.get(r.id) ?? 0} href={`/entity/${r.id}${linkSearch}`} />
+                <CompactRow key={r.id} row={r} rank={rankOf.get(r.id) ?? 0} href={`/entity/${r.id}${linkSearch}`} star={isFund && r.risingStar === true ? risingRule : null} />
               ))}
             </ul>
             <div className="-mx-5 hidden overflow-x-auto lg:block">
@@ -174,7 +207,7 @@ export function PortfolioPage() {
                 </thead>
                 <tbody>
                   {rows.map((r) => (
-                    <Row key={r.id} row={r} rank={rankOf.get(r.id) ?? 0} href={`/entity/${r.id}${linkSearch}`} />
+                    <Row key={r.id} row={r} rank={rankOf.get(r.id) ?? 0} href={`/entity/${r.id}${linkSearch}`} star={isFund && r.risingStar === true ? risingRule : null} />
                   ))}
                 </tbody>
               </table>
@@ -187,15 +220,48 @@ export function PortfolioPage() {
   );
 }
 
-function Row({ row, rank, href }: { row: PortfolioRow; rank: number; href: string }) {
+/** The rising-star filter of the FUND view, shaped like the question chips. */
+function RisingChip({ active, count, title, onToggle }: { active: boolean; count: number; title: string; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      title={title}
+      onClick={onToggle}
+      disabled={count === 0 && !active}
+      className={`flex items-center gap-2 border px-3 py-2 text-[15px] transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
+        active ? "border-ink bg-ink text-film" : "border-ink/25 bg-film text-ink hover:border-ink"
+      }`}
+    >
+      <IconStar width={15} height={15} />
+      Estrellas emergentes
+      <span className={`min-w-6 px-1.5 text-center text-sm font-semibold ${active ? "bg-film text-ink" : "bg-panel"}`}>{count}</span>
+    </button>
+  );
+}
+
+/** "Estrella emergente" next to a name on the FUND view. The rule is the tooltip. */
+function StarTag({ rule }: { rule: string }) {
+  return (
+    <span title={rule} className="inline-flex items-center gap-1 border border-rule px-1.5 text-sm font-medium whitespace-nowrap text-ink">
+      <IconStar width={13} height={13} />
+      Estrella emergente
+    </span>
+  );
+}
+
+function Row({ row, rank, href, star }: { row: PortfolioRow; rank: number; href: string; star: string | null }) {
   const band = bandOf(row.final);
   return (
     <tr className="group border-b border-rule last:border-b-0 hover:bg-scan-soft/40">
       <td className="px-5 py-3 text-ink-muted">{rank}</td>
       <td className="px-2 py-3">
-        <Link to={href} className="font-semibold text-ink underline-offset-4 group-hover:underline">
-          {row.name}
-        </Link>
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <Link to={href} className="font-semibold text-ink underline-offset-4 group-hover:underline">
+            {row.name}
+          </Link>
+          {star && <StarTag rule={star} />}
+        </span>
         <span className="block text-sm text-ink-muted">
           {row.name === row.id ? typeLabel(row) : `${row.id} · ${typeLabel(row)}`}
         </span>
@@ -239,7 +305,7 @@ function typeLabel(row: PortfolioRow): string {
 }
 
 /** The ranking row below lg: every number whole, nothing scrolls. */
-function CompactRow({ row, rank, href }: { row: PortfolioRow; rank: number; href: string }) {
+function CompactRow({ row, rank, href, star }: { row: PortfolioRow; rank: number; href: string; star: string | null }) {
   const band = bandOf(row.final);
   return (
     <li className="border-b border-rule px-5 py-4 last:border-b-0">
@@ -268,6 +334,7 @@ function CompactRow({ row, rank, href }: { row: PortfolioRow; rank: number; href
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <StatusTag status={row.status} />
+        {star && <StarTag rule={star} />}
         {row.activeAlerts > 0 && (
           <span className="border border-down/50 px-2 py-0.5 text-sm font-medium text-down">
             {row.activeAlerts} {row.activeAlerts === 1 ? "alerta" : "alertas"}

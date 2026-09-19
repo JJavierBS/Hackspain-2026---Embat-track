@@ -55,7 +55,7 @@ public class ProfilesQuery {
 
     private double lambda(Profile p) {
         if (fromRun()) {
-            List<Double> l = sql.query("SELECT ANY_VALUE(lambda) FROM profile_weights WHERE profile = ?",
+            List<Double> l = sql.query("SELECT ANY_VALUE(\"lambda\") FROM profile_weights WHERE profile = ?",
                     (rs, i) -> rs.getDouble(1), p.name());
             if (!l.isEmpty()) return l.getFirst();
         }

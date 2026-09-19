@@ -1,4 +1,4 @@
-import type { Category, Confidence, Regime, Status } from "../api/types";
+import type { AlertCode, BindingConstraint, Category, Confidence, LimitAction, Regime, Severity, Status } from "../api/types";
 import { MONTHS, type Profile } from "../hooks/useGlobalParams";
 
 const MONTH_FORMAT = new Intl.DateTimeFormat("es-ES", { month: "short", year: "numeric", timeZone: "UTC" });
@@ -196,3 +196,59 @@ function indicatorValueText(id: string, value: number): string {
 export function isPendingAnchor(anchorStatus: string): boolean {
   return anchorStatus.toUpperCase() === "PENDING";
 }
+
+/** Short Spanish name of each alert code (SPEC §8.5). The message itself comes from the pipeline. */
+export const ALERT_LABELS: Record<AlertCode, string> = {
+  RUNWAY_LOW: "Caja baja",
+  DSCR_BREACH: "Cobertura de deuda",
+  LINE_UTIL_HIGH: "Póliza al límite",
+  DSO_DRIFT: "Cobro más lento",
+  SUPPLIER_LATENESS_UP: "Retraso a proveedores",
+  OVERDUE_RECEIVABLES: "Impagos de clientes",
+  TAX_GAP: "Hueco fiscal",
+  CONCENTRATION_HIGH: "Concentración de clientes",
+  FACTORING_SPIKE: "Pico de financiación",
+  SCORE_DROP: "Caída de la nota",
+  STRUCTURAL_DECLINE: "Deterioro estructural",
+  STRUCTURAL_IMPROVEMENT: "Mejora estructural",
+  BAND_UPGRADE: "Sube de banda",
+  BAND_DOWNGRADE: "Baja de banda",
+  LIMIT_ACTION: "Acción sobre el límite",
+};
+
+export const SEVERITY_LABELS: Record<Severity, string> = { CRITICAL: "Crítica", WARN: "Aviso", INFO: "Info" };
+
+export const LIMIT_ACTION_LABELS: Record<LimitAction, string> = {
+  INCREASE: "Aumentar",
+  REDUCE: "Reducir",
+  FREEZE: "Congelar",
+  MAINTAIN: "Mantener",
+  DECLINE: "Denegar",
+};
+
+/** Which rule sets the limit (contract item 3). BAND: the band has no spread, so no credit. */
+export const BINDING_LABELS: Record<BindingConstraint | "BAND", string> = {
+  SCORE: "puntuación",
+  DSCR: "cobertura de deuda (DSCR)",
+  RUNWAY: "meses de caja",
+  BAND: "banda sin crédito",
+};
+
+const RATE = new Intl.NumberFormat("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/** A rate as a percent with 2 decimals: 0.0285 → "2,85 %". */
+export function formatRate(rate: number): string {
+  return `${RATE.format(rate * 100)} %`;
+}
+
+/** A debt service coverage ratio: 1.27 → "1,27x". */
+export function formatDscr(x: number): string {
+  return `${NUM2.format(x)}x`.replace("-", "−");
+}
+
+/** A plain number in Spanish format, up to 2 decimals: 0.25 → "0,25". */
+export function formatNumber(x: number): string {
+  return FLEX.format(x).replace("-", "−");
+}
+
+const FLEX = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 2 });

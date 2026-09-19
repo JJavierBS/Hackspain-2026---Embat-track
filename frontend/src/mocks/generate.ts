@@ -2,24 +2,39 @@
  * Synthetic demo data. It follows the SPEC formulas in simplified form so the
  * screens behave like the real engine: category trajectories (§7.2), profile
  * weights and λ (§7.4), exact contributions (§7.5), statuses (§8.3), alerts
- * (§8.5) and the limit engine (§10.1). Nothing here is Embat data.
+ * (§8.5), the limit engine, premium and momentum (§10, phase 5 contract items 3–5).
+ * Nothing here is Embat data.
  */
+import { ApiError } from "../api/client";
 import type {
   Alert,
+  AlertCode,
+  AlertRuleInfo,
   BandLetter,
   Category,
   CategoryScore,
   Confidence,
+  Direction,
   EntityDetail,
+  LimitAction,
   LimitDecision,
+  LimitSimulation,
   Meta,
+  Methodology,
+  MomentumView,
   MonitorData,
   Portfolio,
   PortfolioRow,
+  PremiumQuote,
   Profiles,
   Regime,
+  ReplayFrame,
+  Severity,
+  SimulateLimitRequest,
   Status,
   TimelinePoint,
+  Watchlist,
+  WatchlistRow,
 } from "../api/types";
 import { MONTHS, type Profile } from "../hooks/useGlobalParams";
 
@@ -90,7 +105,7 @@ const SEEDS: Seed[] = [
   { id: "G-006", name: "Viñedos Ribera", entityType: "COMPANY", base: 78, path: "lateDip", amplitude: 18, confidence: "MEDIUM", inflow: 380_000 },
   { id: "G-007", name: "Textil Levante", entityType: "GROUP", base: 62, path: "collapse", amplitude: 34, confidence: "HIGH", inflow: 760_000 },
   { id: "G-008", name: "Cerámicas Castellón", entityType: "COMPANY", base: 30, path: "stable", amplitude: 2, confidence: "LOW", inflow: 290_000 },
-  { id: "G-009", name: "Logística Ebro", entityType: "GROUP", base: 62, path: "recovery", amplitude: 18, confidence: "HIGH", inflow: 1_300_000 },
+  { id: "G-009", name: "Logística Ebro", entityType: "GROUP", base: 46, path: "recovery", amplitude: 18, confidence: "HIGH", inflow: 1_300_000 },
   { id: "G-010", name: "Farmacéutica Tajo", entityType: "COMPANY", base: 95, path: "stable", amplitude: 2, confidence: "HIGH", inflow: 2_100_000 },
   { id: "G-011", name: "Construcciones Duero", entityType: "GROUP", base: 60, path: "stable", amplitude: 3, confidence: "MEDIUM", bias: { DEBT_SERVICE: -12, LEVERAGE: -10 }, inflow: 1_500_000 },
   { id: "G-012", name: "Software Mediterráneo", entityType: "COMPANY", base: 56, path: "rise", amplitude: 16, confidence: "LOW", bias: { ACTIVITY_GROWTH: 30, DEBT_SERVICE: -14, PAYMENT_BEHAVIOUR: -8 }, inflow: 320_000 },
@@ -310,71 +325,361 @@ function median(xs: number[]): number {
 }
 
 // ---------------------------------------------------------------------------
-// Alerts (simplified SPEC §8.5, fired on transition only)
+// Product and alert parameters. Synthetic numbers shaped like /api/methodology:
+// they are test data for this generator, NOT the values of scoring-config.yml.
 
-function alertsFor(series: EntitySeries): Alert[] {
-  const { seed, months, regimes } = series;
-  const out: Alert[] = [];
-  const push = (m: number, code: string, severity: Alert["severity"], direction: Alert["direction"], message: string) =>
-    out.push({ id: `${seed.id}-${m}-${code}`, entityId: seed.id, entityName: seed.name, month: MONTHS[m], code, severity, direction, message });
+const PARAMS: Omit<Methodology, "alertRules"> = {
+  products: { limitProfile: "BANK", premiumProfile: "INSURER", momentumProfile: "FUND" },
+  limitEngine: {
+    scoreFloor: 35,
+    factorAtFloor: 0.25,
+    factorAt100: 1.5,
+    trendModifierSpan: 0.2,
+    runwayGuardBelowMonths: 3,
+    runwayGuardMultiplier: 0.5,
+    dscrMin: 1.25,
+    defaultTermMonths: 12,
+    referenceRate: 0.035,
+    referenceRateIsExample: true,
+    spreadBpsByBand: { A: 90, B: 150, C: 250, D: 400 },
+    actionThreshold: 0.1,
+    roundingEur: 1000,
+  },
+  insurer: { basePremiumRate: 0.0025, multiplierByBand: { A: 0.8, B: 1, C: 1.4, D: 2 } },
+  momentum: { risingStarMaxLevel: 60, risingStarMinTraj: 70 },
+  watchlist: { minCritical: 1, minWarn: 2 },
+};
 
-  let dropActive = false;
-  let runwayActive = false;
-  for (let m = 1; m < months.length; m++) {
-    const f = months[m].final;
-    const before = bandLetter(months[m - 1].final);
-    const now = bandLetter(f);
-    if (now !== before) {
-      const up = now < before;
-      push(m, up ? "BAND_UPGRADE" : "BAND_DOWNGRADE", up ? "INFO" : now === "E" ? "CRITICAL" : "WARN", up ? "POSITIVE" : "NEGATIVE",
-        `Banda ${before} → ${now} (${f.toFixed(1).replace(".", ",")} puntos)`);
-    }
-    if (regimes[m] !== regimes[m - 1]) {
-      if (regimes[m] === "STRUCTURAL_DECLINE") push(m, "STRUCTURAL_DECLINE", "CRITICAL", "NEGATIVE", "Entra en deterioro estructural");
-      if (regimes[m] === "STRUCTURAL_IMPROVEMENT") push(m, "STRUCTURAL_IMPROVEMENT", "INFO", "POSITIVE", "Entra en mejora estructural");
-      if (regimes[m] === "DIP") push(m, "DIP", "WARN", "NEGATIVE", "Bache: caída puntual frente a su media de 6 meses");
-    }
-    const drop = m >= 3 ? f - months[m - 3].final : 0;
-    if (drop <= -8 && !dropActive) {
-      push(m, "SCORE_DROP", drop <= -15 ? "CRITICAL" : "WARN", "NEGATIVE", `La nota cae ${Math.abs(drop).toFixed(1).replace(".", ",")} puntos en 3 meses`);
-    }
-    dropActive = drop <= -8;
-    const liquidity = months[m].categories.find((c) => c.category === "LIQUIDITY")!.level ?? 50;
-    if (liquidity < 35 && !runwayActive) push(m, "RUNWAY_LOW", liquidity < 20 ? "CRITICAL" : "WARN", "NEGATIVE", "Liquidez baja: menos de 3 meses de caja");
-    runwayActive = liquidity < 35;
-  }
-  return out;
+const L = PARAMS.limitEngine;
+
+function levelOf(ms: MonthScore, c: BaseCategory): number {
+  return ms.categories.find((x) => x.category === c)?.level ?? 50;
+}
+
+function trajOf(ms: MonthScore, c: BaseCategory): number {
+  return ms.categories.find((x) => x.category === c)?.traj ?? 50;
+}
+
+const floorTo = (v: number, step: number) => Math.floor(v / step) * step;
+
+// ---------------------------------------------------------------------------
+// Limit engine (contract item 3, on synthetic inputs)
+
+interface LimitRow extends LimitDecision {
+  nocf: number;
+  debtService: number;
+}
+
+function limitFactor(final: number): number {
+  if (final < L.scoreFloor) return 0;
+  return L.factorAtFloor + ((final - L.scoreFloor) / (100 - L.scoreFloor)) * (L.factorAt100 - L.factorAtFloor);
+}
+
+function annualCostFactor(term: number, spreadBps: number | null): number {
+  return 12 / term + L.referenceRate + (spreadBps ?? 0) / 10000;
+}
+
+const limitCache = new Map<string, LimitRow[]>();
+
+/** The limit decisions of one entity, month by month, from the limit profile (F5). */
+function limitHistory(id: string): LimitRow[] {
+  const hit = limitCache.get(id);
+  if (hit) return hit;
+  const series = allSeries("BANK").find((s) => s.seed.id === id)!;
+  const { inflow } = series.seed;
+  const rows: LimitRow[] = [];
+  series.months.forEach((ms, m) => {
+    const band = bandLetter(ms.final);
+    const spreadBps = L.spreadBpsByBand[band] ?? null;
+    const baseEur = floorTo(inflow * (0.85 + (0.3 * levelOf(ms, "OPERATING_CASH_FLOW")) / 100), L.roundingEur);
+    const factor = limitFactor(ms.final);
+    const trend = clamp(1 + (L.trendModifierSpan * (ms.traj - 50)) / 50, 1 - L.trendModifierSpan, 1 + L.trendModifierSpan);
+    // Mock runway in months: liquidity level / 10.
+    const runwayGuard = levelOf(ms, "LIQUIDITY") / 10 < L.runwayGuardBelowMonths;
+    const rawLimit = baseEur * factor * trend * (runwayGuard ? L.runwayGuardMultiplier : 1);
+    const nocf = inflow * 12 * (0.04 + (0.16 * levelOf(ms, "OPERATING_CASH_FLOW")) / 100);
+    const debtService = inflow * 12 * 0.08 * (1 - levelOf(ms, "DEBT_SERVICE") / 100);
+    const acf = annualCostFactor(L.defaultTermMonths, spreadBps);
+    const dscrCapEur = spreadBps === null ? null : Math.max(0, nocf / L.dscrMin - debtService) / acf;
+    const limitEur = spreadBps === null ? 0 : floorTo(Math.min(rawLimit, dscrCapEur ?? Infinity), L.roundingEur);
+    const bindingConstraint = dscrCapEur !== null && dscrCapEur < rawLimit ? "DSCR" : runwayGuard ? "RUNWAY" : "SCORE";
+    const denom = debtService + limitEur * acf;
+    const prev = m > 0 ? rows[m - 1].limitEur : null;
+    const t = L.actionThreshold;
+    let action: LimitAction = "MAINTAIN";
+    if (limitEur === 0 && prev !== null && prev > 0) action = "FREEZE";
+    else if (spreadBps === null) action = "DECLINE";
+    else if (prev === null) action = "MAINTAIN";
+    else if (limitEur > prev && limitEur >= prev * (1 + t)) action = "INCREASE";
+    else if (limitEur < prev && limitEur <= prev * (1 - t)) action = "REDUCE";
+    rows.push({
+      month: MONTHS[m],
+      profile: PARAMS.products.limitProfile,
+      final: ms.final,
+      band,
+      limitEur,
+      previousLimitEur: prev,
+      action,
+      bindingConstraint,
+      spreadBps,
+      allInRate: spreadBps === null ? null : round4(L.referenceRate + spreadBps / 10000),
+      projectedDscr: denom === 0 ? null : round2(nocf / denom),
+      baseEur,
+      factor: round4(factor),
+      trend: round4(trend),
+      runwayGuard,
+      dscrCapEur: dscrCapEur === null ? null : Math.round(dscrCapEur),
+      nocf,
+      debtService,
+    });
+  });
+  limitCache.set(id, rows);
+  return rows;
+}
+
+const round2 = (v: number) => Math.round(v * 100) / 100;
+const round4 = (v: number) => Math.round(v * 10000) / 10000;
+
+function publicLimit(row: LimitRow): LimitDecision {
+  const { nocf: _nocf, debtService: _debtService, ...decision } = row;
+  return decision;
 }
 
 // ---------------------------------------------------------------------------
-// Products (simplified SPEC §10)
+// Premium (contract item 4) and momentum (contract item 5)
 
-const SPREAD_BPS: Record<BandLetter, number | null> = { A: 90, B: 150, C: 250, D: 400, E: null };
-const PREMIUM_MULT: Record<BandLetter, number | null> = { A: 0.8, B: 1, C: 1.4, D: 2, E: null };
+function premiumAt(id: string, m: number): PremiumQuote {
+  const series = allSeries("INSURER").find((s) => s.seed.id === id)!;
+  const ms = series.months[m];
+  const band = bandLetter(ms.final);
+  const rate = (b: BandLetter) => {
+    const mult = PARAMS.insurer.multiplierByBand[b];
+    return mult === undefined ? null : round4(PARAMS.insurer.basePremiumRate * mult);
+  };
+  const insurable = PARAMS.insurer.multiplierByBand[band] !== undefined;
+  const previousBand = m > 0 ? bandLetter(series.months[m - 1].final) : null;
+  // Mock DPO in days: 45, longer when payment behaviour is weak.
+  const dpo = 45 + (50 - levelOf(ms, "PAYMENT_BEHAVIOUR")) * 0.4;
+  const purchases = series.seed.inflow * 0.8;
+  return {
+    month: MONTHS[m],
+    profile: PARAMS.products.premiumProfile,
+    final: ms.final,
+    band,
+    insurable,
+    premiumRate: rate(band),
+    previousPremiumRate: previousBand === null ? null : rate(previousBand),
+    previousBand,
+    tierChange: previousBand === null || previousBand === band ? null : band < previousBand ? "UP" : "DOWN",
+    recommendedBuyerLimitEur: insurable ? floorTo(purchases * (dpo / 30) * limitFactor(ms.final), L.roundingEur) : 0,
+  };
+}
 
-function limitAt(series: EntitySeries, m: number): { limit: number; binding: LimitDecision["bindingConstraint"] } {
-  const { final, traj, categories } = series.months[m];
-  if (final < 35) return { limit: 0, binding: "SCORE" };
-  const factor = 0.25 + ((final - 35) / 65) * (1.5 - 0.25);
-  const trend = clamp(1 + (0.2 * (traj - 50)) / 50, 0.8, 1.2);
-  let raw = series.seed.inflow * factor * trend;
-  let binding: LimitDecision["bindingConstraint"] = "SCORE";
-  const liquidity = categories.find((c) => c.category === "LIQUIDITY")!.level ?? 50;
-  if (liquidity < 30) {
-    raw *= 0.5;
-    binding = "RUNWAY";
-  }
-  const debt = categories.find((c) => c.category === "DEBT_SERVICE")!.level ?? 50;
-  const dscrCap = series.seed.inflow * 1.6 * (debt / 100);
-  if (dscrCap < raw) {
-    raw = dscrCap;
-    binding = "DSCR";
-  }
-  return { limit: Math.round(raw / 1000) * 1000, binding };
+/** Mid-rank percentile of `value` among `values` (contract item 5). */
+function midRank(value: number, values: number[]): number {
+  if (values.length === 1) return 50;
+  const less = values.filter((v) => v < value).length;
+  const equal = values.filter((v) => v === value).length;
+  return Math.round((100 * (less + 0.5 * (equal - 1))) / (values.length - 1));
+}
+
+function momentumAt(id: string, m: number): MomentumView {
+  const peers = allSeries("FUND").map((s) => ({ id: s.seed.id, ms: s.months[m] }));
+  const me = peers.find((p) => p.id === id)!.ms;
+  return {
+    month: MONTHS[m],
+    profile: PARAMS.products.momentumProfile,
+    rank: 1 + peers.filter((p) => p.ms.final > me.final).length,
+    of: peers.length,
+    trajPercentile: midRank(me.traj, peers.map((p) => p.ms.traj)),
+    // The mock has no raw collections growth: the growth category level stands in for it.
+    growthPercentile: midRank(levelOf(me, "ACTIVITY_GROWTH"), peers.map((p) => levelOf(p.ms, "ACTIVITY_GROWTH"))),
+    risingStar: isRisingStar(me),
+  };
+}
+
+function isRisingStar(ms: MonthScore): boolean {
+  return ms.level < PARAMS.momentum.risingStarMaxLevel && ms.traj >= PARAMS.momentum.risingStarMinTraj;
 }
 
 // ---------------------------------------------------------------------------
-// Public API, shaped like SPEC §12.5
+// Alerts (simplified SPEC §8.5 and decisions F12–F16)
+
+interface Signal {
+  severity: Severity;
+  direction: Direction;
+  message: string;
+  value: number | null;
+}
+
+const NUM1 = new Intl.NumberFormat("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const NUM0 = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 0 });
+const fmt1 = (v: number) => NUM1.format(v).replace("-", "−");
+
+/**
+ * A state rule on one category level: active below `warn` (CRITICAL below `critical`),
+ * and it clears only 5 points above `warn`, so noise does not flap it on and off.
+ */
+function levelRule(
+  category: BaseCategory,
+  warn: number,
+  critical: number | null,
+  text: (value: number) => string,
+  value: (ms: MonthScore) => number,
+) {
+  return (ms: MonthScore, wasActive: boolean): Signal | null => {
+    const level = levelOf(ms, category);
+    if (level >= (wasActive ? warn + 5 : warn)) return null;
+    const v = round2(value(ms));
+    return {
+      severity: critical !== null && level < critical ? "CRITICAL" : "WARN",
+      direction: "NEGATIVE",
+      message: text(v),
+      value: v,
+    };
+  };
+}
+
+type StateRule = (ms: MonthScore, wasActive: boolean, m: number, series: EntitySeries) => Signal | null;
+
+const STATE_RULES: Partial<Record<AlertCode, StateRule>> = {
+  RUNWAY_LOW: levelRule("LIQUIDITY", 30, 15, (v) => `Caja para ${fmt1(v)} meses de pagos`, (ms) => levelOf(ms, "LIQUIDITY") / 10),
+  DSCR_BREACH: levelRule("DEBT_SERVICE", 30, 15, (v) => `DSCR ${fmt1(v)}x: el flujo no cubre la deuda con holgura`, (ms) => 0.4 + levelOf(ms, "DEBT_SERVICE") / 40),
+  LINE_UTIL_HIGH: levelRule("LEVERAGE", 28, null, (v) => `Pólizas dispuestas al ${NUM0.format(v * 100)} %`, (ms) => 1 - levelOf(ms, "LEVERAGE") / 200),
+  SUPPLIER_LATENESS_UP: levelRule("PAYMENT_BEHAVIOUR", 32, null, (v) => `Paga a proveedores ${NUM0.format(v)} días tarde de media`, (ms) => (60 - levelOf(ms, "PAYMENT_BEHAVIOUR")) / 2),
+  OVERDUE_RECEIVABLES: levelRule("DELINQUENCY", 32, 18, (v) => `${NUM0.format(v * 100)} % de los cobros vencidos`, (ms) => (100 - levelOf(ms, "DELINQUENCY")) / 250),
+  TAX_GAP: levelRule("TAX_REGULARITY", 28, null, (v) => `${NUM0.format(v)} meses sin pagos fiscales`, (ms) => 2 + (30 - levelOf(ms, "TAX_REGULARITY")) / 10),
+  CONCENTRATION_HIGH: levelRule("CONCENTRATION", 38, null, (v) => `El primer cliente pesa el ${NUM0.format(v * 100)} % de los cobros`, (ms) => 0.2 + (40 - levelOf(ms, "CONCENTRATION")) / 100),
+  DSO_DRIFT: (ms, wasActive) => {
+    const traj = trajOf(ms, "PAYMENT_BEHAVIOUR");
+    if (traj >= (wasActive ? 42 : 38)) return null;
+    const v = Math.round((50 - traj) * 1.5);
+    return { severity: "WARN", direction: "NEGATIVE", message: `El plazo de cobro sube ${v} días en 3 meses`, value: v };
+  },
+  SCORE_DROP: (ms, wasActive, m, series) => {
+    if (m < 3) return null;
+    const drop = round1(ms.final - series.months[m - 3].final);
+    if (drop > (wasActive ? -6 : -8)) return null;
+    return { severity: drop <= -15 ? "CRITICAL" : "WARN", direction: "NEGATIVE", message: `La nota cae ${fmt1(-drop)} puntos en 3 meses`, value: drop };
+  },
+  STRUCTURAL_DECLINE: (_ms, _w, m, series) =>
+    series.regimes[m] === "STRUCTURAL_DECLINE"
+      ? { severity: "CRITICAL", direction: "NEGATIVE", message: "Entra en deterioro estructural", value: null }
+      : null,
+  STRUCTURAL_IMPROVEMENT: (_ms, _w, m, series) =>
+    series.regimes[m] === "STRUCTURAL_IMPROVEMENT"
+      ? { severity: "INFO", direction: "POSITIVE", message: "Entra en mejora estructural", value: null }
+      : null,
+};
+
+const LIMIT_ALERTS: Partial<Record<LimitAction, { severity: Severity; direction: Direction; verb: string }>> = {
+  INCREASE: { severity: "INFO", direction: "POSITIVE", verb: "Sube el límite" },
+  REDUCE: { severity: "WARN", direction: "NEGATIVE", verb: "Reduce el límite" },
+  FREEZE: { severity: "CRITICAL", direction: "NEGATIVE", verb: "Congela el límite" },
+};
+
+const EUR0 = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0, useGrouping: "always" });
+
+interface AlertBook {
+  /** Transitions (the `alerts` table). */
+  alerts: Alert[];
+  /** Month index of each alert, parallel to `alerts`. */
+  monthIdx: number[];
+}
+
+const alertCache = new WeakMap<EntitySeries, AlertBook>();
+
+/**
+ * Transitions only (F12): a state rule fires when its signal appears or changes severity or
+ * direction; an event rule fires every month it holds. The first month seeds the state.
+ */
+function alertBook(series: EntitySeries, profile: Profile): AlertBook {
+  const hit = alertCache.get(series);
+  if (hit) return hit;
+  const { seed, months } = series;
+  const book: AlertBook = { alerts: [], monthIdx: [] };
+  const state = new Map<AlertCode, Signal>();
+  const push = (m: number, code: AlertCode, s: Signal) => {
+    book.alerts.push({
+      id: `${seed.entityType}:${seed.id}:${MONTHS[m]}:${code}`,
+      entityId: seed.id,
+      entityName: seed.name,
+      entityType: seed.entityType,
+      month: MONTHS[m],
+      code,
+      severity: s.severity,
+      direction: s.direction,
+      message: s.message,
+      value: s.value,
+    });
+    book.monthIdx.push(m);
+  };
+  const limits = profile === PARAMS.products.limitProfile ? limitHistory(seed.id) : null;
+
+  months.forEach((ms, m) => {
+    for (const [code, rule] of Object.entries(STATE_RULES) as [AlertCode, StateRule][]) {
+      const before = state.get(code);
+      const now = rule(ms, before !== undefined, m, series);
+      if (now === null) state.delete(code);
+      else {
+        state.set(code, now);
+        if (m > 0 && (before === undefined || before.severity !== now.severity || before.direction !== now.direction)) push(m, code, now);
+      }
+    }
+    if (m === 0) return;
+    const was = bandLetter(months[m - 1].final);
+    const band = bandLetter(ms.final);
+    if (band < was) push(m, "BAND_UPGRADE", { severity: "INFO", direction: "POSITIVE", message: `Sube de la banda ${was} a la ${band}`, value: ms.final });
+    if (band > was)
+      push(m, "BAND_DOWNGRADE", {
+        severity: band === "E" ? "CRITICAL" : "WARN",
+        direction: "NEGATIVE",
+        message: `Baja de la banda ${was} a la ${band}`,
+        value: ms.final,
+      });
+    const limit = limits?.[m];
+    const rule = limit ? LIMIT_ALERTS[limit.action] : undefined;
+    if (limit && rule)
+      push(m, "LIMIT_ACTION", {
+        ...rule,
+        message: `${rule.verb}: ${EUR0.format(limit.previousLimitEur ?? 0)} → ${EUR0.format(limit.limitEur)}`,
+        value: limit.limitEur,
+      });
+  });
+  alertCache.set(series, book);
+  return book;
+}
+
+/**
+ * Mock approximation of the active negative states at m (F16): the negative alerts fired in
+ * m−2..m. The real engine counts `alert_states` rows instead.
+ */
+function activeStatesAt(series: EntitySeries, profile: Profile, m: number): Alert[] {
+  const book = alertBook(series, profile);
+  return book.alerts.filter((a, k) => a.direction === "NEGATIVE" && book.monthIdx[k] <= m && book.monthIdx[k] > m - 3);
+}
+
+function watchlistRowAt(series: EntitySeries, profile: Profile, m: number): WatchlistRow | null {
+  const active = activeStatesAt(series, profile, m);
+  const criticalAlerts = active.filter((a) => a.severity === "CRITICAL").length;
+  const warnAlerts = active.filter((a) => a.severity === "WARN").length;
+  if (criticalAlerts < PARAMS.watchlist.minCritical && warnAlerts < PARAMS.watchlist.minWarn) return null;
+  return { row: rowAt(series, profile, m), criticalAlerts, warnAlerts, codes: [...new Set(active.map((a) => a.code))] };
+}
+
+function severityRank(a: Alert): number {
+  return a.severity === "CRITICAL" ? 2 : a.severity === "WARN" ? 1 : 0;
+}
+
+/** Newest month first, then CRITICAL > WARN > INFO, then entity id (contract item 8). */
+function byMonthSeverity(a: Alert, b: Alert): number {
+  if (a.month !== b.month) return a.month < b.month ? 1 : -1;
+  if (severityRank(a) !== severityRank(b)) return severityRank(b) - severityRank(a);
+  return a.entityId.localeCompare(b.entityId);
+}
+
+// ---------------------------------------------------------------------------
+// Public API, shaped like the phase 5 contract (item 8)
 
 const cache = new Map<Profile, EntitySeries[]>();
 
@@ -392,13 +697,10 @@ function monthIndex(month: string): number {
   return i < 0 ? MONTHS.length - 1 : i;
 }
 
-function rowAt(series: EntitySeries, m: number): PortfolioRow {
+function rowAt(series: EntitySeries, profile: Profile, m: number): PortfolioRow {
   const { seed, months, regimes, statuses } = series;
   const x = months[m];
-  const recent = alertsFor(series).filter((a) => {
-    const k = MONTHS.indexOf(a.month);
-    return a.direction === "NEGATIVE" && k <= m && k > m - 3;
-  });
+  const fund = allSeries("FUND").find((s) => s.seed.id === seed.id)!;
   return {
     id: seed.id,
     name: seed.name,
@@ -411,54 +713,44 @@ function rowAt(series: EntitySeries, m: number): PortfolioRow {
     regime: regimes[m],
     delta3m: round1(x.final - months[Math.max(0, m - 3)].final),
     sparkline: months.slice(Math.max(0, m - 11), m + 1).map((p) => p.final),
-    activeAlerts: recent.length,
+    activeAlerts: activeStatesAt(series, profile, m).length,
     confidence: seed.confidence,
+    risingStar: isRisingStar(fund.months[m]),
   };
 }
 
 export function mockPortfolio(profile: Profile, month: string): Portfolio {
   const m = monthIndex(month);
   const rows = allSeries(profile)
-    .map((s) => rowAt(s, m))
+    .map((s) => rowAt(s, profile, m))
     .sort((a, b) => b.final - a.final);
   return { profile, month, unscored: 0, rows };
 }
 
 export function mockEntity(id: string, profile: Profile, month: string): EntityDetail | null {
   const m = monthIndex(month);
-  const all = allSeries(profile);
-  const series = all.find((s) => s.seed.id === id);
+  const series = allSeries(profile).find((s) => s.seed.id === id);
   if (!series) return null;
 
-  const row = rowAt(series, m);
-  const timeline: TimelinePoint[] = series.months.slice(0, m + 1).map((p, i) => ({
-    month: MONTHS[i],
-    final: p.final,
-    level: p.level,
-    traj: p.traj,
-    band: bandLetter(p.final),
-    status: series.statuses[i],
-    regime: series.regimes[i],
-  }));
-
-  const now = limitAt(series, m);
-  const prev = limitAt(series, Math.max(0, m - 1));
-  const band = bandLetter(row.final);
-  let action: LimitDecision["action"] = "MAINTAIN";
-  if (band === "E") action = prev.limit > 0 ? "FREEZE" : "DECLINE";
-  else if (now.limit >= prev.limit * 1.1) action = "INCREASE";
-  else if (now.limit <= prev.limit * 0.9) action = "REDUCE";
-
-  const prevBand = bandLetter(series.months[Math.max(0, m - 1)].final);
-  const baseRate = 0.0025;
-  const mult = PREMIUM_MULT[band];
-  const prevMult = PREMIUM_MULT[prevBand];
-
-  // FUND view is ranked on the FUND profile whatever the active profile is.
-  const fund = allSeries("FUND").map((s) => ({ id: s.seed.id, final: s.months[m].final, traj: s.months[m].traj, level: s.months[m].level }));
-  const fundSorted = [...fund].sort((a, b) => b.final - a.final);
-  const me = fund.find((f) => f.id === id)!;
-  const below = fund.filter((f) => f.traj < me.traj).length;
+  const book = alertBook(series, profile);
+  const limits = limitHistory(id);
+  const timeline: TimelinePoint[] = series.months.slice(0, m + 1).map((p, i) => {
+    const premium = premiumAt(id, i);
+    return {
+      month: MONTHS[i],
+      final: p.final,
+      level: p.level,
+      traj: p.traj,
+      band: bandLetter(p.final),
+      status: series.statuses[i],
+      regime: series.regimes[i],
+      limitEur: limits[i].limitEur,
+      limitAction: limits[i].action,
+      premiumRate: premium.premiumRate,
+      buyerLimitEur: premium.recommendedBuyerLimitEur,
+      newAlerts: book.monthIdx.filter((k) => k === i).length,
+    };
+  });
 
   return {
     id,
@@ -467,7 +759,7 @@ export function mockEntity(id: string, profile: Profile, month: string): EntityD
     groupId: null,
     profile,
     month,
-    row,
+    row: rowAt(series, profile, m),
     categories: series.months[m].categories,
     drivers: [],
     changes1m: [],
@@ -476,53 +768,96 @@ export function mockEntity(id: string, profile: Profile, month: string): EntityD
     timeline,
     changepoints: [],
     companies: [],
-    limit: {
-      limitEur: now.limit,
-      previousLimitEur: prev.limit,
-      spreadBps: SPREAD_BPS[band],
-      action,
-      bindingConstraint: now.binding,
-    },
-    premium: {
-      premiumRate: mult === null ? null : baseRate * mult,
-      previousPremiumRate: prevMult === null ? null : baseRate * prevMult,
-      recommendedBuyerLimitEur: Math.round((series.seed.inflow * 0.6 * (row.final / 100)) / 1000) * 1000,
-    },
-    momentum: {
-      rank: fundSorted.findIndex((f) => f.id === id) + 1,
-      of: fund.length,
-      trajPercentile: Math.round((below / (fund.length - 1)) * 100),
-      risingStar: me.level < 60 && me.traj >= 70,
-    },
+    limit: publicLimit(limits[m]),
+    premium: premiumAt(id, m),
+    momentum: momentumAt(id, m),
+    alerts: book.alerts.filter((_, k) => book.monthIdx[k] <= m).sort(byMonthSeverity).slice(0, 20),
   };
 }
 
-export function mockMonitor(profile: Profile, month: string): MonitorData {
+export function mockMonitor(profile: Profile, month: string, filters: { severity?: Severity; direction?: Direction } = {}): MonitorData {
   const m = monthIndex(month);
-  const all = allSeries(profile);
-  const alerts = all
-    .flatMap((s) => alertsFor(s))
-    .filter((a) => {
-      const k = MONTHS.indexOf(a.month);
-      return k <= m && k > m - 6;
+  const alerts = allSeries(profile)
+    .flatMap((s) => {
+      const book = alertBook(s, profile);
+      return book.alerts.filter((_, k) => book.monthIdx[k] <= m && book.monthIdx[k] > m - 6);
     })
-    .sort((a, b) => (a.month === b.month ? severityRank(b) - severityRank(a) : a.month < b.month ? 1 : -1));
-  const watchlist = all
-    .map((s) => ({ row: rowAt(s, m), alerts: alertsFor(s) }))
-    .filter(({ alerts }) => {
-      const active = alerts.filter((a) => {
-        const k = MONTHS.indexOf(a.month);
-        return a.direction === "NEGATIVE" && k <= m && k > m - 3;
-      });
-      return active.some((a) => a.severity === "CRITICAL") || active.filter((a) => a.severity === "WARN").length >= 2;
-    })
-    .map(({ row }) => row)
-    .sort((a, b) => a.final - b.final);
-  return { alerts, watchlist };
+    .filter((a) => (!filters.severity || a.severity === filters.severity) && (!filters.direction || a.direction === filters.direction))
+    .sort(byMonthSeverity);
+  return { profile, month, fromMonth: MONTHS[Math.max(0, m - 5)], alerts, watchlist: mockWatchlist(profile, month).rows };
 }
 
-function severityRank(a: Alert): number {
-  return a.severity === "CRITICAL" ? 2 : a.severity === "WARN" ? 1 : 0;
+export function mockWatchlist(profile: Profile, month: string): Watchlist {
+  const m = monthIndex(month);
+  const rows = allSeries(profile)
+    .map((s) => watchlistRowAt(s, profile, m))
+    .filter((r): r is WatchlistRow => r !== null)
+    .sort((a, b) => b.criticalAlerts - a.criticalAlerts || b.warnAlerts - a.warnAlerts || a.row.final - b.row.final);
+  return { profile, month, rows };
+}
+
+/** One frame per month of from..to, like the "month" events of GET /api/monitor/replay. */
+export function mockReplayFrames(profile: Profile, from: string, to: string): ReplayFrame[] {
+  const all = allSeries(profile).flatMap((s) => alertBook(s, profile).alerts);
+  return MONTHS.filter((month) => month >= from && month <= to).map((month) => ({
+    month,
+    newAlerts: all.filter((a) => a.month === month).sort(byMonthSeverity),
+    watchlistSize: mockWatchlist(profile, month).rows.length,
+  }));
+}
+
+/** POST /api/entities/{id}/limit/simulate on the stored mock decision. The term does not change the mock capacity. */
+export function mockSimulate(id: string, body: SimulateLimitRequest): LimitSimulation {
+  if (!SEEDS.some((s) => s.id === id)) throw new ApiError(404, `Entidad ${id} no encontrada`);
+  if (!(body.requestedAmountEur > 0)) throw new ApiError(400, "El importe solicitado tiene que ser mayor que 0.");
+  const termMonths = body.termMonths ?? L.defaultTermMonths;
+  if (termMonths < 1 || termMonths > 120) throw new ApiError(400, "El plazo tiene que estar entre 1 y 120 meses.");
+  const row = limitHistory(id)[monthIndex(body.month ?? MONTHS[MONTHS.length - 1])];
+  const capacityEur = row.limitEur;
+  const decision = body.requestedAmountEur <= capacityEur ? "APPROVE" : capacityEur > 0 ? "PARTIAL" : "DECLINE";
+  const approvedAmountEur = decision === "APPROVE" ? body.requestedAmountEur : capacityEur;
+  const denom = row.debtService + approvedAmountEur * annualCostFactor(termMonths, row.spreadBps);
+  return {
+    month: row.month,
+    decision,
+    requestedAmountEur: body.requestedAmountEur,
+    approvedAmountEur,
+    capacityEur,
+    termMonths,
+    spreadBps: row.spreadBps,
+    allInRate: row.allInRate,
+    projectedDscr: denom === 0 ? null : round2(row.nocf / denom),
+    bindingConstraint: row.spreadBps === null ? "BAND" : row.bindingConstraint,
+  };
+}
+
+const TRIGGERS: Record<AlertCode, { direction: AlertRuleInfo["direction"]; event: boolean; trigger: string }> = {
+  RUNWAY_LOW: { direction: "NEGATIVE", event: false, trigger: "< 3 meses de caja / < 1,5 meses" },
+  DSCR_BREACH: { direction: "NEGATIVE", event: false, trigger: "DSCR < 1,2x / < 1,0x" },
+  LINE_UTIL_HIGH: { direction: "NEGATIVE", event: false, trigger: "Pólizas dispuestas > 85 %" },
+  DSO_DRIFT: { direction: "NEGATIVE", event: false, trigger: "Plazo de cobro + 15 días en 3 meses" },
+  SUPPLIER_LATENESS_UP: { direction: "NEGATIVE", event: false, trigger: "Retraso medio a proveedores > 10 días" },
+  OVERDUE_RECEIVABLES: { direction: "NEGATIVE", event: false, trigger: "Cobros vencidos > 15 % / > 30 %" },
+  TAX_GAP: { direction: "NEGATIVE", event: false, trigger: "Sin pago fiscal durante 2 ciclos de su calendario" },
+  CONCENTRATION_HIGH: { direction: "NEGATIVE", event: false, trigger: "Primer cliente > 40 % de los cobros" },
+  FACTORING_SPIKE: { direction: "NEGATIVE", event: false, trigger: "Financiación de circulante × 2 frente a los 3 meses previos" },
+  SCORE_DROP: { direction: "NEGATIVE", event: false, trigger: "Nota − 8 puntos en 3 meses / − 15" },
+  STRUCTURAL_DECLINE: { direction: "NEGATIVE", event: false, trigger: "Régimen de deterioro estructural" },
+  STRUCTURAL_IMPROVEMENT: { direction: "POSITIVE", event: false, trigger: "Régimen de mejora estructural" },
+  BAND_UPGRADE: { direction: "POSITIVE", event: true, trigger: "Sube una banda o más" },
+  BAND_DOWNGRADE: { direction: "NEGATIVE", event: true, trigger: "Baja una banda o más" },
+  LIMIT_ACTION: { direction: "BOTH", event: true, trigger: "El motor sube, reduce o congela el límite" },
+};
+
+/** GET /api/methodology. Synthetic: the parameters are this generator's, not the config's. */
+export function mockMethodology(): Methodology {
+  const fired = new Map<AlertCode, number>();
+  for (const profile of Object.keys(WEIGHTS) as Profile[])
+    for (const s of allSeries(profile)) for (const a of alertBook(s, profile).alerts) fired.set(a.code, (fired.get(a.code) ?? 0) + 1);
+  return {
+    alertRules: (Object.keys(TRIGGERS) as AlertCode[]).map((code) => ({ code, ...TRIGGERS[code], fired: fired.get(code) ?? 0 })),
+    ...PARAMS,
+  };
 }
 
 /** The showcase pair of SPEC §10.4: similar score today, opposite trajectories. */
@@ -555,6 +890,8 @@ export function mockMeta(): Meta {
     demoMode: true,
     explanationsReady: false,
     dynamicsReady: false,
+    alertsReady: true,
+    productsReady: true,
     caveats: ["Datos sintéticos de demostración: no proceden de Embat."],
   };
 }

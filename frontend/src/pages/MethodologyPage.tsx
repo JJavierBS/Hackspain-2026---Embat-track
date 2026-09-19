@@ -1,15 +1,30 @@
-import type { Category } from "../api/types";
-import { useMeta, useProfiles } from "../api/queries";
+import type { ReactNode } from "react";
+import type { BandLetter, Category, Methodology } from "../api/types";
+import { ApiError } from "../api/client";
+import { useMeta, useMethodology, useProfiles } from "../api/queries";
 import { BandLadder } from "../components/BandLadder";
 import { Film } from "../components/Film";
 import { IconDown, IconUp } from "../components/Icons";
 import { LoadState } from "../components/LoadState";
 import { PageHeader } from "../components/PageHeader";
 import { PendingFilm } from "../components/PendingFilm";
+import { RateLadder } from "../components/RateLadder";
 import { ScoreReadout } from "../components/ScoreReadout";
 import { TrendChart } from "../components/TrendChart";
 import { MONTHS, type Profile, useGlobalParams } from "../hooks/useGlobalParams";
-import { CATEGORY_LABELS, PROFILE_LABELS, bandOf, formatScore, formatWeight, monthCode } from "../lib/format";
+import {
+  ALERT_LABELS,
+  CATEGORY_LABELS,
+  PROFILE_LABELS,
+  bandOf,
+  formatDscr,
+  formatEur,
+  formatNumber,
+  formatRate,
+  formatScore,
+  formatWeight,
+  monthCode,
+} from "../lib/format";
 
 /**
  * Illustrative series for the reading guide. Not Embat data, and not the scoring formula:
@@ -72,6 +87,7 @@ export function MethodologyPage() {
       </Film>
 
       <Weights />
+      <MethodologyFilms />
       <Caveats />
 
       <PendingFilm title="Anticipación" block="bloque 8" items={["Anticipación medida (lead time)", "Tasa de falsas alarmas"]} />
@@ -162,6 +178,185 @@ function Caveats() {
           </li>
         ))}
       </ul>
+    </Film>
+  );
+}
+
+/** Alert catalogue and product parameters, read from GET /api/methodology (never written here, decision E1). */
+function MethodologyFilms() {
+  const { data, error, isPending } = useMethodology();
+  if (error instanceof ApiError && error.status === 404) {
+    return (
+      <>
+        <PendingFilm title="Alertas tempranas" block="bloque 6" items={["Catálogo de alertas y disparadores", "Regla de la lista de vigilancia"]} />
+        <PendingFilm title="Producto" block="bloque 7" items={["Límite de circulante", "Prima de seguro de crédito", "Momentum"]} />
+      </>
+    );
+  }
+  if (error || isPending) return <LoadState error={error} title="Alertas tempranas" />;
+  return (
+    <>
+      <AlertCatalogue data={data} />
+      <ProductParameters data={data} />
+    </>
+  );
+}
+
+const PROVISIONAL_TAG = "border border-dashed border-ink-muted/60 px-1.5 text-sm whitespace-nowrap text-ink-muted";
+
+function AlertCatalogue({ data }: { data: Methodology }) {
+  const { minCritical, minWarn } = data.watchlist;
+  return (
+    <Film title="Alertas tempranas" meta={`${data.alertRules.length} reglas · marco EBA/GL/2020/06`}>
+      <p className="max-w-[62ch] text-[15px] text-ink-muted">
+        Cada regla mira un dato del mes y salta sola. Una regla de estado avisa cuando aparece o cambia de gravedad; una regla de
+        evento avisa cada mes que ocurre. Los umbrales vienen de la configuración.
+      </p>
+      <div className="-mx-5 mt-5 overflow-x-auto">
+        <table className="w-full min-w-[760px] border-collapse text-left text-[15px]">
+          <thead>
+            <tr className="border-b border-ink/20 text-sm text-ink-muted">
+              <th className="px-5 py-2 font-medium">Alerta</th>
+              <th className="px-2 py-2 font-medium">Dirección</th>
+              <th className="px-2 py-2 font-medium">Disparador</th>
+              <th className="px-2 py-2 font-medium" title="Estado: avisa al aparecer o cambiar. Evento: avisa cada mes que ocurre.">
+                Tipo
+              </th>
+              <th className="px-5 py-2 text-right font-medium" title="Alertas de la unidad en el último cálculo, todos los perfiles">
+                Activaciones
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.alertRules.map((r) => (
+              <tr key={r.code} className="border-b border-rule last:border-b-0">
+                <td className="px-5 py-2.5 font-medium whitespace-nowrap">{ALERT_LABELS[r.code]}</td>
+                <td className="px-2 py-2.5">
+                  <span className="inline-flex items-center gap-1">
+                    {r.direction !== "POSITIVE" && <IconDown className="text-down" />}
+                    {r.direction !== "NEGATIVE" && <IconUp className="text-up" />}
+                    <span className="sr-only">
+                      {r.direction === "BOTH" ? "Negativa o positiva" : r.direction === "POSITIVE" ? "Positiva" : "Negativa"}
+                    </span>
+                  </span>
+                </td>
+                <td className="px-2 py-2.5">{r.trigger}</td>
+                <td className="px-2 py-2.5 text-ink-muted">{r.event ? "Evento" : "Estado"}</td>
+                <td className="px-5 py-2.5 text-right whitespace-nowrap">
+                  {r.fired > 0 ? (
+                    <>
+                      <span className="font-semibold">{r.fired}</span> <span className="text-ink-muted">en el último cálculo</span>
+                    </>
+                  ) : (
+                    <span className={PROVISIONAL_TAG}>
+                      {r.code === "FACTORING_SPIKE" ? "sin datos en este conjunto" : "no se activa con estos datos"}
+                    </span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-4 border-t border-rule pt-3 text-[15px]">
+        <span className="font-semibold">Lista de vigilancia:</span>{" "}
+        <span className="text-ink-muted">
+          entra una entidad con al menos {minCritical} {minCritical === 1 ? "alerta crítica" : "alertas críticas"} o {minWarn} avisos
+          negativos activos ese mes.
+        </span>
+      </p>
+    </Film>
+  );
+}
+
+/** One parameter per row, as a ledger: the name on the left, the value on the right. */
+function Params({ rows }: { rows: { label: string; value: ReactNode; hint?: string }[] }) {
+  return (
+    <dl className="grid">
+      {rows.map((r) => (
+        <div key={r.label} className="flex items-baseline justify-between gap-6 border-b border-dashed border-rule py-1.5 text-[15px]">
+          <dt>
+            {r.label}
+            {r.hint && <span className="ml-2 text-sm text-ink-muted">{r.hint}</span>}
+          </dt>
+          <dd className="shrink-0 text-right font-semibold whitespace-nowrap">{r.value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function ProductParameters({ data }: { data: Methodology }) {
+  const L = data.limitEngine;
+  const pct = (x: number) => `${formatNumber(x * 100)} %`;
+  const spreads: Partial<Record<BandLetter, string>> = {};
+  for (const [band, bps] of Object.entries(L.spreadBpsByBand) as [BandLetter, number][]) spreads[band] = `${bps} pb`;
+  const multipliers: Partial<Record<BandLetter, string>> = {};
+  for (const [band, m] of Object.entries(data.insurer.multiplierByBand) as [BandLetter, number][])
+    multipliers[band] = `× ${formatNumber(m)}`;
+  const profileName = (p: string) => PROFILE_LABELS[p as Profile]?.name ?? p;
+  return (
+    <Film title="Producto" meta="Parámetros de la configuración actual">
+      <div className="grid gap-x-12 gap-y-10 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+        <section className="min-w-0">
+          <h3 className="text-lg font-semibold">Límite de circulante</h3>
+          <p className="mt-1 mb-4 max-w-[62ch] text-[15px] text-ink-muted">
+            Límite = base (mediana de cobros de 3 meses) × factor de puntuación × tendencia, con una guarda si queda poca caja. Un
+            tope de cobertura de deuda (DSCR) lo limita, y se redondea a la baja. Perfil {profileName(data.products.limitProfile)}.
+          </p>
+          <Params
+            rows={[
+              { label: "Nota mínima para tener límite", value: formatNumber(L.scoreFloor) },
+              { label: "Factor de puntuación", hint: "de la nota mínima a 100", value: `${formatNumber(L.factorAtFloor)} → ${formatNumber(L.factorAt100)}` },
+              { label: "Tendencia", hint: "según la trayectoria", value: `± ${pct(L.trendModifierSpan)}` },
+              {
+                label: "Guarda de caja",
+                hint: `menos de ${formatNumber(L.runwayGuardBelowMonths)} meses de caja`,
+                value: `× ${formatNumber(L.runwayGuardMultiplier)}`,
+              },
+              { label: "DSCR mínimo", hint: "para el tope", value: formatDscr(L.dscrMin) },
+              { label: "Plazo por defecto", value: `${L.defaultTermMonths} meses` },
+              { label: "Umbral de acción", hint: "cambio mínimo para subir o reducir", value: `± ${pct(L.actionThreshold)}` },
+              { label: "Redondeo", hint: "a la baja", value: formatEur(L.roundingEur) },
+              {
+                label: "Tipo de referencia",
+                value: (
+                  <span className="inline-flex items-baseline gap-2">
+                    {L.referenceRateIsExample && <span className={`${PROVISIONAL_TAG} font-normal`}>valor de ejemplo</span>}
+                    {formatRate(L.referenceRate)}
+                  </span>
+                ),
+              },
+            ]}
+          />
+          <h4 className="mt-6 mb-2 text-[15px] font-semibold">Diferencial por banda</h4>
+          <RateLadder label="Diferencial por banda" values={spreads} missing="sin crédito" />
+        </section>
+
+        <div className="grid content-start gap-10">
+          <section>
+            <h3 className="text-lg font-semibold">Prima de seguro de crédito</h3>
+            <p className="mt-1 mb-4 text-[15px] text-ink-muted">
+              Prima = prima base × multiplicador de la banda, revisada cada mes. Perfil {profileName(data.products.premiumProfile)}.
+            </p>
+            <Params rows={[{ label: "Prima base", value: formatRate(data.insurer.basePremiumRate) }]} />
+            <h4 className="mt-5 mb-2 text-[15px] font-semibold">Multiplicador por banda</h4>
+            <RateLadder label="Multiplicador de prima por banda" values={multipliers} missing="no asegurable" />
+          </section>
+          <section>
+            <h3 className="text-lg font-semibold">Momentum</h3>
+            <p className="mt-1 mb-4 text-[15px] text-ink-muted">
+              Ranking y percentiles frente a la cartera, solo para contexto. Perfil {profileName(data.products.momentumProfile)}.
+            </p>
+            <Params
+              rows={[
+                { label: "Estrella emergente", hint: "nivel menor de", value: formatNumber(data.momentum.risingStarMaxLevel) },
+                { label: "y trayectoria", hint: "de al menos", value: formatNumber(data.momentum.risingStarMinTraj) },
+              ]}
+            />
+          </section>
+        </div>
+      </div>
     </Film>
   );
 }
