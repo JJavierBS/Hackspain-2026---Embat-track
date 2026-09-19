@@ -14,13 +14,28 @@ function scrollToSection(id: string) {
   history.replaceState(history.state, "", `${location.pathname}${location.search}#${id}`);
 }
 
-/** The section under the read line, updated on scroll. */
-function useCurrentSection(ids: string[]): string {
+/**
+ * The section under the read line, updated on scroll.
+ * A section picked from the nav (or the URL hash) stays lit until the reader scrolls by hand:
+ * the last short films never reach the read line, so the page-end rule would light another one.
+ */
+function useCurrentSection(ids: string[]): [string, (id: string) => void] {
   const [current, setCurrent] = useState(ids[0]);
+  const pinned = useRef<string | null>(null);
+  const pin = (id: string) => {
+    pinned.current = id;
+    setCurrent(id);
+  };
   useEffect(() => {
+    const fromHash = decodeURIComponent(location.hash.slice(1));
+    if (ids.includes(fromHash)) pinned.current = fromHash;
     let frame = 0;
     const update = () => {
       frame = 0;
+      if (pinned.current) {
+        setCurrent(pinned.current);
+        return;
+      }
       let active = ids[0];
       for (const id of ids) {
         const el = document.getElementById(id);
@@ -33,16 +48,27 @@ function useCurrentSection(ids: string[]): string {
     const onScroll = () => {
       if (!frame) frame = requestAnimationFrame(update);
     };
+    const unpin = () => {
+      pinned.current = null;
+    };
     update();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
+    window.addEventListener("wheel", unpin, { passive: true });
+    window.addEventListener("touchmove", unpin, { passive: true });
+    window.addEventListener("keydown", unpin);
+    window.addEventListener("mousedown", unpin);
     return () => {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
+      window.removeEventListener("wheel", unpin);
+      window.removeEventListener("touchmove", unpin);
+      window.removeEventListener("keydown", unpin);
+      window.removeEventListener("mousedown", unpin);
       if (frame) cancelAnimationFrame(frame);
     };
   }, [ids]);
-  return current;
+  return [current, pin];
 }
 
 const IDS = SECTIONS.map((s) => s.id);
@@ -52,7 +78,7 @@ const IDS = SECTIONS.map((s) => s.id);
  * The section being read is inverted in ink, like a pressed toggle; each entry counts its unsaved edits.
  */
 export function SectionNav({ changes }: { changes: Change[] }) {
-  const current = useCurrentSection(IDS);
+  const [current, pin] = useCurrentSection(IDS);
   const strip = useRef<HTMLOListElement>(null);
 
   // Keep the current entry visible in the mobile strip.
@@ -71,6 +97,7 @@ export function SectionNav({ changes }: { changes: Change[] }) {
         aria-current={active ? "location" : undefined}
         onClick={(e) => {
           e.preventDefault();
+          pin(s.id);
           scrollToSection(s.id);
         }}
         className={`flex items-center justify-between gap-3 transition-colors ${
@@ -111,6 +138,7 @@ export function SectionNav({ changes }: { changes: Change[] }) {
           <button
             type="button"
             onClick={() => {
+              pin(IDS[0]);
               window.scrollTo({ top: 0, behavior: behavior() });
               history.replaceState(history.state, "", `${location.pathname}${location.search}`);
             }}
