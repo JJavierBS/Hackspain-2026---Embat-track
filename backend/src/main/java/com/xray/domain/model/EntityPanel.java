@@ -14,6 +14,9 @@ public final class EntityPanel {
     private final EntityKey key;
     private final List<Month> months;
     private final Map<IndicatorId, RawIndicator[]> raw = new EnumMap<>(IndicatorId.class);
+    private final Map<IndicatorId, SubScore[]> subScores = new EnumMap<>(IndicatorId.class);   // S40, S50
+    private final Map<Category, CategoryScore[]> categories = new EnumMap<>(Category.class);  // S60
+    private final Map<Profile, ProfileScore[]> profileScores = new EnumMap<>(Profile.class);  // S60
 
     public EntityPanel(EntityKey key, List<Month> months) {
         this.key = key;
@@ -22,6 +25,9 @@ public final class EntityPanel {
             RawIndicator[] series = new RawIndicator[months.size()];
             Arrays.fill(series, RawIndicator.missing(id));
             raw.put(id, series);
+            SubScore[] scores = new SubScore[months.size()];
+            Arrays.fill(scores, SubScore.missing());
+            subScores.put(id, scores);
         }
     }
 
@@ -48,5 +54,32 @@ public final class EntityPanel {
 
     public void setRaw(int m, RawIndicator value) {
         raw.get(value.id())[m] = value;
+    }
+
+    /** The live array, indexed by month ordinal. Missing until S40 fills it. */
+    public SubScore[] subScores(IndicatorId id) {
+        return subScores.get(id);
+    }
+
+    public void setSubScore(IndicatorId id, int m, SubScore value) {
+        subScores.get(id)[m] = value;
+    }
+
+    /** Null until S60 runs. MOMENTUM has no category series (it lives on ProfileScore). */
+    public CategoryScore[] categoryScores(Category c) {
+        return categories.get(c);
+    }
+
+    public void setCategoryScores(Category c, CategoryScore[] series) {
+        categories.put(c, series);
+    }
+
+    /** Null until S60 runs. */
+    public ProfileScore[] profileScores(Profile p) {
+        return profileScores.get(p);
+    }
+
+    public void setProfileScores(Profile p, ProfileScore[] series) {
+        profileScores.put(p, series);
     }
 }
