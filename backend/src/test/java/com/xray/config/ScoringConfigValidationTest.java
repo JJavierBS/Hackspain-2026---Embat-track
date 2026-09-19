@@ -153,6 +153,7 @@ class ScoringConfigValidationTest {
         assertEquals(65.0, lt.events().improvementCross());
         assertTrue(lt.signal().deteriorationStatuses().contains(HealthStatus.TURNING));
         assertEquals(35.0, lt.signal().deteriorationMaxTraj());
+        assertEquals(1, lt.signal().maxGapMonths());
         assertEquals(3.0, base.showcase().maxFinalGap());
         assertEquals(10, base.showcase().topN());
     }

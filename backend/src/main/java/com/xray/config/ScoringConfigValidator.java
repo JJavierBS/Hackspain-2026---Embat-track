@@ -136,6 +136,10 @@ final class ScoringConfigValidator {
         if (s.improvementStatuses() == null || s.improvementStatuses().isEmpty()) {
             throw fail("scoring.lead-time.signal.improvement-statuses is empty");
         }
+        if (s.maxGapMonths() < 0 || s.maxGapMonths() >= leadTime.windowMonths()) {
+            throw fail("scoring.lead-time.signal.max-gap-months " + s.maxGapMonths()
+                    + " must be >= 0 and below window-months " + leadTime.windowMonths());
+        }
         if (showcase == null) {
             throw fail("scoring.showcase is missing");
         }

@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.IntPredicate;
 
 /**
  * SPEC §8.4 measured anticipation, per entity and profile (phase 6 decisions G3–G7).
@@ -25,7 +26,8 @@ public final class LeadTimeAnalyzer {
                          double overdueMaxLevel, double scoreBelow,
                          double improvementCross, double improvementBelow, int improvementBelowMonths,
                          Set<HealthStatus> deteriorationStatuses, double deteriorationMaxTraj,
-                         Set<HealthStatus> improvementStatuses, double improvementMinTraj) {
+                         Set<HealthStatus> improvementStatuses, double improvementMinTraj,
+                         int maxGapMonths) {
     }
 
     /** One entity and one profile, indexed by month ordinal. null = missing. limitActions null off the limit profile. */
@@ -71,24 +73,52 @@ public final class LeadTimeAnalyzer {
             if (cond[e] == null || cond[e - 1] != null || s.finalScore()[e] == null) {
                 continue;
             }
-            Integer signal = null;
-            for (int m = Math.max(first, e - p.windowMonths()); m <= e && signal == null; m++) {
-                if (signal(s, type, m, p)) {
-                    signal = m;
-                }
-            }
+            int from = Math.max(first, e - p.windowMonths());
+            Integer signal = runStart(e, from, p.maxGapMonths(), m -> signal(s, type, m, p));
             Integer cut = null;
             if (type == EventType.DETERIORATION && s.limitActions() != null) {
-                for (int m = Math.max(0, e - p.windowMonths()); m <= e && cut == null; m++) {
-                    LimitAction a = s.limitActions()[m];
-                    if (a == LimitAction.REDUCE || a == LimitAction.FREEZE) {
-                        cut = m;
-                    }
-                }
+                cut = limitCut(s.limitActions(), e, Math.max(0, e - p.windowMonths()));
             }
             return Optional.of(new Event(type, cond[e], e, signal, cut));
         }
         return Optional.empty();
+    }
+
+    /**
+     * Start of the run of months that reaches e, walking back from e (decision G5 as revised on 2026-09-19).
+     * A run may break for at most maxGap months in a row, and it must be on at e or within maxGap months of it.
+     * A signal from an earlier episode that switched off gets no credit. null = no run reaches e.
+     */
+    private static Integer runStart(int e, int from, int maxGap, IntPredicate on) {
+        Integer start = null;
+        int gap = 0;
+        for (int m = e; m >= from; m--) {
+            if (on.test(m)) {
+                start = m;
+                gap = 0;
+            } else if (++gap > maxGap) {
+                break;
+            }
+        }
+        return start;
+    }
+
+    /**
+     * The limit cut credited to an event (decision G6 as revised on 2026-09-19): the first REDUCE or FREEZE
+     * after the last INCREASE before e. A cut that the engine undid later gets no credit. null = none.
+     */
+    private static Integer limitCut(LimitAction[] actions, int e, int from) {
+        Integer cut = null;
+        for (int m = e; m >= from; m--) {
+            LimitAction a = actions[m];
+            if (a == LimitAction.INCREASE) {
+                break;
+            }
+            if (a == LimitAction.REDUCE || a == LimitAction.FREEZE) {
+                cut = m;
+            }
+        }
+        return cut;
     }
 
     /** Signal onsets outside the event condition, and whether the condition followed within the horizon (G7). */
