@@ -90,6 +90,10 @@ class ScoringConfigValidationTest {
         assertFalse(r.invoicePaidStatusValues().isEmpty());
         assertNotNull(r.intragroupRule());
         assertTrue(r.intragroupMaxLagDays() >= 0);
+        assertEquals(List.of("interest_charge"), r.interestCategories());
+        assertFalse(r.creditLineDebtTypes().isEmpty());
+        assertEquals(6, base.windows().annualizeMinMonths());
+        assertTrue(base.taxRegularity().monthlyCadenceMonths() < base.taxRegularity().quarterlyCadenceMonths());
     }
 
     private static ScoringConfig copyWith(Map<IndicatorId, IndicatorConfig> ind, Map<Profile, ProfileConfig> prof) {
@@ -97,6 +101,6 @@ class ScoringConfigValidationTest {
                 base.bookedStatusValues(), base.runwayCapMonths(), base.trajectory(), base.flowClasses(),
                 base.defaultFlowClass(), base.otherSignFallback(), ind, prof, base.regimes(), base.bands(),
                 base.limitEngine(), base.insurer(), base.debtDscr(), base.dataRules(),
-                base.levDebtToCf(), base.momentum(), base.concentration());
+                base.levDebtToCf(), base.momentum(), base.concentration(), base.windows(), base.taxRegularity());
     }
 }
