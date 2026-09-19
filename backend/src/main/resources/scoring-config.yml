@@ -155,6 +155,7 @@ scoring:
     reference-rate: 0.035           # EXAMPLE value, not agreed with the experts (see CLAUDE.md open items)
     spread-bps-by-band: { A: 150, B: 250, C: 400, D: 650 }   # E missing = DECLINE
     action-threshold: 0.10
+    rounding-eur: 1000              # SPEC §10.1: limit rounded to 1,000 EUR (down, never up)
 
   insurer:
     base-premium-rate: 0.0025
@@ -209,3 +210,34 @@ scoring:
   explanation:
     narrative-top-n: 5
     min-narrated-delta: 0.05
+
+  # Phase 5 decision F5: which profile each product reads. SPEC §10: BANK limit, INSURER premium, FUND momentum.
+  products:
+    limit-profile: BANK
+    premium-profile: INSURER
+    momentum-profile: FUND
+    momentum:                       # SPEC §10.3 "rising stars": level < 60 and traj >= 70
+      rising-star-max-level: 60
+      rising-star-min-traj: 70
+
+  # SPEC §8.5 early-warning indicators (EBA/GL/2020/06), WARN / CRITICAL. PROVISIONAL: review with the first run.
+  # "below" rules: runway-low, dscr-breach (critical < warn). The others are "above" rules (critical > warn).
+  # dso-drift and supplier-lateness-up are days above the median of the previous drift-baseline-months values.
+  # tax-gap is months since the last tax payment divided by the entity's own cadence.
+  # factoring-spike: SPEC gives only 1.5x; the 3.0x critical level is ours (provisional).
+  alerts:
+    runway-low:           { warn: 3.0,  critical: 1.5 }
+    dscr-breach:          { warn: 1.25, critical: 1.0 }
+    line-util-high:       { warn: 0.80, critical: 0.95 }
+    dso-drift:            { warn: 15,   critical: 30 }
+    supplier-lateness-up: { warn: 10,   critical: 20 }
+    overdue-receivables:  { warn: 0.20, critical: 0.35 }
+    tax-gap:              { warn: 1.0,  critical: 2.0 }
+    concentration-high:   { warn: 2500, critical: 5000 }
+    factoring-spike:      { warn: 1.5,  critical: 3.0 }
+    score-drop:           { warn: 8,    critical: 15 }
+    score-drop-months: 3
+    drift-baseline-months: 6
+    drift-baseline-min-points: 4
+    band-downgrade-critical-steps: 2
+    watchlist: { min-critical: 1, min-warn: 2 }

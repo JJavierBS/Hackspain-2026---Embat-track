@@ -1,12 +1,17 @@
 package com.xray.config;
 
+import com.xray.domain.model.Band;
 import com.xray.domain.model.EntityType;
 import com.xray.domain.model.FlowClass;
 import com.xray.domain.model.IndicatorId;
 import com.xray.domain.model.Profile;
+import com.xray.domain.service.MomentumScreen;
+import com.xray.domain.service.PremiumEngine;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /** Binds scoring-config.yml. The compact constructor validates, so a bad config stops the boot. */
@@ -37,10 +42,13 @@ public record ScoringConfig(
         TaxRegularityConfig taxRegularity,
         StatusConfig statuses,
         ConfidenceConfig confidence,
-        ExplanationConfig explanation) {
+        ExplanationConfig explanation,
+        ProductsConfig products,
+        AlertsConfig alerts) {
 
     public ScoringConfig {
         ScoringConfigValidator.validate(indicators, profiles);
+        ScoringConfigValidator.validatePhase5(products, alerts, limitEngine);
     }
 
     public record MonthRange(String start, String end) {
@@ -77,6 +85,15 @@ public record ScoringConfig(
 
     /** A band missing from multiplierByBand means not insurable. */
     public record InsurerConfig(double basePremiumRate, Map<String, Double> multiplierByBand) {
+
+        /** Domain parameters. Band keys are A..E strings in the YAML. */
+        public PremiumEngine.Params toParams() {
+            Map<Band, Double> multipliers = new EnumMap<>(Band.class);
+            multiplierByBand.forEach((k, v) -> {
+                if (v != null) multipliers.put(Band.valueOf(k.toUpperCase(Locale.ROOT)), v);
+            });
+            return new PremiumEngine.Params(basePremiumRate, multipliers);
+        }
     }
 
     /** DEBT_DSCR level when the entity has no debt service (CLAUDE.md resolved conflict 7). */
@@ -105,5 +122,34 @@ public record ScoringConfig(
     /** TAX_REGULARITY cadence rule (phase 3 decision D2). */
     public record TaxRegularityConfig(int windowMonths, double monthlyMaxMedianGap, int monthlyCadenceMonths,
                                       int quarterlyCadenceMonths, int minTaxMonths) {
+    }
+
+    /** Phase 5 decision F5: the profile each product reads (SPEC §10). */
+    public record ProductsConfig(Profile limitProfile, Profile premiumProfile, Profile momentumProfile,
+                                 MomentumScreenConfig momentum) {
+    }
+
+    /** SPEC §10.3 rising stars: level below risingStarMaxLevel and traj at or above risingStarMinTraj. */
+    public record MomentumScreenConfig(double risingStarMaxLevel, double risingStarMinTraj) {
+
+        public MomentumScreen.Params toParams() {
+            return new MomentumScreen.Params(risingStarMaxLevel, risingStarMinTraj);
+        }
+    }
+
+    /** SPEC §8.5 early-warning thresholds. PROVISIONAL, review with the first run. */
+    public record AlertsConfig(Level runwayLow, Level dscrBreach, Level lineUtilHigh, Level dsoDrift,
+                               Level supplierLatenessUp, Level overdueReceivables, Level taxGap,
+                               Level concentrationHigh, Level factoringSpike, Level scoreDrop, int scoreDropMonths,
+                               int driftBaselineMonths, int driftBaselineMinPoints, int bandDowngradeCriticalSteps,
+                               WatchlistConfig watchlist) {
+    }
+
+    /** One alert threshold pair. For "below" rules critical < warn; for "above" rules critical > warn. */
+    public record Level(double warn, double critical) {
+    }
+
+    /** SPEC §8.5 watchlist (phase 5 decision F15). */
+    public record WatchlistConfig(int minCritical, int minWarn) {
     }
 }

@@ -64,6 +64,73 @@ final class ScoringConfigValidator {
         }
     }
 
+    /** Phase 5 keys: products, limit rounding and alert thresholds. */
+    static void validatePhase5(ScoringConfig.ProductsConfig products, ScoringConfig.AlertsConfig alerts,
+                               LimitEngineConfig limitEngine) {
+        if (products == null || products.momentum() == null) {
+            throw fail("scoring.products is missing");
+        }
+        if (products.limitProfile() == null) {
+            throw fail("scoring.products.limit-profile is missing");
+        }
+        if (products.premiumProfile() == null) {
+            throw fail("scoring.products.premium-profile is missing");
+        }
+        if (products.momentumProfile() == null) {
+            throw fail("scoring.products.momentum-profile is missing");
+        }
+        if (limitEngine == null || !(limitEngine.roundingEur() > 0)) {
+            throw fail("scoring.limit-engine.rounding-eur must be > 0");
+        }
+        if (alerts == null || alerts.watchlist() == null) {
+            throw fail("scoring.alerts is missing");
+        }
+        below("runway-low", alerts.runwayLow());
+        below("dscr-breach", alerts.dscrBreach());
+        above("line-util-high", alerts.lineUtilHigh());
+        above("dso-drift", alerts.dsoDrift());
+        above("supplier-lateness-up", alerts.supplierLatenessUp());
+        above("overdue-receivables", alerts.overdueReceivables());
+        above("tax-gap", alerts.taxGap());
+        above("concentration-high", alerts.concentrationHigh());
+        above("factoring-spike", alerts.factoringSpike());
+        above("score-drop", alerts.scoreDrop());
+        if (alerts.scoreDropMonths() < 1) {
+            throw fail("scoring.alerts.score-drop-months " + alerts.scoreDropMonths() + " must be >= 1");
+        }
+        if (alerts.driftBaselineMinPoints() < 1 || alerts.driftBaselineMinPoints() > alerts.driftBaselineMonths()) {
+            throw fail("scoring.alerts.drift-baseline-min-points " + alerts.driftBaselineMinPoints()
+                    + " must be in [1, drift-baseline-months " + alerts.driftBaselineMonths() + "]");
+        }
+        if (alerts.bandDowngradeCriticalSteps() < 1) {
+            throw fail("scoring.alerts.band-downgrade-critical-steps must be >= 1");
+        }
+        if (alerts.watchlist().minCritical() < 1) {
+            throw fail("scoring.alerts.watchlist.min-critical must be >= 1");
+        }
+        if (alerts.watchlist().minWarn() < 1) {
+            throw fail("scoring.alerts.watchlist.min-warn must be >= 1");
+        }
+    }
+
+    private static void below(String key, ScoringConfig.Level l) {
+        if (l == null) {
+            throw fail("scoring.alerts." + key + " is missing");
+        }
+        if (!(l.critical() < l.warn())) {
+            throw fail("scoring.alerts." + key + " critical " + l.critical() + " must be below warn " + l.warn());
+        }
+    }
+
+    private static void above(String key, ScoringConfig.Level l) {
+        if (l == null) {
+            throw fail("scoring.alerts." + key + " is missing");
+        }
+        if (!(l.critical() > l.warn())) {
+            throw fail("scoring.alerts." + key + " critical " + l.critical() + " must be above warn " + l.warn());
+        }
+    }
+
     private static IllegalStateException fail(String message) {
         return new IllegalStateException("Invalid scoring config: " + message);
     }

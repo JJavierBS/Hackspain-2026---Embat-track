@@ -119,12 +119,40 @@ class ScoringConfigValidationTest {
         assertTrue(ex.getMessage().contains("PAY_DSO"), ex.getMessage());
     }
 
+    @Test
+    void phase5KeysBind() {
+        assertNotNull(base.products().limitProfile());
+        assertNotNull(base.products().premiumProfile());
+        assertNotNull(base.products().momentumProfile());
+        assertTrue(base.limitEngine().roundingEur() > 0);
+        assertTrue(base.alerts().runwayLow().critical() < base.alerts().runwayLow().warn());
+        assertTrue(base.alerts().scoreDrop().critical() > base.alerts().scoreDrop().warn());
+        assertTrue(base.alerts().watchlist().minCritical() >= 1);
+        assertTrue(base.alerts().driftBaselineMinPoints() <= base.alerts().driftBaselineMonths());
+    }
+
+    @Test
+    void invertedAlertLevelsFail() {
+        var a = base.alerts();
+        var bad = new ScoringConfig.AlertsConfig(new ScoringConfig.Level(1.0, 3.0), a.dscrBreach(), a.lineUtilHigh(),
+                a.dsoDrift(), a.supplierLatenessUp(), a.overdueReceivables(), a.taxGap(), a.concentrationHigh(),
+                a.factoringSpike(), a.scoreDrop(), a.scoreDropMonths(), a.driftBaselineMonths(),
+                a.driftBaselineMinPoints(), a.bandDowngradeCriticalSteps(), a.watchlist());
+        var ex = assertThrows(IllegalStateException.class, () -> copyWith(base.indicators(), base.profiles(), bad));
+        assertTrue(ex.getMessage().contains("runway-low"), ex.getMessage());
+    }
+
     private static ScoringConfig copyWith(Map<IndicatorId, IndicatorConfig> ind, Map<Profile, ProfileConfig> prof) {
+        return copyWith(ind, prof, base.alerts());
+    }
+
+    private static ScoringConfig copyWith(Map<IndicatorId, IndicatorConfig> ind, Map<Profile, ProfileConfig> prof,
+                                          ScoringConfig.AlertsConfig alerts) {
         return new ScoringConfig(base.unit(), base.months(), base.cashProductTypes(), base.semiLiquidTypes(),
                 base.bookedStatusValues(), base.runwayCapMonths(), base.trajectory(), base.flowClasses(),
                 base.defaultFlowClass(), base.otherSignFallback(), ind, prof, base.regimes(), base.bands(),
                 base.limitEngine(), base.insurer(), base.debtDscr(), base.dataRules(),
                 base.levDebtToCf(), base.momentum(), base.concentration(), base.windows(), base.taxRegularity(),
-                base.statuses(), base.confidence(), base.explanation());
+                base.statuses(), base.confidence(), base.explanation(), base.products(), alerts);
     }
 }
