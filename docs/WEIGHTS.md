@@ -1,5 +1,8 @@
 # WEIGHTS — AHP category weights, intra-category weights and λ (phase 7, R1)
 
+**Closed on 2026-09-19** (Embat CTO: no more time on weights). The values of this file are in the
+config. The reason to keep them, and the sensitivity test, are in `WEIGHTS_JUSTIFICATION.md`.
+
 Status: **proposal** (decision H17). José Javier decides. Embat experts can override any value later
 through config only. Every number carries a status: `sourced` (a source that we read supports it) or
 `placeholder` (our judgment, no source for the magnitude). Decision H18 applies: no figure is
