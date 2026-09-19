@@ -322,6 +322,47 @@ the backward balance rebuild would put its cash at −4 bn before that day.
 **Decision:** Drop them in staging.
 **Config change:** `data-rules.tx-excluded-abs-amounts: [999999999]`.
 
+## Q13 — Credit-line snapshot for the monthly rebuild
+**Query:** Q13 in `scripts/profiling.sql` (reads a pipeline run)
+**Result:** 532 credit lines have a `balances.csv` row, dated 2026-08-28 …
+2026-09-01. `balance = outstanding` on 284 of them (148 without
+transactions, 136 with). For the other 248 lines, no rule explains the gap:
+`balance ± booked amount after balance.date = outstanding` matches 0 lines,
+`balance = −outstanding` matches 0, and `balance = liquidity` matches 7.
+The two values do not describe the same balance at different dates.
+**Decision:** The plan rule applies: rebuild from `debt_products.outstanding`
+at `${snapshot_date}`. `balances.csv` fits a little better in Q14
+(93.8 % against 90.8 %), but no date logic explains it, and D4 already uses
+`outstanding` for the static lines. One source for both kinds of line.
+**Config change:** None (`sql/33_ind_debt.sql`).
+
+## Q14 — Direction of the credit-line rebuild
+**Query:** Q14 in `scripts/profiling.sql`
+**Result:** drawn(m) = `GREATEST(−(S − Σ booked amount with month > m), 0)`.
+273 rebuilt lines have `granted ≠ 0`. With `S = outstanding`, 248 (90.8 %)
+stay within [0, 1.2] × granted at every month end. With `S = balance`,
+255 of 272 (93.8 %). 84 lines have a credit balance above 20 % of the
+limit in some month (clamped to 0 drawn). 9 lines go above 2 × granted.
+22 rebuilt lines have no `granted` (NULL or 0): unavailable.
+**Decision:** The sign is correct (≥ 90 %). Keep `GREATEST(…, 0)` for credit
+balances. Do not clamp above 1: an overdraft beyond the limit is a real signal.
+**Config change:** None.
+
+## Q15 — Interest flows
+**Query:** Q15 in `scripts/profiling.sql`
+**Result:** 7,803 booked `interest_charge` rows, all outflows, 18.8 M EUR,
+470 companies, 3,475 company-months. 307 companies have debt outstanding at
+the snapshot. 128 of them (41.7 %) have no interest flow in the last 12
+months. Interest 12m / debt: p50 0.36 %, p95 16.4 %.
+**Decision:** `LEV_FUNDING_COST` falls back to the static schedule rate for
+about 42 % of indebted companies. The flow-based cost is low (p50 0.36 %),
+so most spreads over `reference_rate` are negative. Hypothesis, not
+checked: much interest is inside `debt_repayment` instalments (Q1).
+Check the quantiles in Block 3 before the anchors close.
+**Config change:** `data-rules.interest-categories: [interest_charge]`,
+`data-rules.credit-line-debt-types: [lineofcredit]`,
+`data-rules.factoring-debt-types: [factoring, confirming]`.
+
 ## Block 2 run (2026-09-19)
 Clean run on the real CSVs: `rm -f data/xray.duckdb*`, then boot. State `DONE`.
 With an empty `data/raw/`, the three stages skip and the run also ends `DONE`.
