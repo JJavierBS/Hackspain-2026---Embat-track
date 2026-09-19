@@ -52,6 +52,7 @@ Swagger UI: `http://localhost:8080/swagger-ui.html`.
 
 ## Conventions
 - English for code, identifiers, commits, API and docs. UI copy may be Spanish.
+- No `Co-Authored-By: Claude` trailer (or any AI attribution line) in commit messages or PR descriptions.
 - Months as `Month` value object / `YYYY-MM` strings, `M00 = 2024-09` … `M23 = 2026-08`.
 - DTOs are Java `record`s. Scores rounded to 1 decimal at the API boundary only.
 - SQL files are numbered and run in filename order with `${placeholder}` substitution.
@@ -76,4 +77,4 @@ Swagger UI: `http://localhost:8080/swagger-ui.html`.
 - Scoring unit, labels and submission format → Embat (hidden test, Sunday). Input format = same CSVs as `data/raw/`.
 - 10 `⏳ PENDING` anchors → Fran / José Javier after block 3 quantiles.
 - Profile weights → external review; config edit only.
-- `reference_rate` in config is a placeholder → set manually with the current market rate.
+- `limit-engine.reference-rate` in `scoring-config.yml` (0.035) is an **example value**, not agreed with the experts yet. It feeds the limit engine, the simulator and `LEV_FUNDING_COST`. Any agent may change it when the user's instructions say otherwise; record the new value and its source in `docs/THRESHOLDS.md`.
