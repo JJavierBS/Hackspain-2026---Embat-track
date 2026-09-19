@@ -12,7 +12,7 @@ import { Sparkline } from "../components/Sparkline";
 import { StatusTag } from "../components/StatusTag";
 import { useGlobalParams } from "../hooks/useGlobalParams";
 import { useLinkSearch } from "../hooks/useLinkSearch";
-import { BANDS, CONFIDENCE_LABELS, type Band, bandOf, formatScore, monthCode } from "../lib/format";
+import { BANDS, type Band, bandOf, confidenceLabel, formatScore, monthCode } from "../lib/format";
 
 /** The six questions of the track, as status filters (SPEC §8.3). */
 const QUESTIONS: { key: string; label: string; statuses: Status[] }[] = [
@@ -54,9 +54,17 @@ export function PortfolioPage() {
 
   const rows = useMemo(() => {
     const all = data?.rows ?? [];
-    const filtered = filter ? all.filter((r) => filter.statuses.includes(r.status)) : all;
+    const filtered = filter ? all.filter((r) => r.status !== null && filter.statuses.includes(r.status)) : all;
     const dir = sort.desc ? -1 : 1;
-    return [...filtered].sort((a, b) => dir * (a[sort.key] - b[sort.key]));
+    // A missing value (no trajectory yet, no score 3 months before) always sorts last.
+    return [...filtered].sort((a, b) => {
+      const x = a[sort.key];
+      const y = b[sort.key];
+      if (x === null && y === null) return 0;
+      if (x === null) return 1;
+      if (y === null) return -1;
+      return dir * (x - y);
+    });
   }, [data, filter, sort]);
 
   /** Rank by final score in the active profile, whatever the sort or filter. */
@@ -85,14 +93,20 @@ export function PortfolioPage() {
         <LoadState />
       ) : (
         <>
-          <Film title="Distribución por banda" meta={`${data.rows.length} entidades · ${monthCode(month)}`}>
+          <Film
+            title="Distribución por banda"
+            meta={`${data.rows.length} entidades · ${monthCode(month)}${data.unscored > 0 ? ` · ${data.unscored} sin actividad todavía` : ""}`}
+          >
             <BandLadder counts={counts} />
           </Film>
 
-          <Film title="Las seis preguntas" meta="Pulsa para filtrar el ranking">
+          <Film
+            title="Las seis preguntas"
+            meta={data.rows.some((r) => r.status !== null) ? "Pulsa para filtrar el ranking" : "Los estados llegan con el bloque 5"}
+          >
             <div className="flex flex-wrap gap-2">
               {QUESTIONS.map((q) => {
-                const n = data.rows.filter((r) => q.statuses.includes(r.status)).length;
+                const n = data.rows.filter((r) => r.status !== null && q.statuses.includes(r.status)).length;
                 const active = filter?.key === q.key;
                 return (
                   <button
@@ -183,7 +197,7 @@ function Row({ row, rank, href }: { row: PortfolioRow; rank: number; href: strin
           {row.name}
         </Link>
         <span className="block text-sm text-ink-muted">
-          {row.id} · {row.entityType === "GROUP" ? "Grupo" : "Empresa"}
+          {row.name === row.id ? typeLabel(row) : `${row.id} · ${typeLabel(row)}`}
         </span>
       </td>
       <td className="px-2 py-3">
@@ -203,7 +217,7 @@ function Row({ row, rank, href }: { row: PortfolioRow; rank: number; href: strin
         <Sparkline values={row.sparkline} />
       </td>
       <td className="px-2 py-3">{formatScore(row.level)}</td>
-      <td className="px-2 py-3">{formatScore(row.traj)}</td>
+      <td className="px-2 py-3">{row.traj === null ? <span className="text-ink-muted">—</span> : formatScore(row.traj)}</td>
       <td className="px-2 py-3">
         {row.activeAlerts > 0 ? (
           <span className="inline-flex min-w-7 justify-center border border-down/50 px-1.5 font-semibold text-down">{row.activeAlerts}</span>
@@ -214,9 +228,14 @@ function Row({ row, rank, href }: { row: PortfolioRow; rank: number; href: strin
       <td className="px-2 py-3">
         <StatusTag status={row.status} />
       </td>
-      <td className="px-5 py-3 text-ink-muted">{CONFIDENCE_LABELS[row.confidence]}</td>
+      <td className="px-5 py-3 text-ink-muted">{confidenceLabel(row.confidence)}</td>
     </tr>
   );
+}
+
+/** The data has no entity names yet: name = id, so the second line only states the type. */
+function typeLabel(row: PortfolioRow): string {
+  return row.entityType === "GROUP" ? "Grupo" : "Empresa";
 }
 
 /** The ranking row below lg: every number whole, nothing scrolls. */
@@ -226,7 +245,7 @@ function CompactRow({ row, rank, href }: { row: PortfolioRow; rank: number; href
     <li className="border-b border-rule px-5 py-4 last:border-b-0">
       <div className="flex items-start justify-between gap-4">
         <span className="min-w-0">
-          <span className="text-sm text-ink-muted">#{rank} · {row.id}</span>
+          <span className="text-sm text-ink-muted">#{rank} · {row.name === row.id ? typeLabel(row) : row.id}</span>
           <Link to={href} className="block font-semibold text-ink underline-offset-4 hover:underline">
             {row.name}
           </Link>

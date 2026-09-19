@@ -50,6 +50,13 @@ export function formatScore(value: number): string {
   return SCORE_FORMAT.format(value);
 }
 
+const WEIGHT_FORMAT = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 1 });
+
+/** A profile weight (0–100) as the config gives it: "25", "7,5". */
+export function formatWeight(value: number): string {
+  return WEIGHT_FORMAT.format(value);
+}
+
 /** Signed delta with a real minus sign: "+5,1", "−2,3". */
 export function formatDelta(value: number): string {
   const abs = SCORE_FORMAT.format(Math.abs(value));

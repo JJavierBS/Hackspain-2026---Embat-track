@@ -83,23 +83,27 @@ export function ComparePage() {
 
 function Side({ entity, month }: { entity: EntityDetail; month: string }) {
   const m = MONTHS.indexOf(month);
+  const { row } = entity;
+  if (row === null) return <p className="text-ink-muted">Sin puntuación en {monthCode(month)}.</p>;
   return (
     <div className="grid gap-6">
-      <ScoreReadout score={entity.row.final} delta={entity.row.delta3m} against={`vs ${monthCode(MONTHS[Math.max(0, m - 3)])}`} size="md" />
+      <ScoreReadout score={row.final} delta={row.delta3m} against={`vs ${monthCode(MONTHS[Math.max(0, m - 3)])}`} size="md" />
       <div className="flex flex-wrap gap-2">
-        <StatusTag status={entity.row.status} />
-        <TrendTag traj={entity.row.traj} />
+        <StatusTag status={row.status} />
+        <TrendTag traj={row.traj} />
       </div>
       <div className="grid gap-5 sm:grid-cols-2">
-        <Meter label="Nivel" value={entity.row.level} />
-        <Meter label="Trayectoria" value={entity.row.traj} direction />
+        <Meter label="Nivel" value={row.level} />
+        <Meter label="Trayectoria" value={row.traj} direction />
       </div>
     </div>
   );
 }
 
 function Overlay({ a, b, month }: { a: EntityDetail; b: EntityDetail; month: string }) {
-  const data = a.timeline.map((p, i) => ({ month: p.month, a: p.final, b: b.timeline[i]?.final }));
+  // Joined by month: a month with no score is null and draws as a gap.
+  const bByMonth = new Map(b.timeline.map((p) => [p.month, p.final]));
+  const data = a.timeline.map((p) => ({ month: p.month, a: p.final, b: bByMonth.get(p.month) ?? null }));
   return (
     <div>
       <ul className="mb-3 flex flex-wrap gap-x-6 gap-y-1 text-[15px] text-ink-muted">
@@ -145,11 +149,15 @@ function Overlay({ a, b, month }: { a: EntityDetail; b: EntityDetail; month: str
 }
 
 function Verdict({ a, b }: { a: EntityDetail; b: EntityDetail }) {
+  if (a.row === null || b.row === null) return null;
   const gap = Math.abs(a.row.final - b.row.final);
-  const opposite = (a.row.traj >= 55 && b.row.traj <= 45) || (a.row.traj <= 45 && b.row.traj >= 55);
+  // No trajectory yet reads as stable (50) in this comparison text.
+  const ta = a.row.traj ?? 50;
+  const tb = b.row.traj ?? 50;
+  const opposite = (ta >= 55 && tb <= 45) || (ta <= 45 && tb >= 55);
   const text =
     gap <= 3 && opposite
-      ? `Casi la misma nota hoy (${formatScore(gap)} puntos de diferencia), pero trayectorias opuestas: ${formatScore(a.row.traj)} frente a ${formatScore(b.row.traj)}.`
-      : `Diferencia de ${formatScore(gap)} puntos en la nota final y de ${formatScore(Math.abs(a.row.traj - b.row.traj))} en la trayectoria.`;
+      ? `Casi la misma nota hoy (${formatScore(gap)} puntos de diferencia), pero trayectorias opuestas: ${formatScore(ta)} frente a ${formatScore(tb)}.`
+      : `Diferencia de ${formatScore(gap)} puntos en la nota final y de ${formatScore(Math.abs(ta - tb))} en la trayectoria.`;
   return <p className="mt-4 border-t border-rule pt-3 text-[15px]">{text}</p>;
 }
