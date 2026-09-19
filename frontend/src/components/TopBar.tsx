@@ -48,9 +48,9 @@ export function TopBar() {
           {USE_MOCKS ? (
             <span
               title="La app usa datos sintéticos generados en el navegador, no datos de Embat."
-              className="inline-flex items-center gap-2 border border-band-c/70 px-2.5 py-1 text-sm text-viewer-ink"
+              className="inline-flex items-center gap-2 rounded border border-coral/70 px-2.5 py-1 text-sm text-viewer-ink"
             >
-              <span aria-hidden className="h-2 w-2 bg-band-c" />
+              <span aria-hidden className="h-2 w-2 bg-coral" />
               Datos de demostración
             </span>
           ) : (
@@ -60,7 +60,7 @@ export function TopBar() {
       </div>
 
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-3 px-4 pt-4 pb-3 sm:px-6">
-        <div role="radiogroup" aria-label="Perfil" className="flex border border-viewer-rule">
+        <div role="radiogroup" aria-label="Perfil" className="segmented flex border border-viewer-rule">
           {PROFILES.map((p) => {
             const active = p === profile;
             return (

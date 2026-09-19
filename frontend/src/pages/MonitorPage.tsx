@@ -202,7 +202,7 @@ function ReplayFilm({ replay }: { replay: ReturnType<typeof useReplay> }) {
 }
 
 const PRIMARY =
-  "inline-flex items-center gap-2 border border-ink bg-ink px-4 py-2 text-[15px] font-semibold text-film hover:bg-ink/85 disabled:cursor-not-allowed disabled:opacity-45";
+  "inline-flex items-center gap-2 border border-scan bg-scan px-4 py-2 text-[15px] font-semibold text-white hover:border-scan-dark hover:bg-scan-dark disabled:cursor-not-allowed disabled:opacity-45";
 const SECONDARY =
   "inline-flex items-center gap-2 border border-ink/25 bg-film px-4 py-2 text-[15px] text-ink hover:border-ink disabled:cursor-not-allowed disabled:opacity-45";
 
@@ -292,7 +292,7 @@ function ReplayStrip({ frames, current }: { frames: { month: string; newAlerts: 
             <span
               className={`mt-1.5 block ${
                 lit
-                  ? "h-5 w-[5px] bg-scan shadow-[0_0_10px_1px_rgb(15_163_194/0.7)]"
+                  ? "h-5 w-[5px] bg-scan shadow-[0_0_10px_1px_rgb(56_120_246/0.7)]"
                   : played
                     ? "h-3.5 w-[3px] bg-ink"
                     : i < start
@@ -326,7 +326,7 @@ function Segmented<T extends string>({
   return (
     <div className="grid gap-1.5">
       <span className="text-sm text-ink-muted">{label}</span>
-      <div role="radiogroup" aria-label={label} className="flex border border-ink/25">
+      <div role="radiogroup" aria-label={label} className="segmented flex border border-ink/25">
         {options.map((o) => {
           const checked = (value ?? null) === o.key;
           return (
@@ -337,7 +337,7 @@ function Segmented<T extends string>({
               aria-checked={checked}
               disabled={disabled}
               onClick={() => onChange(o.key)}
-              className={`min-w-0 flex-1 px-1.5 py-1.5 text-sm whitespace-nowrap disabled:cursor-not-allowed sm:px-3 sm:text-[15px] ${
+              className={`flex-auto px-1.5 py-1.5 text-sm whitespace-nowrap disabled:cursor-not-allowed sm:px-2.5 sm:text-[15px] ${
                 checked ? "bg-ink font-semibold text-film disabled:bg-ink/60" : "hover:bg-panel disabled:text-ink-muted disabled:hover:bg-transparent"
               }`}
             >
