@@ -27,8 +27,10 @@ mobile/.expo/
 # Logs
 *.log
 
-# Data (CSVs and DuckDB file) never go to git
-data/
+# Data (CSVs and the full DuckDB file) never go to git. The demo slice does: the deployed
+# image builds from the repo and has no other way to get it (docs/DEPLOY.md).
+data/*
+!data/xray-demo.duckdb.gz
 
 # Frontend build
 frontend/dist/
