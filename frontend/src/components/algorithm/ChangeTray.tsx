@@ -148,6 +148,7 @@ function Status({ changes, sections, invalid, phase }: { changes: number; sectio
     return <Lamp busy label={`Recalculando · ${stage} · ${phase.percent} %`} progress={phase.percent} />;
   }
   if (phase.kind === "done") {
+    if (phase.rerun) return <Lamp label="Datos recalculados con la configuración activa" />;
     return <Lamp label={phase.sections.length === 0 ? "Datos recalculados con los valores por defecto" : "Datos recalculados con la nueva configuración"} />;
   }
   if (phase.kind === "error") {
