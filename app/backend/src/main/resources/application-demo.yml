@@ -1,5 +1,0 @@
-# Active inside the Docker demo stack (SPRING_PROFILES_ACTIVE=demo).
-# The datasource host is the Compose service name, not localhost.
-spring:
-  datasource:
-    url: jdbc:postgresql://postgres:5432/${DB_NAME:app}
