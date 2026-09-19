@@ -17,7 +17,7 @@ import type {
   PortfolioRow,
   PremiumQuote,
 } from "../api/types";
-import { ApiError } from "../api/client";
+import { ApiError, isServerDown } from "../api/client";
 import { useEntity, useMeta, useMethodology, useSimulateLimit } from "../api/queries";
 import { AlertList } from "../components/AlertList";
 import { LimitHistoryChart } from "../components/LimitHistoryChart";
@@ -1021,6 +1021,7 @@ const SIM_LABELS: Record<LimitSimulation["decision"], { text: string; tone: stri
 
 /** The backend sends Spring's JSON error body; show its message, not the raw JSON. */
 function errorText(error: Error): string {
+  if (isServerDown(error)) return "Esta función necesita el servidor.";
   if (!(error instanceof ApiError)) return error.message;
   try {
     const body = JSON.parse(error.message) as { detail?: string; message?: string };

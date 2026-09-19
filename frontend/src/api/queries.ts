@@ -1,6 +1,7 @@
+import { useSyncExternalStore } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { Profile } from "../hooks/useGlobalParams";
-import { ApiError, apiGet, apiPost } from "./client";
+import { ApiError, apiGet, apiPost, getOfflineSnapshot, subscribeOffline } from "./client";
 import type {
   Direction,
   EntityDetail,
@@ -20,9 +21,18 @@ import type {
 /** true when the app runs on synthetic demo data (VITE_MOCKS=true). */
 export const USE_MOCKS = import.meta.env.VITE_MOCKS === "true";
 
-/** A 404 is an answer (unknown entity, or an endpoint of a later block), not a network hiccup: do not retry it. */
+/**
+ * A 404 is an answer (unknown entity, or an endpoint of a later block), not a network hiccup: do not retry it.
+ * Once the app reads the frozen snapshot, the server is known to be down: fail fast to the error film.
+ */
 function retryUnless404(failures: number, error: Error): boolean {
+  if (getOfflineSnapshot()) return false;
   return !(error instanceof ApiError && error.status === 404) && failures < 3;
+}
+
+/** true once any GET was served from the frozen snapshot in public/fallback (SPEC §14). */
+export function useOffline(): boolean {
+  return useSyncExternalStore(subscribeOffline, getOfflineSnapshot);
 }
 
 /** Loads the generator only in mock mode, so a normal build does not ship it. */

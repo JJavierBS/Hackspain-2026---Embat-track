@@ -1,5 +1,6 @@
 import { Outlet, useLocation } from "react-router-dom";
 import { useGlobalParams } from "../hooks/useGlobalParams";
+import { OfflineBanner } from "./OfflineBanner";
 import { TopBar } from "./TopBar";
 
 export function Layout() {
@@ -10,6 +11,7 @@ export function Layout() {
     <div className="flex min-h-screen flex-col">
       <TopBar />
       <main className="relative flex flex-1 flex-col overflow-hidden bg-panel [container-type:inline-size]">
+        <OfflineBanner />
         {/* A new view or a new buyer profile re-scans the panel once. */}
         <span key={`${pathname}|${profile}`} aria-hidden className="scanline" />
         <div className="lightbox flex-1">
