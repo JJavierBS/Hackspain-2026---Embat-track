@@ -131,6 +131,7 @@ final class ScoringConfigValidator {
         positive("scoring.lead-time.events.runway-months", e.runwayMonths());
         positive("scoring.lead-time.events.dscr-months", e.dscrMonths());
         positive("scoring.lead-time.events.improvement-below-months", e.improvementBelowMonths());
+        positive("scoring.lead-time.events.improvement-cross-months", e.improvementCrossMonths());
         if (!(e.improvementBelow() < e.improvementCross())) {
             throw fail("scoring.lead-time.events.improvement-below " + e.improvementBelow()
                     + " must be below improvement-cross " + e.improvementCross());

@@ -607,7 +607,8 @@ function Definitions({ data }: { data: LeadTime }) {
           los datos: <span className="text-ink">caja</span> para muy pocos meses de forma sostenida, <span className="text-ink">DSCR</span>{" "}
           insuficiente para cubrir la deuda de forma sostenida, <span className="text-ink">impagos</span> altos a la vez en cobros y
           pagos, o una <span className="text-ink">nota</span> muy baja. Una mejora es un <span className="text-ink">cruce de nivel</span>{" "}
-          hacia una zona sana tras un periodo débil. Los umbrales están en la configuración.
+          hacia una zona sana tras un periodo débil, sostenido los mismos meses que se exigen a la caja y al DSCR: la misma prueba en las
+          dos direcciones. Los umbrales están en la configuración.
         </>
       ),
     },

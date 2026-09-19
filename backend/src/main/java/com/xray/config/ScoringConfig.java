@@ -175,7 +175,7 @@ public record ScoringConfig(
             return new LeadTimeAnalyzer.Params(minHistoryMonths, windowMonths, horizonMonths,
                     events.runwayBelow(), events.runwayMonths(), events.dscrBelow(), events.dscrMonths(),
                     events.overdueMaxLevel(), events.scoreBelow(), events.improvementCross(),
-                    events.improvementBelow(), events.improvementBelowMonths(),
+                    events.improvementCrossMonths(), events.improvementBelow(), events.improvementBelowMonths(),
                     Set.copyOf(signal.deteriorationStatuses()), signal.deteriorationMaxTraj(),
                     Set.copyOf(signal.improvementStatuses()), signal.improvementMinTraj(), signal.maxGapMonths());
         }
@@ -184,7 +184,7 @@ public record ScoringConfig(
     /** The proxy events of SPEC §8.4: no default label exists, so the conditions stand in for one. */
     public record EventsConfig(double runwayBelow, int runwayMonths, double dscrBelow, int dscrMonths,
                                double overdueMaxLevel, double scoreBelow, double improvementCross,
-                               double improvementBelow, int improvementBelowMonths) {
+                               int improvementCrossMonths, double improvementBelow, int improvementBelowMonths) {
     }
 
     /** When the system "raised its hand" (decision G5). maxGapMonths: longest break a signal run may have. */

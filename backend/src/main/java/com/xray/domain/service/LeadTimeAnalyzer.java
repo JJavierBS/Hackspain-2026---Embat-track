@@ -24,7 +24,8 @@ public final class LeadTimeAnalyzer {
     public record Params(int minHistoryMonths, int windowMonths, int horizonMonths,
                          double runwayBelow, int runwayMonths, double dscrBelow, int dscrMonths,
                          double overdueMaxLevel, double scoreBelow,
-                         double improvementCross, double improvementBelow, int improvementBelowMonths,
+                         double improvementCross, int improvementCrossMonths, double improvementBelow,
+                         int improvementBelowMonths,
                          Set<HealthStatus> deteriorationStatuses, double deteriorationMaxTraj,
                          Set<HealthStatus> improvementStatuses, double improvementMinTraj,
                          int maxGapMonths) {
@@ -170,18 +171,28 @@ public final class LeadTimeAnalyzer {
         return f != null && f < p.scoreBelow() ? EventTrigger.SCORE : null;
     }
 
-    /** Level crosses up through the threshold after a run below the low threshold inside the window (G4). */
+    /**
+     * Level holds at or above the threshold for improvementCrossMonths in a row, ending at m, after a run below
+     * the low threshold inside the window (G4). The hold matches runway-months and dscr-months of deterioration:
+     * both directions need the same proof, so a one-month rebound is not an improvement.
+     */
     private static EventTrigger improvement(Series s, int m, Params p) {
-        if (m == 0) {
+        int start = m - p.improvementCrossMonths() + 1;
+        if (start < 1) {
             return null;
         }
-        Double now = s.level()[m];
-        Double before = s.level()[m - 1];
-        if (now == null || before == null || now < p.improvementCross() || before >= p.improvementCross()) {
+        Double before = s.level()[start - 1];
+        if (before == null || before >= p.improvementCross()) {
             return null;
+        }
+        for (int k = start; k <= m; k++) {
+            Double lv = s.level()[k];
+            if (lv == null || lv < p.improvementCross()) {
+                return null;
+            }
         }
         int run = 0;
-        for (int k = Math.max(0, m - p.windowMonths()); k < m; k++) {
+        for (int k = Math.max(0, start - p.windowMonths()); k < start; k++) {
             Double lv = s.level()[k];
             run = lv != null && lv < p.improvementBelow() ? run + 1 : 0;
             if (run >= p.improvementBelowMonths()) {

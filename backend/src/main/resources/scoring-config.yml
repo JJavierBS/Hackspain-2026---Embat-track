@@ -260,6 +260,7 @@ scoring:
       overdue-max-level: 20        # both DEL_OVERDUE_RECEIVABLES and PAY_OVERDUE_PAYABLES, pending anchors
       score-below: 35
       improvement-cross: 65
+      improvement-cross-months: 2  # same hold as runway-months and dscr-months: one proof for both directions
       improvement-below: 50
       improvement-below-months: 3
     signal:
