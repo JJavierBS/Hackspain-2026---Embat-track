@@ -21,7 +21,8 @@ public class MetaQuery {
             "La deuda dispuesta y concedida es una foto del 2026-09-01: los indicadores que la usan se marcan como estáticos.",
             "Datos sintéticos y sin etiqueta real de impago: la anticipación se mide contra eventos proxy documentados.",
             "Las historias cortas y los datos de ERP incompletos bajan la confianza: esas entidades se puntúan, no se excluyen.",
-            "EBA/GL/2020/06 se cita como marco de buenas prácticas (alertas con umbrales y lista de vigilancia), no como lista obligatoria.");
+            "EBA/GL/2020/06 se cita como marco de buenas prácticas (alertas con umbrales y lista de vigilancia), no como lista obligatoria.",
+            "El límite de circulante, la prima y la lista de vigilancia usan umbrales provisionales y un tipo de referencia de ejemplo.");
 
     private final SqlRunner sql;
     private final ApiParams params;
@@ -53,6 +54,7 @@ public class MetaQuery {
         return new MetaDto(params.unit().name(), params.months(),
                 Arrays.stream(Profile.values()).map(Enum::name).toList(), counts, runId, finishedAt,
                 props.demoMode(), DuckDbTables.exists(sql, "contributions"),
-                DuckDbTables.exists(sql, "changepoints"), CAVEATS);
+                DuckDbTables.exists(sql, "changepoints"), CAVEATS, DuckDbTables.exists(sql, "alerts"),
+                DuckDbTables.exists(sql, "limit_decisions"));
     }
 }

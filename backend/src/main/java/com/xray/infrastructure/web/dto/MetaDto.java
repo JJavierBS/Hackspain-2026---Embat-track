@@ -5,5 +5,6 @@ import java.util.Map;
 
 public record MetaDto(String unit, List<String> months, List<String> profiles, Map<String, Long> entityCounts,
                       String runId, String finishedAt, boolean demoMode, boolean explanationsReady,
-                      boolean dynamicsReady, List<String> caveats) {
+                      boolean dynamicsReady, List<String> caveats, boolean alertsReady,
+                      boolean productsReady) {
 }

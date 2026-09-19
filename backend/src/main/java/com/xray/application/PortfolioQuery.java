@@ -1,6 +1,8 @@
 package com.xray.application;
 
+import com.xray.config.ScoringConfig;
 import com.xray.domain.model.Profile;
+import com.xray.infrastructure.duckdb.DuckDbTables;
 import com.xray.infrastructure.duckdb.SqlRunner;
 import com.xray.infrastructure.web.dto.PortfolioDto;
 import com.xray.infrastructure.web.dto.PortfolioRowDto;
@@ -17,7 +19,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/** GET /api/portfolio (SPEC §12.5). Reads profile_scores only. */
+/** GET /api/portfolio (SPEC §12.5). Reads profile_scores, plus alert_states and momentum_screen when present. */
 @Service
 public class PortfolioQuery {
 
@@ -25,10 +27,12 @@ public class PortfolioQuery {
 
     private final SqlRunner sql;
     private final ApiParams params;
+    private final ScoringConfig config;
 
-    public PortfolioQuery(SqlRunner sql, ApiParams params) {
+    public PortfolioQuery(SqlRunner sql, ApiParams params, ScoringConfig config) {
         this.sql = sql;
         this.params = params;
+        this.config = config;
     }
 
     public PortfolioDto portfolio(String profileRaw, String monthRaw, String status, String band, String q, String sort) {
@@ -83,12 +87,43 @@ public class PortfolioQuery {
                         Scores.dbl(rs, "traj"), rs.getString("band"), rs.getString("status"),
                         rs.getString("regime"), rs.getString("confidence"), Scores.dbl(rs, "final3")),
                 args.toArray());
-        Map<String, List<Double>> spark = sparklines(entityType, p, month,
-                base.stream().map(Base::id).collect(Collectors.toSet()));
+        Set<String> ids = base.stream().map(Base::id).collect(Collectors.toSet());
+        Map<String, List<Double>> spark = sparklines(entityType, p, month, ids);
+        Map<String, Integer> active = activeAlerts(entityType, p, month, ids);
+        Map<String, Boolean> stars = risingStars(entityType, month, ids);
         return base.stream().map(b -> new PortfolioRowDto(b.id(), b.id(), entityType, Scores.round1(b.fin()),
                 Scores.round1(b.level()), Scores.round1(b.traj()), b.band(), b.status(), b.regime(),
                 b.final3() == null ? null : Scores.round1(b.fin() - b.final3()),
-                spark.getOrDefault(b.id(), List.of()), 0, b.confidence())).toList();
+                spark.getOrDefault(b.id(), List.of()), active.getOrDefault(b.id(), 0), b.confidence(),
+                stars.get(b.id()))).toList();
+    }
+
+    /** Negative active alert states at month (decision F16). Empty when alert_states is absent. */
+    private Map<String, Integer> activeAlerts(String entityType, Profile p, String month, Set<String> ids) {
+        Map<String, Integer> out = new HashMap<>();
+        if (ids.isEmpty() || !DuckDbTables.exists(sql, "alert_states")) return out;
+        sql.query("""
+                SELECT entity_id, COUNT(*) FROM alert_states
+                WHERE entity_type = ? AND profile = ? AND month = ? AND direction = 'NEGATIVE' GROUP BY 1""",
+                (rs, i) -> {
+                    if (ids.contains(rs.getString(1))) out.put(rs.getString(1), rs.getInt(2));
+                    return null;
+                },
+                entityType, p.name(), month);
+        return out;
+    }
+
+    /** rising_star of the momentum profile at month, whatever ?profile is. Empty when momentum_screen is absent. */
+    private Map<String, Boolean> risingStars(String entityType, String month, Set<String> ids) {
+        Map<String, Boolean> out = new HashMap<>();
+        if (ids.isEmpty() || !DuckDbTables.exists(sql, "momentum_screen")) return out;
+        sql.query("SELECT entity_id, rising_star FROM momentum_screen WHERE entity_type = ? AND profile = ? AND month = ?",
+                (rs, i) -> {
+                    if (ids.contains(rs.getString(1))) out.put(rs.getString(1), rs.getBoolean(2));
+                    return null;
+                },
+                entityType, config.products().momentumProfile().name(), month);
+        return out;
     }
 
     /** Non-null finals of the 12 months up to month, oldest first. */

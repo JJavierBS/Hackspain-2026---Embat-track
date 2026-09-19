@@ -4,8 +4,12 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
-/** One scored entity at one month. `final` is a Java keyword, so the component is finalScore. */
+/**
+ * One scored entity at one month. `final` is a Java keyword, so the component is finalScore.
+ * activeAlerts = negative active alert states at the month (decision F16). risingStar is null without a momentum row.
+ */
 public record PortfolioRowDto(String id, String name, String entityType, @JsonProperty("final") double finalScore,
                               double level, Double traj, String band, String status, String regime, Double delta3m,
-                              List<Double> sparkline, int activeAlerts, String confidence) {
+                              List<Double> sparkline, int activeAlerts, String confidence,
+                              Boolean risingStar) {
 }
