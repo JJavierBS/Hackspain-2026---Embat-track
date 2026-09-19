@@ -62,7 +62,7 @@ Swagger UI: `http://localhost:8080/swagger-ui.html`.
 
 ## Resolved conflicts between SPEC and ARCHITECTURE (apply these)
 1. **Supervised calibration** (SPEC §7.7, M9, `/api/labels`, `/api/model/*`, `CALIBRATED` export profile): **out of scope** per ARCHITECTURE §0. Only the `ScoreCalibrator` interface exists. Do not add Smile or those endpoints.
-2. **Leaderboard timing:** the Embat track provides the hidden test, scoring script and leaderboard **from Friday**, not Sunday. As soon as the script is available, adapt `SubmissionExporter` (default `entity_id,score` at M23) and submit once to validate the pipeline end to end. Confirm the scoring unit from the test IDs at that moment.
+2. **Hidden test timing and format:** the hidden test, scoring script and leaderboard are **not available before Sunday** (confirmed 2026-09-19, despite the track text saying Friday). The one thing known: the hidden test comes in **exactly the same format as the CSVs we already have** (`data/raw/*.csv`). So the pipeline must be able to run unchanged on a second set of raw CSVs. Until Sunday, `SubmissionExporter` defaults to `entity_id,score` at M23. On Sunday, check the scoring unit from the test IDs, adapt the exporter and submit once.
 3. **Stage order:** the `LIMIT_ACTION` alert needs limit decisions, but ARCHITECTURE runs `S80_Alerts` before `S85_Products`. Run products first: rename to `S75_Products` (limit engine and premium depend only on scores, regimes and indicators, never on alerts), keep `S80_Alerts` after it.
 4. **Provisional anchors:** SPEC §9 shows `CF_VOLATILITY` with `anchors: []`, which fails boot validation (ARCHITECTURE §4.3). Ship these provisional placeholders (`status: pending`) until THRESHOLDS.md closes them:
    - `CF_VOLATILITY` (lower is better): `[[0.1,100],[0.3,70],[0.6,40],[1.0,15],[2.0,0]]`
@@ -73,7 +73,7 @@ Swagger UI: `http://localhost:8080/swagger-ui.html`.
 7. **`DEBT_DSCR` with no debt:** level 100 by default, exposed as `debtDscr.noDebtLevel` in config (add the key to `scoring-config.yml`).
 
 ## Open items (don't guess — check or ask)
-- Scoring unit, labels and submission format → Embat (hidden test).
+- Scoring unit, labels and submission format → Embat (hidden test, Sunday). Input format = same CSVs as `data/raw/`.
 - 10 `⏳ PENDING` anchors → Fran / José Javier after block 3 quantiles.
 - Profile weights → external review; config edit only.
 - `reference_rate` in config is a placeholder → set manually with the current market rate.

@@ -153,3 +153,17 @@ scoring:
 
   debt-dscr:
     no-debt-level: 100
+
+  # SPEC §6: debt > 0 and NOCF_12m <= 0 -> level 0. SQL writes value NULL, available TRUE (phase 3 contract).
+  lev-debt-to-cf:
+    non-positive-cf-level: 0
+
+  # SPEC §7.3: C(MOMENTUM) = TrajOverall + 2 pts per month of persistence, capped at +/-10, clamped [0,100].
+  momentum:
+    points-per-month: 2
+    cap: 10
+
+  # Phase 3 decision D9: only 4.9 % of operating inflow amount carries a counterparty_id (median 26 % per company).
+  # CON_* are unavailable below this coverage of the window's operating flow. PROVISIONAL value, review after block 3.
+  concentration:
+    min-counterparty-coverage: 0.5

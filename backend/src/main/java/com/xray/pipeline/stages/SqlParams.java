@@ -1,6 +1,7 @@
 package com.xray.pipeline.stages;
 
 import com.xray.config.DataRules;
+import com.xray.config.IndicatorConfig;
 import com.xray.config.ScoringConfig;
 import com.xray.config.XRayProperties;
 
@@ -52,7 +53,27 @@ final class SqlParams {
         m.put("own_account_max_lag_days", String.valueOf(r.ownAccountMaxLagDays()));
         m.put("tx_excluded_abs_amounts", r.txExcludedAbsAmounts() == null || r.txExcludedAbsAmounts().isEmpty()
                 ? "-1" : r.txExcludedAbsAmounts().stream().map(String::valueOf).collect(Collectors.joining(", ")));
+        m.put("con_min_coverage", String.valueOf(c.concentration().minCounterpartyCoverage()));
+        c.indicators().forEach((id, ic) -> {
+            m.put("best_x_" + id.name(), String.valueOf(xAtScore(ic, true)));
+            m.put("worst_x_" + id.name(), String.valueOf(xAtScore(ic, false)));
+        });
         return m;
+    }
+
+    /**
+     * x of the anchor with the highest (best) or lowest (worst) score: the limit value of a ratio whose
+     * denominator is 0 (phase 3 overview, decision D3). Ties keep the first anchor for best, the last for worst.
+     */
+    static double xAtScore(IndicatorConfig ic, boolean best) {
+        List<List<Double>> a = ic.anchors();
+        List<Double> pick = a.get(0);
+        for (List<Double> p : a) {
+            if (best ? p.get(1) > pick.get(1) : p.get(1) <= pick.get(1)) {
+                pick = p;
+            }
+        }
+        return pick.get(0);
     }
 
     /** SQL expression for the EUR amount. "fx.rate" is the fx_to_eur row joined on the local currency. */

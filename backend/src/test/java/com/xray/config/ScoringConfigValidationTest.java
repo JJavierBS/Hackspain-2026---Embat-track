@@ -34,6 +34,9 @@ class ScoringConfigValidationTest {
         assertEquals(IndicatorId.values().length, base.indicators().size());
         assertEquals(Profile.values().length, base.profiles().size());
         assertEquals(100.0, base.debtDscr().noDebtLevel());
+        assertEquals(0.0, base.levDebtToCf().nonPositiveCfLevel());
+        assertNotNull(base.momentum());
+        assertTrue(base.concentration().minCounterpartyCoverage() > 0);
     }
 
     @Test
@@ -93,6 +96,7 @@ class ScoringConfigValidationTest {
         return new ScoringConfig(base.unit(), base.months(), base.cashProductTypes(), base.semiLiquidTypes(),
                 base.bookedStatusValues(), base.runwayCapMonths(), base.trajectory(), base.flowClasses(),
                 base.defaultFlowClass(), base.otherSignFallback(), ind, prof, base.regimes(), base.bands(),
-                base.limitEngine(), base.insurer(), base.debtDscr(), base.dataRules());
+                base.limitEngine(), base.insurer(), base.debtDscr(), base.dataRules(),
+                base.levDebtToCf(), base.momentum(), base.concentration());
     }
 }

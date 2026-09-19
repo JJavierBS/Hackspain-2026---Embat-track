@@ -1,5 +1,6 @@
 package com.xray.pipeline.stages;
 
+import com.xray.config.XRayProperties;
 import com.xray.domain.model.EntityPanel;
 import com.xray.domain.model.Month;
 import com.xray.infrastructure.duckdb.DuckDbTables;
@@ -16,12 +17,17 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
-/** sql/29 creates indicator_values_raw, sql/30..38 fill it, then the panels load into memory. */
+/**
+ * sql/29 creates indicator_values_raw, sql/28 builds the entity_months grid, sql/30..38 fill it,
+ * then the panels load into memory. Indicator SQL sees every SqlParams placeholder plus unit,
+ * runway_cap_months and reference_rate.
+ */
 @Component
 @Order(30)
 public class S30_RawIndicators implements PipelineStage {
@@ -30,9 +36,11 @@ public class S30_RawIndicators implements PipelineStage {
     private static final Pattern INDICATOR_SQL = Pattern.compile("3[0-8]_.*\\.sql");
 
     private final PanelLoader loader;
+    private final XRayProperties props;
 
-    public S30_RawIndicators(PanelLoader loader) {
+    public S30_RawIndicators(PanelLoader loader, XRayProperties props) {
         this.loader = loader;
+        this.props = props;
     }
 
     @Override
@@ -42,12 +50,16 @@ public class S30_RawIndicators implements PipelineStage {
 
     @Override
     public void execute(PipelineContext ctx) {
-        Map<String, String> params = Map.of("unit", ctx.unit().name());
+        Map<String, String> params = new HashMap<>(SqlParams.of(ctx.config(), props));
+        params.put("unit", ctx.unit().name());
+        params.put("runway_cap_months", String.valueOf(ctx.config().runwayCapMonths()));
+        params.put("reference_rate", String.valueOf(ctx.config().limitEngine().referenceRate()));
         ctx.sql().runScript("sql/29_indicator_values_raw.sql", params);
         if (!DuckDbTables.exists(ctx.sql(), "entities")) {
             ctx.report(id(), 30, "skipped: no entities table");
             return;
         }
+        ctx.sql().runScript("sql/28_entity_months.sql", params);
         for (String file : indicatorScripts()) {
             ctx.report(id(), 30, file);
             ctx.sql().runScript("sql/" + file, params);
