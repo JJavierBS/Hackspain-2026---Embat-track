@@ -32,9 +32,11 @@ import { PageHeader } from "../components/PageHeader";
 import { PendingFilm } from "../components/PendingFilm";
 import { ScoreReadout } from "../components/ScoreReadout";
 import { StatusTag, TrendTag } from "../components/StatusTag";
+import { ForecastControls } from "../components/ForecastControls";
 import { TrendChart } from "../components/TrendChart";
 import { MONTHS, useGlobalParams } from "../hooks/useGlobalParams";
 import { useHashScroll } from "../hooks/useHashScroll";
+import { useHorizon } from "../hooks/useHorizon";
 import { useLinkSearch } from "../hooks/useLinkSearch";
 import {
   ALERT_LABELS,
@@ -66,7 +68,8 @@ import {
 export function EntityPage() {
   const { id = "" } = useParams();
   const { profile, month } = useGlobalParams();
-  const { data, error, isPending } = useEntity(id, profile, month);
+  const { horizon, setHorizon } = useHorizon();
+  const { data, error, isPending } = useEntity(id, profile, month, horizon);
   const linkSearch = useLinkSearch();
   useHashScroll(data !== undefined);
 
@@ -163,19 +166,23 @@ export function EntityPage() {
               />
             </div>
           </div>
-          <TrendChart
-            data={data.timeline
-              .filter((p) => p.final !== null)
-              .map((p) => ({ month: p.month, final: p.final, level: p.level, trajectory: p.traj }))}
-            activeMonth={month}
-            height={300}
-            markers={data.alerts.map((a) => ({ month: a.month, direction: a.direction, label: ALERT_LABELS[a.code] }))}
-            events={data.events.map((e) => ({
-              month: e.eventMonth,
-              direction: e.eventType === "DETERIORATION" ? "NEGATIVE" : "POSITIVE",
-              label: `${EVENT_MARK_LABELS[e.eventType]}: ${TRIGGER_LABELS[e.trigger].toLowerCase()}`,
-            }))}
-          />
+          <div>
+            <TrendChart
+              data={data.timeline
+                .filter((p) => p.final !== null)
+                .map((p) => ({ month: p.month, final: p.final, level: p.level, trajectory: p.traj }))}
+              activeMonth={month}
+              height={300}
+              markers={data.alerts.map((a) => ({ month: a.month, direction: a.direction, label: ALERT_LABELS[a.code] }))}
+              events={data.events.map((e) => ({
+                month: e.eventMonth,
+                direction: e.eventType === "DETERIORATION" ? "NEGATIVE" : "POSITIVE",
+                label: `${EVENT_MARK_LABELS[e.eventType]}: ${TRIGGER_LABELS[e.trigger].toLowerCase()}`,
+              }))}
+              projection={data.forecast?.points ?? []}
+            />
+            {data.forecast && <ForecastControls forecast={data.forecast} horizon={horizon} onHorizon={setHorizon} />}
+          </div>
         </div>
       </Film>
 
