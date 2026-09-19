@@ -4,6 +4,7 @@ import { ApiError, apiGet, apiPost } from "./client";
 import type {
   Direction,
   EntityDetail,
+  LeadTime,
   LimitSimulation,
   Meta,
   Methodology,
@@ -11,6 +12,7 @@ import type {
   Portfolio,
   Profiles,
   Severity,
+  ShowcasePairs,
   SimulateLimitRequest,
   Watchlist,
 } from "./types";
@@ -44,8 +46,8 @@ export function useEntity(id: string, profile: Profile, month: string) {
     queryFn: async () => {
       if (!USE_MOCKS) {
         const detail = await apiGet<EntityDetail>(`/entities/${id}?profile=${profile}&month=${month}`);
-        // A backend before block 6 sends no `alerts`: read it as an empty list so the page still renders.
-        return { ...detail, alerts: detail.alerts ?? [] };
+        // A backend before block 6 sends no `alerts`, one before phase 6 no `events`: read them as empty lists.
+        return { ...detail, alerts: detail.alerts ?? [], events: detail.events ?? [] };
       }
       const detail = (await mocks()).mockEntity(id, profile, month);
       if (!detail) throw new Error(`Entidad ${id} no encontrada`);
@@ -97,6 +99,30 @@ export function useMethodology() {
     queryFn: async () => (USE_MOCKS ? (await mocks()).mockMethodology() : apiGet<Methodology>("/methodology")),
     retry: retryUnless404,
     staleTime: 60_000,
+  });
+}
+
+/** Measured anticipation of the profile (SPEC §8.4): events, leads, false alarms. */
+export function useLeadTime(profile: Profile) {
+  return useQuery({
+    queryKey: ["lead-time", profile],
+    queryFn: async () =>
+      USE_MOCKS ? (await mocks()).mockLeadTime(profile) : apiGet<LeadTime>(`/analytics/lead-time?profile=${profile}`),
+    retry: retryUnless404,
+    placeholderData: (previous) => previous,
+  });
+}
+
+/** Ranked pairs with the same score today and opposite trajectories (SPEC §10.4, decision G9). */
+export function useShowcasePairs(profile: Profile, month: string) {
+  return useQuery({
+    queryKey: ["showcase-pairs", profile, month],
+    queryFn: async () =>
+      USE_MOCKS
+        ? (await mocks()).mockShowcasePairs(profile, month)
+        : apiGet<ShowcasePairs>(`/analytics/showcase-pairs?profile=${profile}&month=${month}`),
+    retry: retryUnless404,
+    placeholderData: (previous) => previous,
   });
 }
 
