@@ -5,6 +5,7 @@ import { AlertLevels } from "../components/algorithm/AlertLevels";
 import { AlgorithmContext, type AlgorithmState } from "../components/algorithm/AlgorithmContext";
 import { IndicatorRow } from "../components/algorithm/AnchorEditor";
 import { ChangeTray } from "../components/algorithm/ChangeTray";
+import { DraftPreview } from "../components/algorithm/DraftPreview";
 import { PresetPicker } from "../components/algorithm/PresetPicker";
 import { SectionNav } from "../components/algorithm/SectionNav";
 import { BandMapField, FieldGrid } from "../components/algorithm/Fields";
@@ -79,7 +80,7 @@ export function AlgorithmPage() {
       <div className={`grid gap-12 ${changes.length > 0 || apply.phase.kind !== "idle" ? "pb-40" : ""}`}>
         <Header />
         <ExpertWarning
-          editable={data.editable}
+          canApply={data.canApply}
           overridden={data.overridden}
           applied={data.appliedToData}
           busy={apply.busy}
@@ -93,6 +94,10 @@ export function AlgorithmPage() {
           <div className="grid min-w-0 gap-12">
             <Film id="presets" className={JUMP} title="Presets por cliente" meta="4 clientes · cada valor con su fuente">
               <PresetPicker />
+            </Film>
+
+            <Film id="vista-previa" className={JUMP} title="Vista previa en una entidad" meta="Solo esa entidad · no guarda nada">
+              <DraftPreview draft={state.draft} changes={changes} invalid={invalid.size} />
             </Film>
 
             <Film id="pesos" className={JUMP} title="Pesos por perfil" meta="10 categorías · suma 100 por perfil">
@@ -196,6 +201,8 @@ export function AlgorithmPage() {
         changes={changes}
         invalid={invalid.size}
         phase={apply.phase}
+        canApply={data.canApply}
+        onPreview={() => document.getElementById("vista-previa")?.scrollIntoView({ behavior: "smooth", block: "start" })}
         onUndo={(c) => setAt(c.path, c.before)}
         onDiscard={() => setDraft(data.config)}
         onApply={() => apply.save(state.draft)}
@@ -238,7 +245,7 @@ function groupIndicators(indicators: Record<string, IndicatorEntry>): [Category,
 }
 
 interface WarningProps {
-  editable: boolean;
+  canApply: boolean;
   overridden: boolean;
   applied: boolean;
   busy: boolean;
@@ -246,18 +253,23 @@ interface WarningProps {
   onRerun: () => void;
 }
 
+/** The recalculation is off on a server that serves precomputed data. The reason sits next to the control. */
+const NO_RECALC = "Desactivado: esta instancia sirve datos precalculados.";
+
 /** The expert gate: what a change does, where the values come from, and whether the data on screen uses them. */
-function ExpertWarning({ editable, overridden, applied, busy, onReset, onRerun }: WarningProps) {
+function ExpertWarning({ canApply, overridden, applied, busy, onReset, onRerun }: WarningProps) {
   const [confirm, setConfirm] = useState(false);
   return (
-    <Film title="Zona de experto" meta={editable ? "Los cambios afectan a todas las páginas" : "Solo lectura"}>
+    <Film title="Zona de experto" meta={canApply ? "Los cambios afectan a todas las páginas" : "Datos precalculados · recalcular desactivado"}>
       <div className="grid gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
         <div className="grid content-start gap-4">
           <p className="flex items-start gap-3 text-2xl font-semibold tracking-tight [font-stretch:88%]">
             <IconWarning width={28} height={28} className="mt-0.5 shrink-0" />
-            {editable ? "Aplicar un cambio recalcula todos los datos que muestra X-Ray." : "Esta instancia sirve datos congelados: puedes leer cada parámetro, pero no cambiarlo."}
+            {canApply
+              ? "Aplicar un cambio recalcula todos los datos que muestra X-Ray."
+              : "Esta instancia sirve datos precalculados: puedes editar el borrador y probarlo en una entidad, pero no recalcular."}
           </p>
-          {editable ? (
+          {canApply ? (
             <ul className="grid max-w-[68ch] gap-2 text-ink-muted">
               <li>
                 El backend guarda tus valores en <code className="text-ink">data/scoring-overrides.yml</code>, se reinicia y
@@ -273,10 +285,16 @@ function ExpertWarning({ editable, overridden, applied, busy, onReset, onRerun }
               </li>
             </ul>
           ) : (
-            <p className="max-w-[68ch] text-ink-muted">
-              El modo demo apaga el pipeline para que los datos no cambien durante la presentación. Para editar, arranca el
-              backend con <code className="text-ink">XRAY_DEMO_MODE=false</code>.
-            </p>
+            <ul className="grid max-w-[68ch] gap-2 text-ink-muted">
+              <li>Cambia cualquier valor o carga un preset. El borrador vive en esta pestaña y no llega al servidor.</li>
+              <li>
+                La vista previa puntúa una entidad con tu borrador, con el mismo código que el pipeline. Las demás páginas siguen
+                con los datos publicados.
+              </li>
+              <li>
+                Para aplicar el borrador a todos los datos, arranca el backend con <code className="text-ink">XRAY_DEMO_MODE=false</code>.
+              </li>
+            </ul>
           )}
         </div>
 
@@ -288,27 +306,35 @@ function ExpertWarning({ editable, overridden, applied, busy, onReset, onRerun }
             </div>
             <div className="grid grid-cols-[9rem_minmax(0,1fr)] gap-3 bg-film px-3 py-2">
               <dt className="text-ink-muted">Datos en pantalla</dt>
-              <dd className="font-semibold">{applied ? "Calculados con esta configuración" : "Pendientes de recalcular"}</dd>
+              <dd className="font-semibold">
+                {canApply ? (applied ? "Calculados con esta configuración" : "Pendientes de recalcular") : "Precalculados"}
+              </dd>
             </div>
             <div className="grid grid-cols-[9rem_minmax(0,1fr)] gap-3 bg-film px-3 py-2">
               <dt className="text-ink-muted">Edición</dt>
-              <dd className="font-semibold">{editable ? "Permitida" : "Solo lectura · modo demo"}</dd>
+              <dd className="font-semibold">{canApply ? "Borrador y aplicar" : "Borrador y vista previa"}</dd>
             </div>
           </dl>
-          {editable && (
+          <div className="grid gap-1.5">
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                disabled={busy}
+                disabled={busy || !canApply}
                 onClick={onRerun}
-                title="Ejecuta el pipeline otra vez con la configuración activa, sin reiniciar el backend"
-                className="border border-ink px-3 py-1.5 text-[15px] hover:bg-ink hover:text-film disabled:cursor-not-allowed disabled:opacity-45"
+                aria-describedby={canApply ? undefined : "no-recalc"}
+                title={canApply ? "Ejecuta el pipeline otra vez con la configuración activa, sin reiniciar el backend" : NO_RECALC}
+                className="border border-ink px-3 py-1.5 text-[15px] hover:bg-ink hover:text-film disabled:cursor-not-allowed disabled:border-rule disabled:text-ink-muted disabled:hover:bg-transparent"
               >
                 Recalcular ahora
               </button>
             </div>
-          )}
-          {editable && overridden && (
+            {!canApply && (
+              <p id="no-recalc" className="text-sm text-ink-muted">
+                {NO_RECALC}
+              </p>
+            )}
+          </div>
+          {canApply && overridden && (
             <div className="flex flex-wrap items-center gap-2">
               {!confirm ? (
                 <button

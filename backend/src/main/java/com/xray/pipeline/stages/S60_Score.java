@@ -1,8 +1,6 @@
 package com.xray.pipeline.stages;
 
-import com.xray.config.ProfileConfig;
 import com.xray.config.ScoringConfig;
-import com.xray.domain.model.BandThresholds;
 import com.xray.domain.model.Category;
 import com.xray.domain.model.CategoryScore;
 import com.xray.domain.model.EntityPanel;
@@ -10,7 +8,6 @@ import com.xray.domain.model.IndicatorId;
 import com.xray.domain.model.Profile;
 import com.xray.domain.model.RawIndicator;
 import com.xray.domain.model.SubScore;
-import com.xray.domain.service.CategoryAggregator;
 import com.xray.domain.service.ProfileScorer;
 import com.xray.infrastructure.duckdb.ResultWriter;
 import com.xray.pipeline.PipelineContext;
@@ -19,7 +16,6 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
@@ -61,16 +57,9 @@ public class S60_Score implements PipelineStage {
         Map<Category, List<IndicatorId>> members = CategoryMembers.of(config);
         Map<IndicatorId, Double> indicatorWeights = CategoryMembers.weights(config);
 
-        ScoringConfig.BandConfig b = config.bands();
-        BandThresholds bands = new BandThresholds(b.s(), b.a(), b.b(), b.c(), b.d());
-        Map<Profile, ProfileScorer.Params> params = new EnumMap<>(Profile.class);
-        for (Profile p : Profile.values()) {
-            ProfileConfig pc = config.profiles().get(p);
-            params.put(p, new ProfileScorer.Params(pc.lambda(), pc.weights(),
-                    config.momentum().pointsPerMonth(), config.momentum().cap(), bands));
-        }
+        Map<Profile, ProfileScorer.Params> params = PanelScoring.profileParams(config);
 
-        ctx.panels().parallelStream().forEach(panel -> score(panel, members, indicatorWeights, params));
+        ctx.panels().parallelStream().forEach(panel -> PanelScoring.score(panel, members, indicatorWeights, params));
         ctx.report(id(), 70, "writing results");
 
         writer.replaceInBatches("indicator_values", INDICATOR_VALUES_DDL, ctx.panels(),
@@ -81,19 +70,6 @@ public class S60_Score implements PipelineStage {
         int rows = writer.replaceInBatches(ProfileScoreTable.NAME, ProfileScoreTable.DDL, ctx.panels(),
                 ProfileScoreTable::rows);
         ctx.report(id(), 80, rows + " profile rows");
-    }
-
-    private static void score(EntityPanel panel, Map<Category, List<IndicatorId>> members,
-                              Map<IndicatorId, Double> indicatorWeights, Map<Profile, ProfileScorer.Params> params) {
-        Map<Category, CategoryScore[]> cats = new EnumMap<>(Category.class);
-        members.forEach((c, ids) -> {
-            CategoryScore[] s = CategoryAggregator.aggregate(ids.stream().map(panel::subScores).toList(),
-                    ids.stream().mapToDouble(indicatorWeights::get).toArray(), panel.size());
-            panel.setCategoryScores(c, s);
-            cats.put(c, s);
-        });
-        boolean[] dataGap = panel.dataGaps();
-        params.forEach((p, pp) -> panel.setProfileScores(p, ProfileScorer.score(cats, dataGap, pp)));
     }
 
     private static List<Object[]> indicatorRows(EntityPanel panel, ScoringConfig config) {

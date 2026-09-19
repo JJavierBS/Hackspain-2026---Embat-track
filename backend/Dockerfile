@@ -21,9 +21,9 @@ COPY --from=build /build/app.jar app.jar
 COPY --chown=xray:xray demo/xray-demo.duckdb.gz /opt/xray/xray-demo.duckdb.gz
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
-# No CSVs in the image, so S00..S25 skip. The slice carries what S30 onwards reads, so an edit on the
-# Algorithm page, or POST /api/pipeline/run, recalculates in place. XRAY_DEMO_MODE is not set here (the
-# app default is false). Set XRAY_DEMO_MODE=true on the service to lock both.
+# No CSVs in the image, so S00..S25 skip. The slice carries what S30 onwards reads. XRAY_DEMO_MODE is
+# not set here (the app default is false): render.yaml and docker-compose.yml set it to "true", so the
+# deployed app serves the precomputed data and the pipeline never runs.
 # MaxRAMPercentage rather than -Xmx so one image fits whatever instance size Render gives it.
 # Measured in a 512 MB / 0.5 CPU container, like the starter plan, over three pipeline runs in a row:
 # live heap 175-233 MB (the panels), non-heap ~85 MB, the rest is DuckDB and thread stacks. With

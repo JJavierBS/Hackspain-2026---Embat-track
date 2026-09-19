@@ -10,13 +10,14 @@ Hackathon context: two developers, ~20 effective hours, demo on Sunday 11:00. **
 3. `docs/DATA_FINDINGS.md` — answers to data profiling (SPEC §4). Check it before implementing anything marked `⚠ UNKNOWN`.
 4. `docs/THRESHOLDS.md` — status of the 10 `⏳ PENDING` anchors (SPEC §6.1).
 5. `docs/ALGORITHM_PAGE.md` and `docs/PRESETS.md` — the expert configuration page, the runtime overrides and the sourced client presets.
+6. `docs/SECTOR_PRESETS.md` — the per-entity tuning by sector (`sectors.yml`) and the draft preview.
 
 Precedence: SPEC wins on *what*, ARCHITECTURE wins on *how*. `ARCHITECTURE.md §0 Locked decisions` overrides older SPEC text. Resolved conflicts between the two are listed at the end of this file — apply them.
 
 ## Stack
 - Backend: Java 21, Spring Boot 3.x, Maven, **DuckDB embedded via JDBC** (single file `data/xray.duckdb`), `JdbcTemplate`, plain SQL in `backend/src/main/resources/sql/`, springdoc-openapi, JUnit 5. No JPA, no MySQL/Postgres, no Smile.
 - Frontend: React 18 + TypeScript + Vite, React Router, TanStack Query, Recharts, Tailwind.
-- Deploy: docker-compose (backend :8080, frontend nginx :80 proxying `/api`), public URL, `xray.demo-mode=true` serving a frozen `xray.duckdb`.
+- Deploy: docker-compose (backend :8080, frontend nginx :80 proxying `/api`), public URL, `xray.demo-mode=true` serving a frozen `xray.duckdb` (render.yaml and docker-compose set it). The pipeline never runs in prod.
 
 ## Commands
 ```bash
@@ -38,7 +39,7 @@ Swagger UI: `http://localhost:8080/swagger-ui.html`.
 5. **Config over code.** Every threshold, anchor, weight, flow-class mapping and λ lives in `scoring-config.yml`, bound to typed records. Never hardcode or special-case a weight value — weights are provisional.
 6. **`domain/` is pure.** No `org.springframework`, no `java.sql` imports.
 7. **Don't assume `⚠ UNKNOWN` data semantics** (invoice direction, category names, `exchange_rate` convention, intragroup IDs, scoring unit, submission format). Profile the data, record it in `DATA_FINDINGS.md`, then change config.
-8. **No recomputation in requests.** API reads results tables. All three profiles are materialized at pipeline time. Target < 1 s per page.
+8. **No recomputation in requests.** API reads results tables. All three profiles are materialized at pipeline time. Target < 1 s per page. Two what-if requests compute and write nothing: the limit simulator and `POST /api/entities/{id}/tuning` (one entity, through `PanelScoring`, the same code as S40–S60).
 9. **No external API calls at runtime.** Narratives come from `TemplateNarrativeRenderer`.
 10. **Use the four extension points only** (`PipelineStage`, `AlertRule`, `NarrativeRenderer`, `ScoreCalibrator`). Do not invent new plugin mechanisms.
 

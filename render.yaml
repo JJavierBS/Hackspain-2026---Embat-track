@@ -1,9 +1,9 @@
 # Render blueprint for the backend. No CSVs in the image: the frozen database carries the results
-# tables and the S30 inputs, so the Algorithm page and POST /api/pipeline/run recalculate from S30
-# onwards (docs/DEPLOY.md). The database lives on a Render disk at /data, not on the container
-# filesystem: a restart keeps it and any saved edit. A deploy that ships a different database
-# replaces it and drops the saved edits (docker-entrypoint.sh). XRAY_DEMO_MODE is not set: the app
-# default is false. Set it to "true" to lock the config and the pipeline again.
+# tables and the S30 inputs (docs/DEPLOY.md). The database lives on a Render disk at /data, not on the
+# container filesystem, so a restart keeps it. XRAY_DEMO_MODE is "true": the app serves the
+# precomputed data and never runs the pipeline. The Algorithm page edits a draft and previews it on
+# one entity, and the Entity page tunes one entity by sector. Neither one writes. Set it to "false"
+# to allow "Aplicar y recalcular" and POST /api/pipeline/run again.
 #
 #   Render dashboard -> New -> Blueprint -> pick this repo.
 #
@@ -28,3 +28,5 @@ services:
     envVars:
       - key: XRAY_DATA_DIR
         value: /data
+      - key: XRAY_DEMO_MODE
+        value: "true"

@@ -37,6 +37,7 @@ import { StatusTag, TrendTag } from "../components/StatusTag";
 import { ForecastCheck } from "../components/ForecastCheck";
 import { ForecastControls } from "../components/ForecastControls";
 import { TrendChart } from "../components/TrendChart";
+import { SectorTuning } from "../components/tuning/SectorTuning";
 import { MONTHS, type Profile, useGlobalParams } from "../hooks/useGlobalParams";
 import { useHashScroll } from "../hooks/useHashScroll";
 import { useHorizon } from "../hooks/useHorizon";
@@ -190,6 +191,8 @@ export function EntityPage() {
           </div>
         </div>
       </Film>
+
+      <SectorTuning id={data.id} entityType={data.entityType} />
 
       <Anticipation events={data.events} />
 

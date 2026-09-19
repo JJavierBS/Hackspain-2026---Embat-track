@@ -1,14 +1,17 @@
 # Deploy (SPEC §14)
 
 The deployed stack starts from a frozen database and has no CSVs. `data/raw/` (~617 MB) never leaves
-your laptop. The Algorithm page can still edit the config in prod, and "Recalcular ahora" (or
-`POST /api/pipeline/run`) reruns the pipeline there: S00..S25 skip without the CSVs, and S30 onwards
-reads the input tables that ship in the frozen database.
+your laptop. Prod runs in demo mode: `render.yaml` and `docker-compose.yml` set `XRAY_DEMO_MODE=true`
+(decision of 2026-09-19). The app serves the precomputed data and never runs the pipeline.
 
-Edits in prod live on a Render disk mounted at `/data`. A restart keeps them. A deploy that ships a
-different `xray-demo.duckdb.gz` replaces the database and deletes the saved edits, because the shipped
-database was exported with the shipped config (`docker-entrypoint.sh` compares a SHA-256 marker). `XRAY_DEMO_MODE=true` locks the config and the pipeline again, for
-example during the jury presentation.
+- The Algorithm page edits a draft and previews it on one entity. "Aplicar y recalcular" and
+  "Recalcular ahora" stay disabled (`docs/ALGORITHM_PAGE.md` D7).
+- The Entity page tunes one entity by sector (`docs/SECTOR_PRESETS.md`). Nothing is written.
+
+To allow a full recalculation again, set `XRAY_DEMO_MODE=false` on the service. S00..S25 then skip without the
+CSVs, and S30 onwards reads the input tables that ship in the frozen database. Saved edits live on the Render
+disk at `/data`. A deploy that ships a different `xray-demo.duckdb.gz` replaces the database and deletes the
+saved edits (`docker-entrypoint.sh` compares a SHA-256 marker).
 
 ## The frozen database
 

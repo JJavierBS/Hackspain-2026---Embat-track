@@ -76,8 +76,31 @@ public class AlgorithmConfigUseCase {
 
     public AlgorithmConfigDto view() {
         boolean applied = fingerprint.of(config).equals(runs.lastConfigHash());
-        return new AlgorithmConfigDto(bootId, !props.demoMode(), Files.exists(overridesPath()), applied,
+        // The draft is always editable. Only a save (and so a pipeline run) needs a server that may recalculate.
+        return new AlgorithmConfigDto(bootId, true, !props.demoMode(), Files.exists(overridesPath()), applied,
                 EDITABLE, json.convertValue(config, MAP), defaults);
+    }
+
+    /** The active config as a tree, with the editable sections of a draft on top. Nothing is saved. */
+    public Map<String, Object> mergedTree(Map<String, Object> incoming) {
+        Map<String, Object> merged = json.convertValue(config, MAP);
+        if (incoming != null) {
+            for (String key : EDITABLE) {
+                if (incoming.containsKey(key)) {
+                    merged.put(key, incoming.get(key));
+                }
+            }
+        }
+        return merged;
+    }
+
+    /** A config tree to a validated ScoringConfig, or BadRequestException with the validator message. */
+    public ScoringConfig toConfig(Map<String, Object> tree) {
+        try {
+            return json.convertValue(tree, ScoringConfig.class);
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException(rootMessage(e));
+        }
     }
 
     /**
@@ -86,18 +109,7 @@ public class AlgorithmConfigUseCase {
      */
     public List<String> save(Map<String, Object> incoming) {
         refuseWhenLocked();
-        Map<String, Object> merged = json.convertValue(config, MAP);
-        for (String key : EDITABLE) {
-            if (incoming.containsKey(key)) {
-                merged.put(key, incoming.get(key));
-            }
-        }
-        ScoringConfig candidate;
-        try {
-            candidate = json.convertValue(merged, ScoringConfig.class);
-        } catch (IllegalArgumentException e) {
-            throw new BadRequestException(rootMessage(e));
-        }
+        ScoringConfig candidate = toConfig(mergedTree(incoming));
         Map<String, Object> diff = diffFromDefaults(json.convertValue(candidate, MAP));
         try {
             if (diff.isEmpty()) {
@@ -124,7 +136,7 @@ public class AlgorithmConfigUseCase {
 
     private void refuseWhenLocked() {
         if (props.demoMode()) {
-            throw new ConflictException("Demo mode serves frozen data: the scoring config is read-only.");
+            throw new ConflictException("Demo mode serves precomputed data: a draft can be previewed on one entity, but not applied.");
         }
         if (status.snapshot().state() == PipelineStatus.State.RUNNING) {
             throw new ConflictException("The pipeline is running. Wait for it to finish, then save again.");

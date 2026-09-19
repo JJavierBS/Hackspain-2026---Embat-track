@@ -26,6 +26,17 @@ public class PanelLoader {
     }
 
     public List<EntityPanel> load(EntityType unit, List<Month> months) {
+        return load(unit, months, null);
+    }
+
+    /** One entity only, for the per-entity tuning. Empty when the entity has no row in entities. */
+    public List<EntityPanel> loadOne(EntityType type, String entityId, List<Month> months) {
+        return load(type, months, entityId);
+    }
+
+    private List<EntityPanel> load(EntityType unit, List<Month> months, String onlyId) {
+        String only = onlyId == null ? "" : " AND entity_id = ?";
+        Object[] args = onlyId == null ? new Object[]{unit.name()} : new Object[]{unit.name(), onlyId};
         Map<String, Integer> monthIndex = new HashMap<>();
         for (int i = 0; i < months.size(); i++) {
             monthIndex.put(months.get(i).toString(), i);
@@ -33,18 +44,18 @@ public class PanelLoader {
 
         Map<String, EntityPanel> panels = new LinkedHashMap<>();
         for (String id : sql.query(
-                "SELECT entity_id FROM entities WHERE entity_type = ? ORDER BY entity_id",
-                (rs, i) -> rs.getString(1), unit.name())) {
+                "SELECT entity_id FROM entities WHERE entity_type = ?" + only + " ORDER BY entity_id",
+                (rs, i) -> rs.getString(1), args)) {
             panels.put(id, new EntityPanel(new EntityKey(unit, id), months));
         }
 
         List<Row> rows = sql.query("""
                 SELECT entity_id, month, indicator_id, value, available, is_static, fallback
-                FROM indicator_values_raw WHERE entity_type = ?""",
+                FROM indicator_values_raw WHERE entity_type = ?""" + only,
                 (rs, i) -> new Row(rs.getString(1), rs.getString(2), rs.getString(3),
                         rs.getObject(4) == null ? null : rs.getDouble(4),
                         rs.getBoolean(5), rs.getBoolean(6), rs.getBoolean(7)),
-                unit.name());
+                args);
 
         for (Row r : rows) {
             EntityPanel panel = panels.get(r.entityId());
@@ -60,8 +71,8 @@ public class PanelLoader {
         }
 
         List<String[]> gaps = sql.query(
-                "SELECT entity_id, month FROM entity_months WHERE entity_type = ? AND data_gap",
-                (rs, i) -> new String[]{rs.getString(1), rs.getString(2)}, unit.name());
+                "SELECT entity_id, month FROM entity_months WHERE entity_type = ? AND data_gap" + only,
+                (rs, i) -> new String[]{rs.getString(1), rs.getString(2)}, args);
         for (String[] g : gaps) {
             Integer m = monthIndex.get(g[1]);
             if (m != null) {
@@ -71,10 +82,10 @@ public class PanelLoader {
 
         if (DuckDbTables.exists(sql, "signal_values")) {
             List<SignalRow> signals = sql.query(
-                    "SELECT entity_id, month, signal_id, value FROM signal_values WHERE entity_type = ?",
+                    "SELECT entity_id, month, signal_id, value FROM signal_values WHERE entity_type = ?" + only,
                     (rs, i) -> new SignalRow(rs.getString(1), rs.getString(2), rs.getString(3),
                             rs.getObject(4) == null ? null : rs.getDouble(4)),
-                    unit.name());
+                    args);
             for (SignalRow r : signals) {
                 EntityPanel panel = panels.get(r.entityId());
                 if (panel == null) {

@@ -1,6 +1,7 @@
 package com.xray.infrastructure.web.controller;
 
 import com.xray.application.EntityDetailQuery;
+import com.xray.application.EntityTuningUseCase;
 import com.xray.application.ProductQuery;
 import com.xray.application.SimulateLimitUseCase;
 import com.xray.application.TimelineQuery;
@@ -10,6 +11,8 @@ import com.xray.infrastructure.web.dto.LimitSimulationDto;
 import com.xray.infrastructure.web.dto.PremiumQuoteDto;
 import com.xray.infrastructure.web.dto.SimulateLimitRequest;
 import com.xray.infrastructure.web.dto.TimelineDto;
+import com.xray.infrastructure.web.dto.TuningDto;
+import com.xray.infrastructure.web.dto.TuningRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,13 +29,15 @@ public class EntityController {
     private final TimelineQuery timeline;
     private final ProductQuery products;
     private final SimulateLimitUseCase simulator;
+    private final EntityTuningUseCase tuning;
 
     public EntityController(EntityDetailQuery detail, TimelineQuery timeline, ProductQuery products,
-                            SimulateLimitUseCase simulator) {
+                            SimulateLimitUseCase simulator, EntityTuningUseCase tuning) {
         this.detail = detail;
         this.timeline = timeline;
         this.products = products;
         this.simulator = simulator;
+        this.tuning = tuning;
     }
 
     @GetMapping("/{id}")
@@ -57,6 +62,12 @@ public class EntityController {
     @PostMapping("/{id}/limit/simulate")
     public LimitSimulationDto simulate(@PathVariable String id, @RequestBody(required = false) SimulateLimitRequest body) {
         return simulator.simulate(id, body);
+    }
+
+    /** What-if score of this entity with a sector preset and/or the Algorithm draft. Writes nothing. */
+    @PostMapping("/{id}/tuning")
+    public TuningDto tuning(@PathVariable String id, @RequestBody(required = false) TuningRequest body) {
+        return tuning.tune(id, body);
     }
 
     @GetMapping("/{id}/premium")

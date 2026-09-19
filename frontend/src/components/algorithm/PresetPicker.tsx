@@ -2,16 +2,11 @@ import { useState } from "react";
 import { type Preset, type PresetCatalog, type PresetChange, type PresetSource, usePresets } from "../../api/useAlgorithmConfig";
 import { useGlobalParams } from "../../hooks/useGlobalParams";
 import { INDICATOR_LABELS, PROFILE_LABELS } from "../../lib/format";
-import { type Anchor, FIELDS, type Path, describe, formatValue, getIn, round } from "../../lib/algorithm";
+import { type Anchor, FIELDS, PRESET_STATUS as STATUS, type Path, describe, formatValue, getIn, round } from "../../lib/algorithm";
 import { IconClose } from "../Icons";
 import { useAlgorithm } from "./AlgorithmContext";
 import { AnchorChart } from "./AnchorEditor";
 
-const STATUS: Record<PresetChange["status"], { label: string; hint: string }> = {
-  sourced: { label: "Con fuente", hint: "Una fuente que leímos da el valor." },
-  derived: { label: "Derivado", hint: "Una fuente da los extremos; una regla nuestra da el resto." },
-  placeholder: { label: "Sin fuente", hint: "Criterio nuestro, sin fuente para la cifra." },
-};
 
 const toPath = (dotted: string): Path => dotted.split(".");
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
@@ -154,7 +149,7 @@ function Dossier({ preset, sources, onClose }: { preset: Preset; sources: Record
             Cargar {pending.length === 1 ? "el valor" : `los ${pending.length} valores`} en el borrador
           </button>
         )}
-        {state === "draft" && <span className="text-[15px] font-semibold">Cargado. Revisa y aplica el borrador en la barra de abajo.</span>}
+        {state === "draft" && <span className="text-[15px] font-semibold">Cargado en el borrador. Revísalo en la barra de abajo o pruébalo en una entidad.</span>}
         {state === "saved" && <span className="text-[15px] font-semibold">Este preset ya está en uso en el servidor.</span>}
         {!editable && state === "none" && <span className="text-[15px] text-ink-muted">Solo lectura: no se puede cargar en esta instancia.</span>}
         {profile !== preset.profile && (
@@ -234,7 +229,7 @@ function ChangeRow({ change, sources }: { change: PresetChange; sources: Record<
 }
 
 /** One source: who, what, the exact words or the figure read, and when we read it. */
-function Citation({ source }: { source: PresetSource | undefined }) {
+export function Citation({ source }: { source: PresetSource | undefined }) {
   if (!source) return null;
   return (
     <figure className="grid gap-1 border-l border-ink/30 pl-3 text-sm">

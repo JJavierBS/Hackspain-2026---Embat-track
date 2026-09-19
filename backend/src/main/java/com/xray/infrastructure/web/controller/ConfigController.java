@@ -3,6 +3,7 @@ package com.xray.infrastructure.web.controller;
 import com.xray.XRayApplication;
 import com.xray.application.AlgorithmConfigUseCase;
 import com.xray.application.PresetCatalog;
+import com.xray.application.SectorCatalog;
 import com.xray.infrastructure.web.dto.AlgorithmConfigDto;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -25,10 +26,12 @@ public class ConfigController {
 
     private final AlgorithmConfigUseCase useCase;
     private final PresetCatalog presets;
+    private final SectorCatalog sectors;
 
-    public ConfigController(AlgorithmConfigUseCase useCase, PresetCatalog presets) {
+    public ConfigController(AlgorithmConfigUseCase useCase, PresetCatalog presets, SectorCatalog sectors) {
         this.useCase = useCase;
         this.presets = presets;
+        this.sectors = sectors;
     }
 
     @GetMapping
@@ -40,6 +43,12 @@ public class ConfigController {
     @GetMapping("/presets")
     public Map<String, Object> presets() {
         return presets.catalog();
+    }
+
+    /** Sector presets for the per-entity tuning, with their evidence (sectors.yml). */
+    @GetMapping("/sectors")
+    public Map<String, Object> sectors() {
+        return sectors.catalog();
     }
 
     @PutMapping

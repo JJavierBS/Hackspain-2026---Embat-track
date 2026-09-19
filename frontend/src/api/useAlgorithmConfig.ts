@@ -6,7 +6,10 @@ import type { PipelineStatus } from "./types";
 
 export interface AlgorithmConfig {
   bootId: string;
+  /** The page may edit its draft. */
   editable: boolean;
+  /** The server may save the draft and recalculate all data. False in demo mode (precomputed data). */
+  canApply: boolean;
   overridden: boolean;
   appliedToData: boolean;
   editableSections: string[];
