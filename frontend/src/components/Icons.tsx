@@ -41,6 +41,30 @@ export function IconFlat(props: IconProps) {
   );
 }
 
+export function IconPlay(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M4.5 2.75v10.5L13 8z" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function IconPause(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M5 3v10M11 3v10" strokeWidth={2.25} strokeLinecap="square" />
+    </svg>
+  );
+}
+
+export function IconRestart(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M3 8a5 5 0 1 0 1.6-3.7M3 2.5v3h3" />
+    </svg>
+  );
+}
+
 /** The X-Ray mark: a film frame crossed by the scan line. */
 export function XRayMark(props: IconProps) {
   return (

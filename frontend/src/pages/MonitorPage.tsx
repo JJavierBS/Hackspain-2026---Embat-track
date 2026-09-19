@@ -3,15 +3,17 @@ import { Link, useSearchParams } from "react-router-dom";
 import type { Alert, Direction, Severity, WatchlistRow } from "../api/types";
 import { ApiError } from "../api/client";
 import { useMethodology, useMonitor } from "../api/queries";
+import { REPLAY_FROM, type ReplayState, useReplay } from "../api/useReplay";
 import { AlertList } from "../components/AlertList";
 import { Film } from "../components/Film";
+import { IconDown, IconPause, IconPlay, IconRestart, IconUp } from "../components/Icons";
 import { LoadState } from "../components/LoadState";
 import { PageHeader } from "../components/PageHeader";
 import { PendingFilm } from "../components/PendingFilm";
 import { StatusTag } from "../components/StatusTag";
-import { useGlobalParams } from "../hooks/useGlobalParams";
+import { MONTHS, useGlobalParams } from "../hooks/useGlobalParams";
 import { useLinkSearch } from "../hooks/useLinkSearch";
-import { ALERT_LABELS, bandOf, formatScore, monthCode, monthShort } from "../lib/format";
+import { ALERT_LABELS, PROFILE_LABELS, bandOf, formatScore, monthCode, monthLong, monthShort } from "../lib/format";
 
 const DIRECTIONS: { key: Direction | null; label: string }[] = [
   { key: null, label: "Todas" },
@@ -25,6 +27,8 @@ const SEVERITIES: { key: Severity | null; label: string }[] = [
   { key: "WARN", label: "Avisos" },
   { key: "INFO", label: "Informativas" },
 ];
+
+const countAlerts = (n: number) => `${n} ${n === 1 ? "alerta" : "alertas"}`;
 
 function isDirection(v: string | null): v is Direction {
   return v === "NEGATIVE" || v === "POSITIVE";
@@ -59,6 +63,20 @@ export function MonitorPage() {
   const { profile, month } = useGlobalParams();
   const filters = useMonitorFilters();
   const { data, error, isPending } = useMonitor(profile, month, { direction: filters.direction, severity: filters.severity });
+  const replay = useReplay(profile);
+  const replaying = replay.state !== "idle";
+  // The replay feed: every frame so far, newest month first, through the same filters as the stored feed.
+  const replayAlerts = useMemo(
+    () =>
+      [...replay.frames]
+        .reverse()
+        .flatMap((f) => f.newAlerts)
+        .filter(
+          (a) =>
+            (!filters.direction || a.direction === filters.direction) && (!filters.severity || a.severity === filters.severity),
+        ),
+    [replay.frames, filters.direction, filters.severity],
+  );
 
   return (
     <div className="grid gap-12">
@@ -76,18 +94,217 @@ export function MonitorPage() {
       ) : isPending ? (
         <LoadState />
       ) : (
-        <div className="grid gap-12 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
-          <Film title="Alertas" meta={`${monthCode(data.fromMonth)} – ${monthCode(month)} · ${data.alerts.length} alertas`}>
-            <FeedFilters {...filters} />
-            <Feed alerts={data.alerts} />
-          </Film>
+        <>
+          <ReplayFilm replay={replay} />
+          <div className="grid gap-12 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+            {replaying ? (
+              <Film
+                title="Alertas · replay"
+                meta={
+                  replay.month
+                    ? `${monthCode(REPLAY_FROM)} – ${monthCode(replay.month)} · ${countAlerts(replayAlerts.length)}`
+                    : `Desde ${monthCode(REPLAY_FROM)}`
+                }
+              >
+                <FeedFilters {...filters} />
+                {replay.frames.length === 0 ? (
+                  <p className="text-ink-muted">Esperando el primer mes…</p>
+                ) : (
+                  <Feed alerts={replayAlerts} animateMonth={replay.month} />
+                )}
+              </Film>
+            ) : (
+              <Film title="Alertas" meta={`${monthCode(data.fromMonth)} – ${monthCode(month)} · ${countAlerts(data.alerts.length)}`}>
+                <FeedFilters {...filters} />
+                <Feed alerts={data.alerts} />
+              </Film>
+            )}
 
-          <div className="grid content-start gap-12 self-start lg:sticky lg:top-6">
-            <WatchlistFilm rows={data.watchlist} month={month} />
-            <MonthSummary alerts={data.alerts} />
+            <div className="grid content-start gap-12 self-start lg:sticky lg:top-6">
+              <WatchlistFilm rows={data.watchlist} month={month} />
+              <MonthSummary alerts={data.alerts} />
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+const SPEEDS = [
+  { ms: 2000, label: "Lento" },
+  { ms: 1200, label: "Normal" },
+  { ms: 400, label: "Rápido" },
+] as const;
+
+const SECONDS = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 1 });
+
+/** The cine loop of the monitor: the stored alerts, played month by month from M06 (SPEC §8.5). */
+function ReplayFilm({ replay }: { replay: ReturnType<typeof useReplay> }) {
+  const { profile } = useGlobalParams();
+  const { state, frames } = replay;
+  const negative = frames.reduce((n, f) => n + f.newAlerts.filter((a) => a.direction === "NEGATIVE").length, 0);
+  const positive = frames.reduce((n, f) => n + f.newAlerts.filter((a) => a.direction === "POSITIVE").length, 0);
+  const idle = state === "idle";
+  return (
+    <Film
+      title="Replay"
+      meta={`${PROFILE_LABELS[profile].name} · ${monthCode(REPLAY_FROM)} → ${monthCode(MONTHS[MONTHS.length - 1])} · un mes cada ${SECONDS.format(replay.speedMs / 1000)} s`}
+    >
+      <div className="grid gap-7">
+        <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
+          <ReplayControls replay={replay} />
+          <div className="w-full sm:w-72">
+            <Segmented
+              label="Velocidad"
+              options={SPEEDS.map((s) => ({ key: String(s.ms), label: s.label }))}
+              value={String(replay.speedMs)}
+              onChange={(v) => v !== null && replay.setSpeed(Number(v))}
+              disabled={state === "playing"}
+            />
           </div>
         </div>
-      )}
+
+        <ReplayStrip frames={frames} current={replay.month} />
+
+        <dl aria-live="polite" className="grid grid-cols-2 gap-px border border-rule bg-rule lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
+          <Counter label="Mes del replay" hint={replay.month ? monthCode(replay.month) : `Empieza en ${monthCode(REPLAY_FROM)}`} wide>
+            {replay.month ? <span className="first-letter:uppercase">{monthLong(replay.month)}</span> : "—"}
+          </Counter>
+          <Counter label="En vigilancia" hint="Entidades en la lista ese mes">
+            {replay.watchlistSize ?? "—"}
+          </Counter>
+          <Counter label="Alertas negativas" hint="Acumuladas desde el inicio" tone="down">
+            {idle ? "—" : negative}
+          </Counter>
+          <Counter label="Alertas positivas" hint="Acumuladas desde el inicio" tone="up">
+            {idle ? "—" : positive}
+          </Counter>
+        </dl>
+
+        {state === "error" ? (
+          <p role="alert" className="flex flex-wrap items-center gap-3 text-[15px]">
+            <span className="font-semibold text-down">No se pudo conectar con el monitor.</span>
+            <button type="button" onClick={() => void replay.resume()} className={SECONDARY}>
+              Reintentar
+            </button>
+          </p>
+        ) : idle ? (
+          <p className="max-w-[62ch] text-[15px] text-ink-muted">
+            Reproduce el monitor como lo habría visto un analista: cada mes aparecen solo las alertas que saltaron ese mes, con
+            datos hasta ese mes.
+          </p>
+        ) : null}
+      </div>
+    </Film>
+  );
+}
+
+const PRIMARY =
+  "inline-flex items-center gap-2 border border-ink bg-ink px-4 py-2 text-[15px] font-semibold text-film hover:bg-ink/85 disabled:cursor-not-allowed disabled:opacity-45";
+const SECONDARY =
+  "inline-flex items-center gap-2 border border-ink/25 bg-film px-4 py-2 text-[15px] text-ink hover:border-ink disabled:cursor-not-allowed disabled:opacity-45";
+
+function ReplayControls({ replay }: { replay: ReturnType<typeof useReplay> }) {
+  const { state } = replay;
+  const main: Record<ReplayState, { label: string; icon: typeof IconPlay; run: () => void }> = {
+    idle: { label: "Reproducir", icon: IconPlay, run: () => void replay.play() },
+    done: { label: "Reproducir de nuevo", icon: IconPlay, run: () => void replay.play() },
+    error: { label: "Reproducir", icon: IconPlay, run: () => void replay.play() },
+    playing: { label: "Pausa", icon: IconPause, run: replay.pause },
+    paused: { label: "Continuar", icon: IconPlay, run: replay.resume },
+  };
+  const { label, icon: Icon, run } = main[state];
+  return (
+    <div className="flex flex-wrap gap-2">
+      <button type="button" onClick={run} className={`${PRIMARY} min-w-[11rem] justify-center`}>
+        <Icon />
+        {label}
+      </button>
+      <button type="button" onClick={replay.reset} disabled={state === "idle"} className={SECONDARY}>
+        <IconRestart />
+        Reiniciar
+      </button>
+    </div>
+  );
+}
+
+function Counter({
+  label,
+  hint,
+  tone,
+  wide = false,
+  children,
+}: {
+  label: string;
+  hint: string;
+  tone?: "up" | "down";
+  wide?: boolean;
+  children: React.ReactNode;
+}) {
+  const color = tone === "up" ? "text-up" : tone === "down" ? "text-down" : "text-ink";
+  const Icon = tone === "up" ? IconUp : tone === "down" ? IconDown : null;
+  return (
+    <div className={`bg-film px-4 py-3 ${wide ? "col-span-2 lg:col-span-1" : ""}`}>
+      <dt className="text-sm text-ink-muted">{label}</dt>
+      <dd className={`mt-1 flex items-center gap-2 text-4xl leading-none font-semibold [font-stretch:80%] ${color}`}>
+        {Icon && <Icon width={24} height={24} />}
+        {children}
+      </dd>
+      <dd className="mt-1.5 text-sm text-ink-muted">{hint}</dd>
+    </div>
+  );
+}
+
+/**
+ * The 24 months as a read-only exposure strip: positive alerts rise above the baseline in green,
+ * negative ones hang below it in red, and the replay month is lit in scan cyan.
+ */
+function ReplayStrip({ frames, current }: { frames: { month: string; newAlerts: Alert[] }[]; current: string | null }) {
+  const byMonth = new Map(frames.map((f) => [f.month, f.newAlerts]));
+  const max = Math.max(4, ...frames.map((f) => f.newAlerts.length));
+  const start = MONTHS.indexOf(REPLAY_FROM);
+  const at = current ? MONTHS.indexOf(current) : -1;
+  return (
+    <div aria-hidden className="grid grid-cols-[repeat(24,minmax(0,1fr))] gap-[3px]">
+      {MONTHS.map((m, i) => {
+        const alerts = byMonth.get(m);
+        const pos = alerts?.filter((a) => a.direction === "POSITIVE").length ?? 0;
+        const neg = alerts?.filter((a) => a.direction === "NEGATIVE").length ?? 0;
+        const lit = i === at;
+        const played = alerts !== undefined;
+        const yearStart = m.endsWith("-01") || i === 0;
+        return (
+          <div
+            key={m}
+            title={`${monthShort(m)} · ${monthCode(m)}${played ? ` · ${neg} negativas, ${pos} positivas` : ""}`}
+            className={`relative flex flex-col items-center pt-5 ${lit ? "bg-scan/12" : ""}`}
+          >
+            {yearStart && <span className="absolute top-0 left-0 text-xs leading-none text-ink-muted">{m.slice(0, 4)}</span>}
+            <div className="flex h-12 w-full items-end justify-center">
+              <span className="block w-[min(100%,10px)] bg-up/80" style={{ height: `${(pos / max) * 100}%` }} />
+            </div>
+            <span className={`block h-px w-full ${i < start ? "bg-rule" : "bg-ink/40"}`} />
+            <div className="flex h-12 w-full items-start justify-center">
+              <span className="block w-[min(100%,10px)] bg-down/80" style={{ height: `${(neg / max) * 100}%` }} />
+            </div>
+            <span
+              className={`mt-1.5 block ${
+                lit
+                  ? "h-5 w-[5px] bg-scan shadow-[0_0_10px_1px_rgb(15_163_194/0.7)]"
+                  : played
+                    ? "h-3.5 w-[3px] bg-ink"
+                    : i < start
+                      ? "h-2.5 w-[3px] bg-panel-grid"
+                      : "h-2.5 w-[3px] bg-rule"
+              }`}
+            />
+            {(i === start || i === MONTHS.length - 1) && (
+              <span className="mt-1 text-xs leading-none text-ink-muted">{monthCode(m)}</span>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -97,11 +314,13 @@ function Segmented<T extends string>({
   options,
   value,
   onChange,
+  disabled = false,
 }: {
   label: string;
   options: { key: T | null; label: string }[];
   value: T | undefined;
   onChange: (v: T | null) => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="grid gap-1.5">
@@ -115,8 +334,11 @@ function Segmented<T extends string>({
               type="button"
               role="radio"
               aria-checked={checked}
+              disabled={disabled}
               onClick={() => onChange(o.key)}
-              className={`flex-1 px-3 py-1.5 text-[15px] whitespace-nowrap ${checked ? "bg-ink font-semibold text-film" : "hover:bg-panel"}`}
+              className={`flex-1 px-3 py-1.5 text-[15px] whitespace-nowrap disabled:cursor-not-allowed ${
+                checked ? "bg-ink font-semibold text-film disabled:bg-ink/60" : "hover:bg-panel disabled:text-ink-muted disabled:hover:bg-transparent"
+              }`}
             >
               {o.label}
             </button>
