@@ -27,6 +27,9 @@ function fallbackKey(path) {
   return flat.replace(/[^A-Za-z0-9_-]/g, "_");
 }
 
+/** Keep in sync with DEFAULT_HORIZON in frontend/src/hooks/useHorizon.ts. */
+const DEFAULT_HORIZON = 3;
+
 const failures = [];
 const written = [];
 let total = 0;
@@ -77,8 +80,9 @@ for (const profile of profiles) {
   const ids = new Set();
   for (const p of pairs?.pairs.slice(0, 3) ?? []) ids.add(p.up.id).add(p.down.id);
   for (const e of lead?.examples.slice(0, 5) ?? []) ids.add(e.entityId);
+  // The entity page asks for the projection with its default horizon (DEFAULT_HORIZON in useHorizon.ts, phase 7).
   for (const id of ids) {
-    await snap(`/entities/${id}?${q}`);
+    await snap(`/entities/${id}?${q}&horizon=${DEFAULT_HORIZON}`);
     await snap(`/entities/${id}/timeline?profile=${profile}`);
   }
 }
