@@ -42,7 +42,11 @@ export function useEntity(id: string, profile: Profile, month: string) {
     queryKey: ["entity", id, profile, month],
     enabled: id !== "",
     queryFn: async () => {
-      if (!USE_MOCKS) return apiGet<EntityDetail>(`/entities/${id}?profile=${profile}&month=${month}`);
+      if (!USE_MOCKS) {
+        const detail = await apiGet<EntityDetail>(`/entities/${id}?profile=${profile}&month=${month}`);
+        // A backend before block 6 sends no `alerts`: read it as an empty list so the page still renders.
+        return { ...detail, alerts: detail.alerts ?? [] };
+      }
       const detail = (await mocks()).mockEntity(id, profile, month);
       if (!detail) throw new Error(`Entidad ${id} no encontrada`);
       return detail;
