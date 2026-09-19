@@ -182,6 +182,42 @@ final class ScoringConfigValidator {
         }
     }
 
+    static void validateRecommendations(ScoringConfig.RecommendationsConfig r) {
+        if (r == null) {
+            throw fail("scoring.recommendations is missing");
+        }
+        if (r.severityFactor() == null || r.opportunity() == null) {
+            throw fail("scoring.recommendations needs severity-factor and opportunity");
+        }
+        positive("scoring.recommendations.top-n", r.topN());
+        positive("scoring.recommendations.min-history-months", r.minHistoryMonths());
+        if (!(r.minHistoryMonths() <= r.fullHistoryMonths())) {
+            throw fail("scoring.recommendations.min-history-months " + r.minHistoryMonths()
+                    + " must be at most full-history-months " + r.fullHistoryMonths());
+        }
+        if (!(0 <= r.criticalMaxLevel() && r.criticalMaxLevel() <= r.highMaxLevel()
+                && r.highMaxLevel() <= r.problemMaxLevel() && r.problemMaxLevel() <= 100)) {
+            throw fail("scoring.recommendations needs 0 <= critical-max-level <= high-max-level <= problem-max-level <= 100");
+        }
+        if (!(0 <= r.trendHighMaxTraj() && r.trendHighMaxTraj() <= r.trendMaxTraj() && r.trendMaxTraj() < 50)) {
+            throw fail("scoring.recommendations needs 0 <= trend-high-max-traj <= trend-max-traj < 50 (50 = flat)");
+        }
+        if (!(r.trendMaxLevel() > r.problemMaxLevel() && r.trendMaxLevel() <= 100)) {
+            throw fail("scoring.recommendations.trend-max-level must be in (problem-max-level, 100]");
+        }
+        if (!(r.targetLevel() > r.problemMaxLevel() && r.targetLevel() <= 100)) {
+            throw fail("scoring.recommendations.target-level " + r.targetLevel()
+                    + " must be above problem-max-level and at most 100");
+        }
+        if (!(r.limitedMaxLevel() >= 0 && r.limitedMaxLevel() <= r.problemMaxLevel())) {
+            throw fail("scoring.recommendations.limited-max-level must be in [0, problem-max-level]");
+        }
+        ScoringConfig.SeverityFactors f = r.severityFactor();
+        if (!(f.critical() >= f.high() && f.high() >= f.medium() && f.medium() > 0)) {
+            throw fail("scoring.recommendations.severity-factor needs critical >= high >= medium > 0");
+        }
+    }
+
     private static void positive(String key, int value) {
         if (value < 1) {
             throw fail(key + " " + value + " must be >= 1");

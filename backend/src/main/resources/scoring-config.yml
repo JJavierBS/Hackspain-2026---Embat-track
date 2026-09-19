@@ -211,6 +211,34 @@ scoring:
     narrative-top-n: 5
     min-narrated-delta: 0.05
 
+  # Entity-page recommendations, docs/RECOMMENDATIONS.md. Output only: nothing in scoring, products or alerts reads
+  # them. Survival levels (always ranked first) are the CRITICAL levels of alerts.runway-low, dscr-breach and
+  # line-util-high. PROVISIONAL values: every one is explained in docs/RECOMMENDATIONS.md §3.
+  recommendations:
+    top-n: 3
+    min-history-months: 3          # fewer scored months: no recommendation at all ("historial insuficiente")
+    full-history-months: 6         # = confidence.low-history-months. Below: severe level problems only
+    limited-max-level: 40          # with limited history, only indicators below this level
+    problem-max-level: 60          # an indicator below this level is a problem
+    high-max-level: 40             # severity HIGH below this level (bands.d is 35)
+    critical-max-level: 20         # severity CRITICAL below this level
+    trend-max-traj: 40             # = statuses.turning-max-traj: worsening at or below
+    trend-high-max-traj: 25        # severity HIGH when worsening this fast
+    trend-max-level: 80            # = bands.a: at or above it a falling trajectory is noise (M23 run: runway at the
+                                   # 24-month cap and DSCR 2,000x were flagged as "worsening")
+    target-level: 75               # the recovered level behind the points and the goal value
+    min-points: 0.3                # smaller gains are noise (scores show 1 decimal); survival ignores it
+    severity-factor: { critical: 3.0, high: 2.0, medium: 1.0 }
+    aging-min-overdue-share: 0.05  # DEL_AGING_90 only when overdue receivables are at least this share of 3m sales
+    growth-collapse-below: -0.9    # collections down 90 %+: ask whether activity stopped or an account is missing
+    overtrading-min-growth: 0.3    # negative cash margin with collections up this much = growth that burns cash
+    opportunity:
+      min-final: 65                # = bands.b: opportunities only for B and above
+      idle-cash-min-runway: 12     # months, the top anchor of LIQ_RUNWAY
+      idle-cash-min-buffer: 3      # x, the top anchor of LIQ_BUFFER
+      debt-capacity-min-dscr: 2.0  # the 85-point anchor of DEBT_DSCR
+      debt-capacity-max-debt-to-cf: 1.0   # years, the 90-point anchor of LEV_DEBT_TO_CF
+
   # Phase 5 decision F5: which profile each product reads. SPEC §10: BANK limit, INSURER premium, FUND momentum.
   products:
     limit-profile: BANK

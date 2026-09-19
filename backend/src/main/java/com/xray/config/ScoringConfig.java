@@ -52,13 +52,15 @@ public record ScoringConfig(
         AlertsConfig alerts,
         LeadTimeConfig leadTime,
         ShowcaseConfig showcase,
-        ForecastConfig forecast) {
+        ForecastConfig forecast,
+        RecommendationsConfig recommendations) {
 
     public ScoringConfig {
         ScoringConfigValidator.validate(indicators, profiles);
         ScoringConfigValidator.validatePhase5(products, alerts, limitEngine);
         ScoringConfigValidator.validatePhase6(leadTime, showcase);
         ScoringConfigValidator.validatePhase7(forecast);
+        ScoringConfigValidator.validateRecommendations(recommendations);
     }
 
     public record MonthRange(String start, String end) {
@@ -87,6 +89,26 @@ public record ScoringConfig(
 
     /** SPEC §7.5 narratives (phase 4 decision E6). */
     public record ExplanationConfig(int narrativeTopN, double minNarratedDelta) {
+    }
+
+    /**
+     * Entity-page recommendations (docs/RECOMMENDATIONS.md). Output only: nothing in scoring, products or alerts
+     * reads them. The survival levels come from `alerts` (runway-low, dscr-breach, line-util-high), not from here.
+     */
+    public record RecommendationsConfig(int topN, int minHistoryMonths, int fullHistoryMonths, double limitedMaxLevel,
+                                        double problemMaxLevel, double highMaxLevel, double criticalMaxLevel,
+                                        double trendMaxTraj, double trendHighMaxTraj, double trendMaxLevel,
+                                        double targetLevel, double minPoints, SeverityFactors severityFactor,
+                                        double agingMinOverdueShare, double growthCollapseBelow,
+                                        double overtradingMinGrowth, OpportunityConfig opportunity) {
+    }
+
+    public record SeverityFactors(double critical, double high, double medium) {
+    }
+
+    /** Opportunities are shown only when the data backs them (docs/RECOMMENDATIONS.md §4). */
+    public record OpportunityConfig(double minFinal, double idleCashMinRunway, double idleCashMinBuffer,
+                                    double debtCapacityMinDscr, double debtCapacityMaxDebtToCf) {
     }
 
     /** Lower bounds of bands A..D. Below d is band E. */

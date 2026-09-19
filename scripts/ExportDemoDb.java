@@ -34,7 +34,7 @@ public class ExportDemoDb {
             "alerts", "alert_states", "watchlist", "changepoints",
             "limit_decisions", "premium_quotes", "momentum_screen",
             "lead_time_events", "lead_time_signals", "lead_time_baseline", "showcase_pairs",
-            "forecast_points", "months", "threshold_quantiles");
+            "forecast_points", "recommendations", "recommendation_summaries", "months", "threshold_quantiles");
 
     public static void main(String[] args) throws Exception {
         if (args.length < 2) {

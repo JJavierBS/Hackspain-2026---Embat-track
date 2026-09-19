@@ -2,6 +2,7 @@ package com.xray.narrative;
 
 import com.xray.domain.model.IndicatorId;
 import com.xray.domain.model.RawIndicator;
+import com.xray.domain.service.RecommendationEngine;
 import org.springframework.stereotype.Component;
 
 import java.util.EnumMap;
@@ -70,6 +71,21 @@ public class TemplateNarrativeRenderer implements NarrativeRenderer {
         }
         return String.format(ES, "%s %s de %s a %s (%s) → %s", meta.label(), diff > 0 ? "sube" : "baja",
                 value(before, meta.unit()), value(after, meta.unit()), change(diff, meta.unit()), pts);
+    }
+
+    @Override
+    public RecommendationText recommendation(RecommendationEngine.Finding finding) {
+        return RecommendationTemplates.render(finding);
+    }
+
+    @Override
+    public String situation(RecommendationEngine.Summary summary, int findings) {
+        return RecommendationTemplates.situation(summary, findings);
+    }
+
+    /** The Spanish label of an indicator, shared with the recommendation templates. */
+    static String label(IndicatorId id) {
+        return META.get(id).label();
     }
 
     /** A rule-defined level has no value (phase 3 contract item 5): DSCR with no debt service. */
