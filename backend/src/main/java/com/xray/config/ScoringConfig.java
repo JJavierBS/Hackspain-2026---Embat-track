@@ -34,7 +34,10 @@ public record ScoringConfig(
         MomentumConfig momentum,
         ConcentrationConfig concentration,
         WindowConfig windows,
-        TaxRegularityConfig taxRegularity) {
+        TaxRegularityConfig taxRegularity,
+        StatusConfig statuses,
+        ConfidenceConfig confidence,
+        ExplanationConfig explanation) {
 
     public ScoringConfig {
         ScoringConfigValidator.validate(indicators, profiles);
@@ -47,8 +50,25 @@ public record ScoringConfig(
                                    double slopeToScoreSpan, double slopeWeight, double deltaWeight) {
     }
 
-    public record RegimeConfig(double cusumK, double cusumH, int persistenceMonths,
-                               double slopeThreshold, double dipZ, int dipMaxMonths) {
+    /** SPEC §8.1–§8.2 and phase 4 decisions E3–E5. */
+    public record RegimeConfig(double cusumK, double cusumH, double cusumZCap, int persistenceMonths, double slopeThreshold,
+                               double dipZ, int dipMaxMonths, int baselineMonths, int baselineMinPoints,
+                               double sigmaFloor, int dipRecoveryMonths, int slopeMonths, int slopeMinPoints,
+                               List<IndicatorId> cusumIndicators) {
+    }
+
+    /** SPEC §8.3 status thresholds, in points. */
+    public record StatusConfig(double criticalBelow, double turningMinLevel, double turningMaxTraj,
+                               double improvingMinTraj, double exceptionalMinFinal, double exceptionalMinTraj,
+                               double healthyMinFinal) {
+    }
+
+    /** SPEC §7.6. */
+    public record ConfidenceConfig(int lowHistoryMonths, int mediumHistoryMonths, double lowAvailableShare) {
+    }
+
+    /** SPEC §7.5 narratives (phase 4 decision E6). */
+    public record ExplanationConfig(int narrativeTopN, double minNarratedDelta) {
     }
 
     /** Lower bounds of bands A..D. Below d is band E. */

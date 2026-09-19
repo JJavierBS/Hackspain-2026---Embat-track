@@ -25,6 +25,9 @@ final class ScoringConfigValidator {
             if (ic.category() == null) {
                 throw fail(key + ".category is missing");
             }
+            if (ic.weight() != null && !(ic.weight() > 0)) {
+                throw fail(key + ".weight " + ic.weight() + " must be > 0");
+            }
             List<List<Double>> a = ic.anchors();
             if (a == null || a.size() < 2) {
                 throw fail(key + ".anchors needs at least 2 points");
