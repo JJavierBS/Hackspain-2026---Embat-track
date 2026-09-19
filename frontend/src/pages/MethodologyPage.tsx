@@ -202,7 +202,9 @@ function Statuses() {
             <dt className="font-semibold">Confianza</dt>
             <dd className="text-ink-muted">
               Alta, media o baja, según los meses de historia y la parte de indicadores con datos. Una entidad con confianza baja se
-              puntúa igual y lleva una marca: no se excluye.
+              puntúa igual y lleva una marca: no se excluye. Hay un cuarto nivel, <span className="text-ink">insuficiente</span>: los
+              datos cubren muy poco del peso del perfil. Esa entidad también se puntúa y se muestra, pero queda fuera del ranking, de
+              las bandas y de los filtros de la cartera.
             </dd>
           </div>
           <div>
@@ -492,7 +494,10 @@ function ProductParameters({ data }: { data: Methodology }) {
           <section>
             <h3 className="text-lg font-semibold">Prima de seguro de crédito</h3>
             <p className="mt-1 mb-4 text-[15px] text-ink-muted">
-              Prima = prima base × multiplicador de la banda, revisada cada mes. Perfil {profileName(data.products.premiumProfile)}.
+              Prima = prima base × multiplicador de la banda, revisada cada mes. Perfil {profileName(data.products.premiumProfile)}. La
+              cotización añade un límite recomendado para el comprador: pagos operativos de 3 meses × (plazo de pago / 30) × el mismo
+              factor de puntuación del límite. Es una <span className="text-ink">aproximación de la exposición</span>, no una medida de
+              ella: no hay saldo de clientes en los datos.
             </p>
             <Params rows={[{ label: "Prima base", value: formatRate(data.insurer.basePremiumRate) }]} />
             <h4 className="mt-5 mb-2 text-[15px] font-semibold">Multiplicador por banda</h4>
