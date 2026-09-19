@@ -240,7 +240,12 @@ scoring:
     drift-baseline-months: 6
     drift-baseline-min-points: 4
     band-downgrade-critical-steps: 2
-    watchlist: { min-critical: 1, min-warn: 2 }
+    # Watchlist = moves, not states (brief: "levanta la mano cuando una empresa se mueve de verdad").
+    # An alert counts when its negative run is confirmed (on confirm-months in a row) and new (confirmed
+    # in the last recent-months). A long-lasting condition shows in the entity status, not here.
+    # confirm-months: the same 2 months SPEC §8.4 needs for every deterioration event.
+    # recent-months: the same window as score-drop-months. No value is fitted to the data.
+    watchlist: { min-critical: 1, min-warn: 2, confirm-months: 2, recent-months: 3 }
 
   # SPEC §8.4 lead time. Phase 6 decisions G3–G7. PROVISIONAL: review with the first run.
   lead-time:

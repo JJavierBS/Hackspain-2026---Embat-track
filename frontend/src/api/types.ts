@@ -407,7 +407,7 @@ export interface Methodology {
   };
   insurer: { basePremiumRate: number; multiplierByBand: Partial<Record<BandLetter, number>> };
   momentum: { risingStarMaxLevel: number; risingStarMinTraj: number };
-  watchlist: { minCritical: number; minWarn: number };
+  watchlist: { minCritical: number; minWarn: number; confirmMonths: number; recentMonths: number };
   /** Phase 7 projection parameters, from scoring.forecast. Absent from a backend before phase 7. */
   forecast?: {
     method: string;

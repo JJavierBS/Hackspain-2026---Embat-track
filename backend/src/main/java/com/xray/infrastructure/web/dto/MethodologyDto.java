@@ -27,7 +27,7 @@ public record MethodologyDto(List<AlertRuleDto> alertRules, Products products, L
     public record Momentum(double risingStarMaxLevel, double risingStarMinTraj) {
     }
 
-    public record Watchlist(int minCritical, int minWarn) {
+    public record Watchlist(int minCritical, int minWarn, int confirmMonths, int recentMonths) {
     }
 
     /** Phase 7 projection: method name and scoring.forecast values, so the UI never hardcodes them (B-4). */

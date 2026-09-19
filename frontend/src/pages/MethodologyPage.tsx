@@ -245,7 +245,7 @@ function ForecastMethod({ forecast: f }: { forecast: NonNullable<Methodology["fo
 const PROVISIONAL_TAG = "border border-dashed border-ink-muted/60 px-1.5 text-sm whitespace-nowrap text-ink-muted";
 
 function AlertCatalogue({ data }: { data: Methodology }) {
-  const { minCritical, minWarn } = data.watchlist;
+  const { minCritical, minWarn, confirmMonths, recentMonths } = data.watchlist;
   return (
     <Film title="Alertas tempranas" meta={`${data.alertRules.length} reglas · marco EBA/GL/2020/06`}>
       <p className="max-w-[62ch] text-[15px] text-ink-muted">
@@ -302,7 +302,9 @@ function AlertCatalogue({ data }: { data: Methodology }) {
         <span className="font-semibold">Lista de vigilancia:</span>{" "}
         <span className="text-ink-muted">
           entra una entidad con al menos {minCritical} {minCritical === 1 ? "alerta crítica" : "alertas críticas"} o {minWarn} avisos
-          negativos activos ese mes.
+          negativos nuevos y confirmados. Una alerta está confirmada cuando sigue activa {confirmMonths} meses seguidos (la misma
+          regla que los eventos de deterioro) y es nueva durante {recentMonths} meses. La lista muestra movimientos, no estados:
+          una situación que dura más se ve en el estado de la entidad.
         </span>
       </p>
     </Film>

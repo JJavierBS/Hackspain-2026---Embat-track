@@ -159,8 +159,11 @@ public record ScoringConfig(
     public record Level(double warn, double critical) {
     }
 
-    /** SPEC §8.5 watchlist (phase 5 decision F15). */
-    public record WatchlistConfig(int minCritical, int minWarn) {
+    /**
+     * SPEC §8.5 watchlist (phase 5 decision F15). An alert counts only while its negative run is confirmed
+     * (at least confirmMonths long) and new (at most confirmMonths + recentMonths - 1 long).
+     */
+    public record WatchlistConfig(int minCritical, int minWarn, int confirmMonths, int recentMonths) {
     }
 
     /** SPEC §8.4 measured anticipation (phase 6 decisions G3–G7). Evaluation only: nothing scores from it. */

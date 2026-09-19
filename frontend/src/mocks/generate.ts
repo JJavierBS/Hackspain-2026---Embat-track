@@ -355,7 +355,7 @@ const PARAMS: Omit<Methodology, "alertRules"> = {
   },
   insurer: { basePremiumRate: 0.0025, multiplierByBand: { A: 0.8, B: 1, C: 1.4, D: 2 } },
   momentum: { risingStarMaxLevel: 60, risingStarMinTraj: 70 },
-  watchlist: { minCritical: 1, minWarn: 2 },
+  watchlist: { minCritical: 1, minWarn: 2, confirmMonths: 2, recentMonths: 3 },
   forecast: {
     method: "MEAN_REVERSION_AR1",
     meanReversion: 0.85,

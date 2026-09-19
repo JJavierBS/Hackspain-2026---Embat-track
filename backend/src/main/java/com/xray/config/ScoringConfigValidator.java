@@ -111,6 +111,12 @@ final class ScoringConfigValidator {
         if (alerts.watchlist().minWarn() < 1) {
             throw fail("scoring.alerts.watchlist.min-warn must be >= 1");
         }
+        if (alerts.watchlist().confirmMonths() < 1) {
+            throw fail("scoring.alerts.watchlist.confirm-months must be >= 1");
+        }
+        if (alerts.watchlist().recentMonths() < 1) {
+            throw fail("scoring.alerts.watchlist.recent-months must be >= 1");
+        }
     }
 
     /** Phase 6 keys: lead-time windows, event thresholds and showcase ranking (decisions G3–G9, G16). */

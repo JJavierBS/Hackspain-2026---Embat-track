@@ -390,8 +390,8 @@ function WatchlistFilm({ rows, month }: { rows: WatchlistRow[]; month: string })
     <Film title="Vigilancia" meta={`${rows.length} entidades · ${monthCode(month)}`}>
       <p className="mb-4 text-[15px] text-ink-muted">
         {rule
-          ? `Al menos ${rule.minCritical} ${rule.minCritical === 1 ? "alerta crítica" : "alertas críticas"} o ${rule.minWarn} avisos negativos activos este mes.`
-          : "Entidades con alertas negativas activas este mes."}
+          ? `Entidades que se mueven: al menos ${rule.minCritical} ${rule.minCritical === 1 ? "alerta crítica" : "alertas críticas"} o ${rule.minWarn} avisos negativos nuevos y confirmados. Confirmada: activa ${rule.confirmMonths} meses seguidos. Nueva: confirmada en los últimos ${rule.recentMonths} meses. Una situación que dura más se ve en el estado de la entidad.`
+          : "Entidades con alertas negativas nuevas y confirmadas este mes."}
       </p>
       {rows.length === 0 ? (
         <p className="text-ink-muted">Ninguna entidad en vigilancia en {monthCode(month)}.</p>
@@ -408,7 +408,7 @@ function WatchlistFilm({ rows, month }: { rows: WatchlistRow[]; month: string })
                     </Link>
                     <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                       <StatusTag status={r.status} />
-                      <span className="text-sm" title="Estados negativos activos este mes, por gravedad">
+                      <span className="text-sm" title="Alertas negativas nuevas y confirmadas este mes, por gravedad">
                         {criticalAlerts > 0 && (
                           <span className="font-semibold text-down">
                             {criticalAlerts} {criticalAlerts === 1 ? "crítica" : "críticas"}

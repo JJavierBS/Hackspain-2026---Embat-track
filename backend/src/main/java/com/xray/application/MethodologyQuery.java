@@ -65,7 +65,7 @@ public class MethodologyQuery {
                         l.spreadBpsByBand(), l.actionThreshold(), l.roundingEur()),
                 new MethodologyDto.Insurer(config.insurer().basePremiumRate(), config.insurer().multiplierByBand()),
                 new MethodologyDto.Momentum(p.momentum().risingStarMaxLevel(), p.momentum().risingStarMinTraj()),
-                new MethodologyDto.Watchlist(w.minCritical(), w.minWarn()),
+                new MethodologyDto.Watchlist(w.minCritical(), w.minWarn(), w.confirmMonths(), w.recentMonths()),
                 new MethodologyDto.Forecast("MEAN_REVERSION_AR1", f.meanReversion(), f.maxHorizonMonths(),
                         f.minPoints(), f.minHistoryMonths(), f.mediumHistoryMonths()));
     }
