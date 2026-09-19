@@ -12,9 +12,11 @@ import type {
   Confidence,
   EntityDetail,
   LimitDecision,
+  Meta,
   MonitorData,
   Portfolio,
   PortfolioRow,
+  Profiles,
   Regime,
   Status,
   TimelinePoint,
@@ -236,6 +238,8 @@ function scoreEntity(seed: Seed, profile: Profile): EntitySeries {
         level: levels[c][m],
         traj: trajs[c],
         weight: w[c],
+        effectiveWeight: w[c] / 100,
+        nAvailable: 3,
         contribution: (w[c] / 100) * (blended - 50),
         contributionDelta3m: 0,
       };
@@ -245,6 +249,8 @@ function scoreEntity(seed: Seed, profile: Profile): EntitySeries {
       level: round1(momentum),
       traj: round1(momentum),
       weight: w.MOMENTUM,
+      effectiveWeight: w.MOMENTUM / 100,
+      nAvailable: 3,
       contribution: (w.MOMENTUM / 100) * (momentum - 50),
       contributionDelta3m: 0,
     });
@@ -333,7 +339,7 @@ function alertsFor(series: EntitySeries): Alert[] {
       push(m, "SCORE_DROP", drop <= -15 ? "CRITICAL" : "WARN", "NEGATIVE", `La nota cae ${Math.abs(drop).toFixed(1).replace(".", ",")} puntos en 3 meses`);
     }
     dropActive = drop <= -8;
-    const liquidity = months[m].categories.find((c) => c.category === "LIQUIDITY")!.level;
+    const liquidity = months[m].categories.find((c) => c.category === "LIQUIDITY")!.level ?? 50;
     if (liquidity < 35 && !runwayActive) push(m, "RUNWAY_LOW", liquidity < 20 ? "CRITICAL" : "WARN", "NEGATIVE", "Liquidez baja: menos de 3 meses de caja");
     runwayActive = liquidity < 35;
   }
@@ -353,12 +359,12 @@ function limitAt(series: EntitySeries, m: number): { limit: number; binding: Lim
   const trend = clamp(1 + (0.2 * (traj - 50)) / 50, 0.8, 1.2);
   let raw = series.seed.inflow * factor * trend;
   let binding: LimitDecision["bindingConstraint"] = "SCORE";
-  const liquidity = categories.find((c) => c.category === "LIQUIDITY")!.level;
+  const liquidity = categories.find((c) => c.category === "LIQUIDITY")!.level ?? 50;
   if (liquidity < 30) {
     raw *= 0.5;
     binding = "RUNWAY";
   }
-  const debt = categories.find((c) => c.category === "DEBT_SERVICE")!.level;
+  const debt = categories.find((c) => c.category === "DEBT_SERVICE")!.level ?? 50;
   const dscrCap = series.seed.inflow * 1.6 * (debt / 100);
   if (dscrCap < raw) {
     raw = dscrCap;
@@ -415,7 +421,7 @@ export function mockPortfolio(profile: Profile, month: string): Portfolio {
   const rows = allSeries(profile)
     .map((s) => rowAt(s, m))
     .sort((a, b) => b.final - a.final);
-  return { profile, month, rows };
+  return { profile, month, unscored: 0, rows };
 }
 
 export function mockEntity(id: string, profile: Profile, month: string): EntityDetail | null {
@@ -430,6 +436,7 @@ export function mockEntity(id: string, profile: Profile, month: string): EntityD
     final: p.final,
     level: p.level,
     traj: p.traj,
+    band: bandLetter(p.final),
     status: series.statuses[i],
     regime: series.regimes[i],
   }));
@@ -457,9 +464,18 @@ export function mockEntity(id: string, profile: Profile, month: string): EntityD
     id,
     name: series.seed.name,
     entityType: series.seed.entityType,
+    groupId: null,
+    profile,
+    month,
     row,
     categories: series.months[m].categories,
+    drivers: [],
+    changes1m: [],
+    changes3m: [],
+    indicators: [],
     timeline,
+    changepoints: [],
+    companies: [],
     limit: {
       limitEur: now.limit,
       previousLimitEur: prev.limit,
@@ -514,4 +530,31 @@ export const SHOWCASE_PAIR = { a: "G-002", b: "G-003" } as const;
 
 export function mockEntityNames(): { id: string; name: string }[] {
   return SEEDS.map((s) => ({ id: s.id, name: s.name }));
+}
+
+/** The synthetic weight tables of this generator, shaped like GET /api/profiles. */
+export function mockProfiles(): Profiles {
+  return {
+    source: "config",
+    profiles: (Object.keys(WEIGHTS) as Profile[]).map((profile) => ({
+      profile,
+      lambda: WEIGHTS[profile].lambda,
+      weights: WEIGHTS[profile].w,
+    })),
+  };
+}
+
+export function mockMeta(): Meta {
+  return {
+    unit: "GROUP",
+    months: [...MONTHS],
+    profiles: Object.keys(WEIGHTS),
+    entityCounts: { GROUP: SEEDS.length },
+    runId: null,
+    finishedAt: null,
+    demoMode: true,
+    explanationsReady: false,
+    dynamicsReady: false,
+    caveats: ["Datos sintéticos de demostración: no proceden de Embat."],
+  };
 }

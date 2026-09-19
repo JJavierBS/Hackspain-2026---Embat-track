@@ -3,7 +3,8 @@ import { IconDown, IconFlat, IconUp } from "./Icons";
 
 interface MeterProps {
   label: string;
-  value: number;
+  /** null when the reading is not available yet (short history). */
+  value: number | null;
   hint?: string;
   /**
    * Direction reading (trajectory): the bar grows from the 50 mark in green or red.
@@ -14,6 +15,18 @@ interface MeterProps {
 
 /** A 0–100 reading with the 50 mark. */
 export function Meter({ label, value, hint, direction = false }: MeterProps) {
+  if (value === null) {
+    return (
+      <div>
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="text-[15px] font-semibold">{label}</span>
+          <span className="text-2xl font-semibold text-ink-muted">—</span>
+        </div>
+        <div className="mt-2 h-2.5 bg-panel-grid" />
+        {hint && <p className="mt-1.5 text-sm text-ink-muted">{hint}</p>}
+      </div>
+    );
+  }
   const dir = directionOf(value - 50);
   const color = direction
     ? dir === "up"

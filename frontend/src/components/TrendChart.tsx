@@ -13,9 +13,9 @@ import { BANDS, formatScore, monthCode, monthShort } from "../lib/format";
 
 export interface TrendPoint {
   month: string;
-  final: number;
-  level: number;
-  trajectory: number;
+  final: number | null;
+  level: number | null;
+  trajectory: number | null;
 }
 
 interface TrendChartProps {
@@ -42,7 +42,7 @@ function labelOffsets(last: TrendPoint | undefined, height: number): Record<stri
   const offsets: Record<string, number> = {};
   if (!last) return offsets;
   const pxPerPoint = (height - 32) / 100;
-  const sorted = SERIES.map((s) => ({ key: s.key, y: -last[s.key] * pxPerPoint })).sort((a, b) => a.y - b.y);
+  const sorted = SERIES.map((s) => ({ key: s.key, y: -(last[s.key] ?? 50) * pxPerPoint })).sort((a, b) => a.y - b.y);
   let previous = -Infinity;
   for (const item of sorted) {
     const placed = Math.max(item.y, previous + LABEL_GAP);
@@ -125,7 +125,7 @@ export function TrendChart({ data, activeMonth, height = 260 }: TrendChartProps)
                 activeDot={{ r: 4 }}
                 isAnimationActive={false}
                 label={(props: { index?: number; x?: number | string; y?: number | string }) =>
-                  props.index === data.length - 1 ? (
+                  props.index === data.length - 1 && data[props.index][s.key] !== null ? (
                     <text
                       key={s.key}
                       x={Number(props.x) + 8}

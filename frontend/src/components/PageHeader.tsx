@@ -4,7 +4,7 @@ import { useGlobalParams } from "../hooks/useGlobalParams";
 
 interface PageHeaderProps {
   title: ReactNode;
-  lede: string;
+  lede: ReactNode;
 }
 
 /** Page title plus the study readout: which buyer view and which month is on the viewer. */

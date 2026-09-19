@@ -1,11 +1,13 @@
 import { Link, useParams } from "react-router-dom";
-import type { CategoryScore, EntityDetail } from "../api/types";
+import type { Category, CategoryScore, Change, Driver, EntityDetail, IndicatorRow, PortfolioRow } from "../api/types";
 import { useEntity } from "../api/queries";
 import { Delta } from "../components/Delta";
 import { Film } from "../components/Film";
+import { IconDown, IconFlat, IconUp } from "../components/Icons";
 import { LoadState } from "../components/LoadState";
 import { Meter } from "../components/Meter";
 import { PageHeader } from "../components/PageHeader";
+import { PendingFilm } from "../components/PendingFilm";
 import { ScoreReadout } from "../components/ScoreReadout";
 import { StatusTag, TrendTag } from "../components/StatusTag";
 import { TrendChart } from "../components/TrendChart";
@@ -13,13 +15,17 @@ import { MONTHS, useGlobalParams } from "../hooks/useGlobalParams";
 import { useLinkSearch } from "../hooks/useLinkSearch";
 import {
   CATEGORY_LABELS,
-  CONFIDENCE_LABELS,
   REGIME_LABELS,
   bandOf,
+  confidenceLabel,
   formatDelta,
   formatEur,
+  formatIndicatorValue,
   formatPct,
   formatScore,
+  formatWeight,
+  indicatorLabel,
+  isPendingAnchor,
   monthCode,
 } from "../lib/format";
 
@@ -44,31 +50,88 @@ export function EntityPage() {
   const { row } = data;
   const m = MONTHS.indexOf(month);
   const against = monthCode(MONTHS[Math.max(0, m - 3)]);
+  const typeLabel = data.entityType === "GROUP" ? "Grupo" : "Empresa";
+  const groupLink = data.groupId ? (
+    <>
+      {" · "}
+      <Link to={`/entity/${data.groupId}${linkSearch}`} className="underline underline-offset-4 hover:text-ink">
+        grupo {data.groupId}
+      </Link>
+    </>
+  ) : null;
+
+  if (row === null) {
+    return (
+      <div className="grid gap-12">
+        <PageHeader
+          title={data.name}
+          lede={
+            <>
+              {typeLabel} {data.id}
+              {groupLink}.
+            </>
+          }
+        />
+        <Film title="Sin puntuación" meta={monthCode(month)}>
+          <p className="max-w-[62ch] text-ink-muted">
+            Esta entidad no tiene actividad suficiente en {monthCode(month)} para puntuarla. Elige un mes posterior en la tira de
+            meses.
+          </p>
+        </Film>
+        <Indicators indicators={data.indicators} />
+      </div>
+    );
+  }
+
+  const finalChanges = data.changepoints.filter((c) => c.series === "FINAL");
+  const lastChange = finalChanges.at(-1);
 
   return (
     <div className="grid gap-12">
       <PageHeader
         title={data.name}
-        lede={`${data.entityType === "GROUP" ? "Grupo" : "Empresa"} ${data.id} · confianza ${CONFIDENCE_LABELS[row.confidence].toLowerCase()}.`}
+        lede={
+          <>
+            {typeLabel} {data.id}
+            {groupLink}
+            {row.confidence !== null && ` · confianza ${confidenceLabel(row.confidence).toLowerCase()}`}.
+          </>
+        }
       />
 
-      <Film title="Radiografía" meta={`Perfil activo · ${monthCode(month)}`}>
+      <Film
+        title="Radiografía"
+        meta={`Perfil activo · ${monthCode(month)}${lastChange ? ` · cambio detectado en ${monthCode(lastChange.month)}` : ""}`}
+      >
         <div className="grid gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
           <div className="grid content-start gap-7">
             <ScoreReadout score={row.final} delta={row.delta3m} against={`vs ${against}`} />
             <div className="flex flex-wrap items-center gap-2">
               <StatusTag status={row.status} />
               <TrendTag traj={row.traj} />
-              {row.regime !== "STABLE" && <span className="border border-rule px-2 py-0.5 text-sm">{REGIME_LABELS[row.regime]}</span>}
-              <span className="border border-rule px-2 py-0.5 text-sm text-ink-muted">Confianza {CONFIDENCE_LABELS[row.confidence].toLowerCase()}</span>
+              {row.regime !== null && row.regime !== "STABLE" && (
+                <span className="border border-rule px-2 py-0.5 text-sm">{REGIME_LABELS[row.regime]}</span>
+              )}
+              {row.confidence !== null && (
+                <span className="border border-rule px-2 py-0.5 text-sm text-ink-muted">
+                  Confianza {confidenceLabel(row.confidence).toLowerCase()}
+                </span>
+              )}
             </div>
             <div className="grid gap-5 sm:grid-cols-2">
               <Meter label="Nivel" value={row.level} hint="Salud actual" />
-              <Meter label="Trayectoria" value={row.traj} hint="50 = estable · más de 50 mejora" direction />
+              <Meter
+                label="Trayectoria"
+                value={row.traj}
+                hint={row.traj === null ? "Hace falta más historia" : "50 = estable · más de 50 mejora"}
+                direction
+              />
             </div>
           </div>
           <TrendChart
-            data={data.timeline.map((p) => ({ month: p.month, final: p.final, level: p.level, trajectory: p.traj }))}
+            data={data.timeline
+              .filter((p) => p.final !== null)
+              .map((p) => ({ month: p.month, final: p.final, level: p.level, trajectory: p.traj }))}
             activeMonth={month}
             height={300}
           />
@@ -76,44 +139,57 @@ export function EntityPage() {
       </Film>
 
       <div className="grid gap-12 lg:grid-cols-2">
-        <Drivers categories={data.categories} final={row.final} />
-        <Changes categories={data.categories} against={against} />
+        <Drivers categories={data.categories} drivers={data.drivers} final={row.final} />
+        <Changes changes={data.changes3m} against={against} />
       </div>
 
       <Categories categories={data.categories} />
+      <Indicators indicators={data.indicators} />
+      {data.companies.length > 0 && <Companies companies={data.companies} />}
       <ProductPanel data={data} />
     </div>
   );
 }
 
-/** Weighted categories only: a zero weight does not move this profile's score. */
+/** Categories that move this profile's score this month (renormalized weight above 0). */
 function weighted(categories: CategoryScore[]) {
-  return categories.filter((c) => c.weight > 0);
+  return categories.filter((c) => c.effectiveWeight > 0);
 }
 
-function Drivers({ categories, final }: { categories: CategoryScore[]; final: number }) {
+function Drivers({ categories, drivers, final }: { categories: CategoryScore[]; drivers: Driver[]; final: number }) {
   const rows = weighted(categories).sort((a, b) => b.contribution - a.contribution);
+  if (rows.length === 0) {
+    return (
+      <PendingFilm
+        title="Por qué esta puntuación"
+        block="bloque 5"
+        items={["Puntos que aporta cada categoría", "Indicadores que más suben la nota", "Indicadores que más la bajan"]}
+      />
+    );
+  }
   const max = Math.max(...rows.map((c) => Math.abs(c.contribution)), 1);
   const sum = rows.reduce((a, c) => a + c.contribution, 0);
+  const up = drivers.filter((d) => d.contrib > 0);
+  const down = drivers.filter((d) => d.contrib < 0).reverse();
   return (
     <Film title="Por qué esta puntuación" meta="Puntos que aporta cada categoría">
       <ul className="grid gap-2.5">
         {rows.map((c) => {
           const pct = (Math.abs(c.contribution) / max) * 50;
-          const up = c.contribution >= 0;
+          const positive = c.contribution >= 0;
           return (
             <li key={c.category} className="grid grid-cols-[minmax(0,11rem)_1fr_4rem] items-center gap-3 text-[15px]">
-              <span className="truncate" title={`${CATEGORY_LABELS[c.category]} · peso ${c.weight}`}>
+              <span className="truncate" title={`${CATEGORY_LABELS[c.category]} · peso ${formatWeight(c.weight)}`}>
                 {CATEGORY_LABELS[c.category]}
               </span>
               <span className="relative h-5">
                 <span aria-hidden className="absolute inset-y-[-3px] left-1/2 w-px bg-ink/50" />
                 <span
-                  className={`absolute inset-y-0 ${up ? "bg-up/80" : "bg-down/80"}`}
-                  style={up ? { left: "50%", width: `${pct}%` } : { right: "50%", width: `${pct}%` }}
+                  className={`absolute inset-y-0 ${positive ? "bg-up/80" : "bg-down/80"}`}
+                  style={positive ? { left: "50%", width: `${pct}%` } : { right: "50%", width: `${pct}%` }}
                 />
               </span>
-              <span className={`text-right font-semibold ${up ? "text-up" : "text-down"}`}>{formatDelta(c.contribution)}</span>
+              <span className={`text-right font-semibold ${positive ? "text-up" : "text-down"}`}>{formatDelta(c.contribution)}</span>
             </li>
           );
         })}
@@ -123,30 +199,55 @@ function Drivers({ categories, final }: { categories: CategoryScore[]; final: nu
         {Math.abs(final - 50 - sum) >= 0.05 && <> + redondeo ({formatDelta(final - 50 - sum)})</>} ={" "}
         <span className="font-semibold text-ink">{formatScore(final)}</span>
       </p>
+      {drivers.length > 0 && (
+        <div className="mt-6 grid gap-6 sm:grid-cols-2">
+          <DriverList title="Suben la nota" drivers={up} />
+          <DriverList title="Bajan la nota" drivers={down} />
+        </div>
+      )}
     </Film>
   );
 }
 
-function Changes({ categories, against }: { categories: CategoryScore[]; against: string }) {
-  const movers = weighted(categories)
-    .filter((c) => Math.abs(c.contributionDelta3m) >= 0.1)
-    .sort((a, b) => Math.abs(b.contributionDelta3m) - Math.abs(a.contributionDelta3m))
-    .slice(0, 4);
+/** The indicators with the largest contribution of one sign (SPEC §7.5, top 5 each way). */
+function DriverList({ title, drivers }: { title: string; drivers: Driver[] }) {
+  return (
+    <div>
+      <h3 className="text-sm font-semibold">{title}</h3>
+      {drivers.length === 0 ? (
+        <p className="mt-2 text-sm text-ink-muted">Ninguno este mes.</p>
+      ) : (
+        <ul className="mt-2 grid gap-1.5">
+          {drivers.map((d) => (
+            <li key={d.driverId} className="flex items-baseline justify-between gap-3 border-t border-rule pt-1.5 text-[15px]">
+              <span className="min-w-0 truncate" title={CATEGORY_LABELS[d.category]}>
+                {indicatorLabel(d.driverId)}
+              </span>
+              <span className={`shrink-0 font-semibold ${d.contrib > 0 ? "text-up" : "text-down"}`}>{formatDelta(d.contrib)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function Changes({ changes, against }: { changes: Change[]; against: string }) {
   return (
     <Film title="Qué cambió" meta={`Frente a ${against}`}>
-      {movers.length === 0 ? (
-        <p className="text-ink-muted">Ninguna categoría movió la nota más de 0,1 puntos.</p>
+      {changes.length === 0 ? (
+        <p className="text-ink-muted">
+          Ningún indicador movió la nota más de 0,1 puntos, o las explicaciones no están calculadas todavía.
+        </p>
       ) : (
         <ul className="grid gap-4">
-          {movers.map((c) => (
-            <li key={c.category} className="flex items-start justify-between gap-4 border-b border-dashed border-rule pb-3 last:border-b-0">
-              <span>
-                <span className="block font-semibold">{CATEGORY_LABELS[c.category]}</span>
-                <span className="text-[15px] text-ink-muted">
-                  {c.contributionDelta3m > 0 ? "Sube" : "Baja"} su aportación: nivel {formatScore(c.level)}, trayectoria {formatScore(c.traj)}.
-                </span>
+          {changes.map((c) => (
+            <li key={c.driverId} className="flex items-start justify-between gap-4 border-b border-dashed border-rule pb-3 last:border-b-0">
+              <span className="min-w-0">
+                <span className="block font-semibold">{indicatorLabel(c.driverId)}</span>
+                <span className="text-[15px] text-ink-muted">{c.narrative}</span>
               </span>
-              <Delta value={c.contributionDelta3m} className="text-lg" />
+              <Delta value={c.delta} className="text-lg" />
             </li>
           ))}
         </ul>
@@ -160,21 +261,157 @@ function Categories({ categories }: { categories: CategoryScore[] }) {
     <Film title="Categorías" meta="Nivel 0–100 · peso en el perfil activo">
       <ul className="grid gap-x-10 gap-y-4 md:grid-cols-2">
         {categories.map((c) => {
-          const band = bandOf(c.level);
+          const band = bandOf(c.level ?? 0);
+          // A category that does not move the score this month: zero weight in this profile, or no data yet.
+          const idle = c.weight === 0 || c.level === null;
           return (
-            <li key={c.category} className={c.weight === 0 ? "opacity-55" : ""}>
+            <li key={c.category} className={idle ? "opacity-55" : ""}>
               <div className="flex items-baseline justify-between gap-3 text-[15px]">
                 <span className="font-medium">{CATEGORY_LABELS[c.category]}</span>
                 <span className="flex items-baseline gap-3">
-                  <span className="text-sm text-ink-muted">peso {c.weight}</span>
-                  <span className="text-lg font-semibold" style={{ color: band.color }}>
-                    {formatScore(c.level)}
+                  <span className="text-sm text-ink-muted">peso {formatWeight(c.weight)}</span>
+                  <span
+                    className="min-w-[3ch] text-right text-lg font-semibold"
+                    style={{ color: c.level === null ? "var(--color-ink-muted)" : band.color }}
+                  >
+                    {c.level === null ? "—" : formatScore(c.level)}
                   </span>
                 </span>
               </div>
               <div className="mt-1.5 h-2 bg-panel-grid">
-                <div className="h-full" style={{ width: `${c.level}%`, background: band.color }} />
+                <div className="h-full" style={{ width: `${c.level ?? 0}%`, background: band.color }} />
               </div>
+            </li>
+          );
+        })}
+      </ul>
+    </Film>
+  );
+}
+
+/** Category order of the labels table, so the indicator groups read like the category film. */
+const CATEGORY_ORDER = Object.keys(CATEGORY_LABELS) as Category[];
+
+function Indicators({ indicators }: { indicators: IndicatorRow[] }) {
+  const groups = CATEGORY_ORDER.map((category) => ({
+    category,
+    rows: indicators.filter((i) => i.category === category),
+  })).filter((g) => g.rows.length > 0);
+  const available = indicators.filter((i) => i.available).length;
+  return (
+    <Film title="Indicadores" meta={`${available} de ${indicators.length} con datos · nivel 0–100 · trayectoria, 50 = estable`}>
+      {indicators.length === 0 ? (
+        <p className="text-ink-muted">Sin indicadores para este mes.</p>
+      ) : (
+        <div className="-mx-5 overflow-x-auto">
+          <table className="w-full min-w-[720px] border-collapse text-left text-[15px]">
+            <thead>
+              <tr className="border-b border-ink/20 text-sm text-ink-muted">
+                <th className="px-5 py-2 font-medium">Indicador</th>
+                <th className="px-2 py-2 text-right font-medium" title="Valor medido, en su propia unidad">
+                  Valor
+                </th>
+                <th className="px-2 py-2 text-right font-medium" title="Salud 0–100 según los umbrales del indicador">
+                  Nivel
+                </th>
+                <th className="px-2 py-2 text-right font-medium" title="Hacia dónde va: 50 = estable, más de 50 mejora">
+                  Trayectoria
+                </th>
+                <th className="px-5 py-2 font-medium">Notas</th>
+              </tr>
+            </thead>
+            {groups.map((g) => (
+              <tbody key={g.category}>
+                <tr>
+                  <th colSpan={5} scope="colgroup" className="px-5 pt-5 pb-1.5 text-sm font-semibold">
+                    {CATEGORY_LABELS[g.category]}
+                  </th>
+                </tr>
+                {g.rows.map((i) => (
+                  <IndicatorLine key={i.indicatorId} row={i} />
+                ))}
+              </tbody>
+            ))}
+          </table>
+        </div>
+      )}
+    </Film>
+  );
+}
+
+function IndicatorLine({ row: i }: { row: IndicatorRow }) {
+  const notes: { text: string; title: string; pending: boolean }[] = [];
+  if (i.isStatic) notes.push({ text: "foto 2026-09-01", title: "Deuda dispuesta y concedida: una sola foto, no una serie mensual", pending: false });
+  if (i.fallback) notes.push({ text: "cálculo alternativo", title: "Faltan datos para el cálculo principal", pending: false });
+  if (isPendingAnchor(i.anchorStatus)) notes.push({ text: "umbral provisional", title: "Umbrales pendientes de revisión", pending: true });
+  return (
+    <tr className={`border-t border-rule ${i.available ? "" : "text-ink-muted"}`}>
+      <td className="px-5 py-2 font-medium">{indicatorLabel(i.indicatorId)}</td>
+      <td className="px-2 py-2 text-right whitespace-nowrap">{i.available ? formatIndicatorValue(i.indicatorId, i.value) : "sin datos"}</td>
+      <td className="px-2 py-2 text-right">
+        {i.level === null || !i.available ? (
+          "—"
+        ) : (
+          <span className="font-semibold" style={{ color: bandOf(i.level).color }}>
+            {formatScore(i.level)}
+          </span>
+        )}
+      </td>
+      <td className="px-2 py-2 text-right">{i.traj === null || !i.available ? "—" : <TrajFigure traj={i.traj} />}</td>
+      <td className="px-5 py-2">
+        <span className="flex flex-wrap gap-1.5">
+          {notes.map((n) => (
+            <span
+              key={n.text}
+              title={n.title}
+              className={`border px-1.5 text-sm whitespace-nowrap text-ink-muted ${n.pending ? "border-dashed border-ink-muted/60" : "border-rule"}`}
+            >
+              {n.text}
+            </span>
+          ))}
+        </span>
+      </td>
+    </tr>
+  );
+}
+
+/** A trajectory figure read as direction: green or red with its arrow, outside the ±5 dead zone around 50. */
+function TrajFigure({ traj }: { traj: number }) {
+  const dir = traj >= 55 ? "up" : traj <= 45 ? "down" : "flat";
+  const Icon = dir === "up" ? IconUp : dir === "down" ? IconDown : IconFlat;
+  const color = dir === "up" ? "text-up" : dir === "down" ? "text-down" : "text-ink-muted";
+  return (
+    <span className={`inline-flex items-center justify-end gap-1 font-semibold ${color}`}>
+      <Icon width={14} height={14} />
+      {formatScore(traj)}
+    </span>
+  );
+}
+
+function Companies({ companies }: { companies: PortfolioRow[] }) {
+  const linkSearch = useLinkSearch();
+  return (
+    <Film title="Empresas del grupo" meta={`${companies.length} empresas · cada una puntuada por separado`}>
+      <ul className="-mx-5">
+        {companies.map((c) => {
+          const band = bandOf(c.final);
+          return (
+            <li key={c.id} className="group flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-rule px-5 py-3 last:border-b-0 hover:bg-scan-soft/40">
+              <Link to={`/entity/${c.id}${linkSearch}`} className="font-semibold underline-offset-4 group-hover:underline">
+                {c.id}
+              </Link>
+              <span className="flex items-center gap-4">
+                <StatusTag status={c.status} />
+                <Delta value={c.delta3m} />
+                <span className="flex items-center gap-2">
+                  <span className="text-2xl font-semibold [font-stretch:85%]" style={{ color: band.color }}>
+                    {formatScore(c.final)}
+                  </span>
+                  <span className="inline-flex h-6 w-6 items-center justify-center text-sm font-bold text-white" style={{ background: band.color }}>
+                    {band.band}
+                  </span>
+                </span>
+              </span>
             </li>
           );
         })}
@@ -207,7 +444,16 @@ function ProductPanel({ data }: { data: EntityDetail }) {
   const { profile } = useGlobalParams();
 
   if (profile === "BANK") {
-    const { limit } = data;
+    if (data.limit === null) {
+      return (
+        <PendingFilm
+          title="Límite de circulante"
+          block="bloque 7"
+          items={["Límite recomendado", "Acción del mes", "Diferencial por banda", "Historia del límite"]}
+        />
+      );
+    }
+    const limit = data.limit;
     const change = limit.limitEur - limit.previousLimitEur;
     const tone =
       limit.action === "INCREASE" ? "text-up" : limit.action === "REDUCE" || limit.action === "FREEZE" || limit.action === "DECLINE" ? "text-down" : "";
@@ -220,7 +466,7 @@ function ProductPanel({ data }: { data: EntityDetail }) {
             value={<span className={tone}>{ACTION_LABELS[limit.action]}</span>}
             sub={
               <span className={limit.action === "MAINTAIN" ? "" : change > 0 ? "text-up" : change < 0 ? "text-down" : ""}>
-                {change > 0 ? "+" : change < 0 ? "\u2212" : ""}
+                {change > 0 ? "+" : change < 0 ? "−" : ""}
                 {formatEur(Math.abs(change))}
                 {limit.previousLimitEur > 0 && ` (${formatDelta((change / limit.previousLimitEur) * 100)} %)`}
                 {limit.action === "MAINTAIN" ? " · dentro de la banda de ±10 %" : " frente al mes anterior"}
@@ -236,7 +482,17 @@ function ProductPanel({ data }: { data: EntityDetail }) {
   }
 
   if (profile === "INSURER") {
-    const { premium } = data;
+    if (data.premium === null) {
+      return (
+        <PendingFilm
+          title="Prima de seguro de crédito"
+          block="bloque 7"
+          items={["Tasa de prima", "Límite por comprador", "Historia de la prima"]}
+        />
+      );
+    }
+    const premium = data.premium;
+    const final = data.row!.final;
     return (
       <Film title="Prima de seguro de crédito" meta="Prima dinámica · se revisa cada mes">
         <dl className="grid gap-px border border-rule bg-rule sm:grid-cols-3">
@@ -246,13 +502,18 @@ function ProductPanel({ data }: { data: EntityDetail }) {
             sub={premium.previousPremiumRate === null ? "Mes anterior: no asegurable" : `Mes anterior ${formatPct(premium.previousPremiumRate)}`}
           />
           <Stat label="Límite recomendado por comprador" value={formatEur(premium.recommendedBuyerLimitEur)} sub="Aproximación a la exposición" />
-          <Stat label="Banda" value={bandOf(data.row.final).band} sub={`${formatScore(data.row.final)} puntos`} />
+          <Stat label="Banda" value={bandOf(final).band} sub={`${formatScore(final)} puntos`} />
         </dl>
       </Film>
     );
   }
 
-  const { momentum } = data;
+  if (data.momentum === null) {
+    return (
+      <PendingFilm title="Momentum" block="bloque 7" items={["Posición en el ranking", "Percentil de trayectoria", "Estrella emergente"]} />
+    );
+  }
+  const momentum = data.momentum;
   return (
     <Film title="Momentum" meta="Ranking del perfil Fondo">
       <dl className="grid gap-px border border-rule bg-rule sm:grid-cols-3">

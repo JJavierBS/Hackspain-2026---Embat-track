@@ -3,8 +3,8 @@ import { IconDown, IconFlat, IconUp } from "./Icons";
 
 interface ScoreReadoutProps {
   score: number;
-  /** Change vs the comparison month, in points. */
-  delta: number;
+  /** Change vs the comparison month, in points. null when there was no score then. */
+  delta: number | null;
   /** Label for the comparison, e.g. "vs M20". */
   against: string;
   size?: "lg" | "md";
@@ -16,7 +16,7 @@ const SLOTS = 5;
 /** The score in fixed numeral slots and its band color, the band letter, and a caliper for the change. */
 export function ScoreReadout({ score, delta, against, size = "lg" }: ScoreReadoutProps) {
   const band = bandOf(score);
-  const direction = delta > 0.05 ? "up" : delta < -0.05 ? "down" : "flat";
+  const direction = delta === null ? "flat" : delta > 0.05 ? "up" : delta < -0.05 ? "down" : "flat";
   const Arrow = direction === "up" ? IconUp : direction === "down" ? IconDown : IconFlat;
   const dirColor =
     direction === "up" ? "var(--color-up)" : direction === "down" ? "var(--color-down)" : "var(--color-ink-muted)";
@@ -59,10 +59,16 @@ export function ScoreReadout({ score, delta, against, size = "lg" }: ScoreReadou
       {/* Caliper: a dimension bracket that measures the change. */}
       <div className="relative flex flex-col justify-center border-l-2 border-ink/70 py-2 pl-4 before:absolute before:top-0 before:-left-[2px] before:w-3 before:border-t-2 before:border-ink/70 after:absolute after:bottom-0 after:-left-[2px] after:w-3 after:border-b-2 after:border-ink/70">
         <span className="flex items-center gap-1 text-3xl font-semibold" style={{ color: dirColor }}>
-          <Arrow width={22} height={22} />
-          {formatDelta(delta)}
+          {delta === null ? (
+            "—"
+          ) : (
+            <>
+              <Arrow width={22} height={22} />
+              {formatDelta(delta)}
+            </>
+          )}
         </span>
-        <span className="text-[15px] text-ink-muted">puntos {against}</span>
+        <span className="text-[15px] text-ink-muted">{delta === null ? `${against}: sin nota entonces` : `puntos ${against}`}</span>
       </div>
     </div>
   );
