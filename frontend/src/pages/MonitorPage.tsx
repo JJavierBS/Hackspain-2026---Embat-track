@@ -167,7 +167,7 @@ function ReplayFilm({ replay }: { replay: ReturnType<typeof useReplay> }) {
 
         <ReplayStrip frames={frames} current={replay.month} />
 
-        <dl aria-live="polite" className="grid grid-cols-2 gap-px border border-rule bg-rule lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
+        <dl aria-live="polite" className="grid grid-cols-3 gap-px border border-rule bg-rule lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
           <Counter label="Mes del replay" hint={replay.month ? monthCode(replay.month) : `Empieza en ${monthCode(REPLAY_FROM)}`} wide>
             {replay.month ? <span className="first-letter:uppercase">{monthLong(replay.month)}</span> : "—"}
           </Counter>
@@ -245,7 +245,7 @@ function Counter({
   const color = tone === "up" ? "text-up" : tone === "down" ? "text-down" : "text-ink";
   const Icon = tone === "up" ? IconUp : tone === "down" ? IconDown : null;
   return (
-    <div className={`bg-film px-4 py-3 ${wide ? "col-span-2 lg:col-span-1" : ""}`}>
+    <div className={`min-w-0 bg-film px-3 py-3 sm:px-4 ${wide ? "col-span-3 lg:col-span-1" : ""}`}>
       <dt className="text-sm text-ink-muted">{label}</dt>
       <dd className={`mt-1 flex items-center gap-2 text-4xl leading-none font-semibold [font-stretch:80%] ${color}`}>
         {Icon && <Icon width={24} height={24} />}
@@ -336,7 +336,7 @@ function Segmented<T extends string>({
               aria-checked={checked}
               disabled={disabled}
               onClick={() => onChange(o.key)}
-              className={`flex-1 px-3 py-1.5 text-[15px] whitespace-nowrap disabled:cursor-not-allowed ${
+              className={`min-w-0 flex-1 px-1.5 py-1.5 text-sm whitespace-nowrap disabled:cursor-not-allowed sm:px-3 sm:text-[15px] ${
                 checked ? "bg-ink font-semibold text-film disabled:bg-ink/60" : "hover:bg-panel disabled:text-ink-muted disabled:hover:bg-transparent"
               }`}
             >
