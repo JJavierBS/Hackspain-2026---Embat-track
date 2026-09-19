@@ -171,7 +171,7 @@ public record ScoringConfig(
                     events.overdueMaxLevel(), events.scoreBelow(), events.improvementCross(),
                     events.improvementBelow(), events.improvementBelowMonths(),
                     Set.copyOf(signal.deteriorationStatuses()), signal.deteriorationMaxTraj(),
-                    Set.copyOf(signal.improvementStatuses()), signal.improvementMinTraj());
+                    Set.copyOf(signal.improvementStatuses()), signal.improvementMinTraj(), signal.maxGapMonths());
         }
     }
 
@@ -181,9 +181,10 @@ public record ScoringConfig(
                                double improvementBelow, int improvementBelowMonths) {
     }
 
-    /** When the system "raised its hand" (decision G5). */
+    /** When the system "raised its hand" (decision G5). maxGapMonths: longest break a signal run may have. */
     public record SignalConfig(List<HealthStatus> deteriorationStatuses, double deteriorationMaxTraj,
-                               List<HealthStatus> improvementStatuses, double improvementMinTraj) {
+                               List<HealthStatus> improvementStatuses, double improvementMinTraj,
+                               int maxGapMonths) {
     }
 
     /** SPEC §10.4 showcase pairs (phase 6 decision G9). */

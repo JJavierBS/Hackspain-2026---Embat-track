@@ -262,6 +262,10 @@ scoring:
       deterioration-max-traj: 35
       improvement-statuses: [IMPROVING]
       improvement-min-traj: 65
+      # The signal credited to an event is the run of signal months that reaches it: on at the event,
+      # or off for at most this many months in a row, inside the run and before the event.
+      # Without it, a signal from an earlier, recovered decline got the credit (review of 2026-09-19).
+      max-gap-months: 1
   # SPEC §10.4 showcase pairs. Phase 6 decision G9.
   showcase:
     max-final-gap: 3

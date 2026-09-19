@@ -528,3 +528,22 @@ B's final report is not in the repository. Its data findings (open question 4, `
 BANK and FUND do not cluster (p5–p95 spans 46 and 65 points). INSURER has a narrow middle: p25–p75 spans 15 points, but p5–p95 spans 48 points.
 A probable cause is the payment and delinquency levels near 100 (mean level at M23: `PAY_DPO` 97.8, `DEL_OVERDUE_RECEIVABLES` 93.8, `PAY_DSO` 93.0), and INSURER gives these two categories 50 % of the weight.
 **Decision:** no anchor change now (D6). The `PAY_DPO` proposal in `THRESHOLDS.md` widens the tail. Weights do not change for this reason (CLAUDE.md).
+
+## Phase 6 lead-time review (2026-09-19)
+
+**Finding.** Decision G5 credited an event with the first signal month in the 12 months before it. On this data the rule picked signals of an earlier decline. Example, `GROUP_0014` (BANK): event in 2026-02 (DSCR), signal credited in 2025-02, but the group was IMPROVING or HEALTHY for 8 months between the two. All five top "most anticipated" examples had a 12-month lead. Decision G6 had the same defect, and it was worse: the limit engine alternates REDUCE and INCREASE from month to month, so a cut in the window existed for 132 of 139 BANK events.
+
+**Change.** A signal counts only when its run reaches the event: on at the event, or off for at most `lead-time.signal.max-gap-months` (1) months in a row. The lead is measured from the start of that run. The limit cut is the first REDUCE or FREEZE after the last INCREASE before the event. Code: `LeadTimeAnalyzer.runStart` and `LeadTimeAnalyzer.limitCut`.
+
+**Effect** (deterioration, groups, same data):
+
+| profile | ahead rate before → after | mean lead | median lead |
+|---|---|---|---|
+| BANK | 65 % → 43 % | 4,3 → 1,9 | 3 → 1 |
+| FUND | — → 32 % | — → 1,2 | — → 1 |
+| INSURER | — → 50 % | — → 2,7 | — → 1 |
+
+BANK limit cut ahead of the event: 132/139 (mean 5,3 months) → 111/138 (mean 2,7). BANK improvements detected ahead: 51 % → 10 %. The numbers are lower and they are defensible.
+
+**Open.** Two pipeline runs on the same input give a different `final` for one group of 248 (`GROUP_0120`, trajectory 32,8 against 33,3), so the event count moves by one (138 or 139). The cause is outside phase 6 (probably the summation order of a parallel or SQL aggregate). It matters for the hidden-test submission.
+
