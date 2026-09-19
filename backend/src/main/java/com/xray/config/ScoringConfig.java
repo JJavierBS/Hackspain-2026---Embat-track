@@ -28,7 +28,8 @@ public record ScoringConfig(
         BandConfig bands,
         LimitEngineConfig limitEngine,
         InsurerConfig insurer,
-        DebtDscrConfig debtDscr) {
+        DebtDscrConfig debtDscr,
+        DataRules dataRules) {
 
     public ScoringConfig {
         ScoringConfigValidator.validate(indicators, profiles);

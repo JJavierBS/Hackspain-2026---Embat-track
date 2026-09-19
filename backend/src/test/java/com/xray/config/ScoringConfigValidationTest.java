@@ -75,10 +75,24 @@ class ScoringConfigValidationTest {
         assertTrue(ex.getMessage().contains("BANK"), ex.getMessage());
     }
 
+    @Test
+    void shippedConfigBindsDataRules() {
+        DataRules r = base.dataRules();
+        assertNotNull(r);
+        assertNotNull(r.fxConvention());
+        assertNotNull(r.fxTarget());
+        assertEquals(1.0, r.fxToEur().get("EUR"));
+        assertNotNull(r.invoiceDirection());
+        assertTrue(r.invoiceIssuedSign() == 1 || r.invoiceIssuedSign() == -1);
+        assertFalse(r.invoicePaidStatusValues().isEmpty());
+        assertNotNull(r.intragroupRule());
+        assertTrue(r.intragroupMaxLagDays() >= 0);
+    }
+
     private static ScoringConfig copyWith(Map<IndicatorId, IndicatorConfig> ind, Map<Profile, ProfileConfig> prof) {
         return new ScoringConfig(base.unit(), base.months(), base.cashProductTypes(), base.semiLiquidTypes(),
                 base.bookedStatusValues(), base.runwayCapMonths(), base.trajectory(), base.flowClasses(),
                 base.defaultFlowClass(), base.otherSignFallback(), ind, prof, base.regimes(), base.bands(),
-                base.limitEngine(), base.insurer(), base.debtDscr());
+                base.limitEngine(), base.insurer(), base.debtDscr(), base.dataRules());
     }
 }
