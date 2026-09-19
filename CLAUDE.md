@@ -9,6 +9,7 @@ Hackathon context: two developers, ~20 effective hours, demo on Sunday 11:00. **
 2. `docs/ARCHITECTURE.md` — **how** to build it: packages, contracts, pipeline stages, SQL files, extension points, tests, build order.
 3. `docs/DATA_FINDINGS.md` — answers to data profiling (SPEC §4). Check it before implementing anything marked `⚠ UNKNOWN`.
 4. `docs/THRESHOLDS.md` — status of the 10 `⏳ PENDING` anchors (SPEC §6.1).
+5. `docs/ALGORITHM_PAGE.md` and `docs/PRESETS.md` — the expert configuration page, the runtime overrides and the sourced client presets.
 
 Precedence: SPEC wins on *what*, ARCHITECTURE wins on *how*. `ARCHITECTURE.md §0 Locked decisions` overrides older SPEC text. Resolved conflicts between the two are listed at the end of this file — apply them.
 
@@ -23,6 +24,7 @@ Precedence: SPEC wins on *what*, ARCHITECTURE wins on *how*. `ARCHITECTURE.md §
 cd backend && ./mvnw spring-boot:run          # boots API; runs pipeline on startup if pipeline_runs is empty
 cd backend && ./mvnw test                     # the 6 required tests (ARCHITECTURE §9)
 curl -X POST localhost:8080/api/pipeline/run  # rerun pipeline; GET /api/pipeline/status for progress
+curl localhost:8080/api/config                # active config + shipped defaults; PUT saves overrides, DELETE resets
 cd frontend && npm install && npm run dev     # Vite dev server, proxies /api to :8080
 docker compose up --build                     # full stack as deployed
 ```
@@ -48,6 +50,7 @@ Swagger UI: `http://localhost:8080/swagger-ui.html`.
 - Adding an alert: one class in `alerting/rules/`, a pure predicate; transitions are handled by `AlertEngine`.
 - Results tables are written with the DuckDB Appender (`ResultWriter`), dropped and recreated per run.
 - When a spec value turns out wrong against the data, change the config and write down why in `DATA_FINDINGS.md` or `THRESHOLDS.md`. Do not silently diverge from SPEC.
+- Expert edits from `/algorithm` live in `data/scoring-overrides.yml`, never in `scoring-config.yml`. A preset in `presets.yml` needs a source that we read for each value, and never changes a weight (`docs/PRESETS.md`).
 - After block 4, check the histogram of `final` at M23. If it clusters in a ~15-point band, widen anchors. Do not touch weights.
 
 ## Conventions

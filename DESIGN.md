@@ -322,6 +322,16 @@ Faint band zones behind the plot, dashed horizontal hairline grid, a 14px-wide t
 ### Pending Film
 An unexposed film: a muted "Sin datos todavía" line and a two-column list of what will appear, each item on a dashed hairline with a small hollow square marker. Pending filter chips use a dashed muted border, square, Label size. Dashed means "not yet exposed", only.
 
+### Algorithm Page Components (expert configuration, 2026-09-19)
+Decisions and reasons: `docs/ALGORITHM_PAGE.md`. All reuse the existing materials: no new colour, no radius, no shadow.
+- **Field Cell:** a parameter on the hairline cell grid (1, 2 from `sm`, 3 from `lg`). Label 15px semibold, optional muted hint, a square hairline input (18px semibold, wdth 88, tabular, cyan caret), unit in muted caption. An unsaved value gets a full ink border on the input and a 2px ink rule on the cell top. An invalid value gets a 2px ink border and a semibold ink message; errors stay neutral (The Three Voices Rule). "Por defecto: X · Restaurar" appears in muted caption only when the value differs from the shipped file.
+- **Anchor Curve:** the level curve of an indicator, 320×136 viewBox. Faint band zones (7 %) behind the plot because the output is a 0–100 health level, dashed hairline at 50, the curve in ink 2.5px with 7px square hollow points, dotted ink extensions for the clamped ends, and the comparison curve dashed in ink muted. Points are edited in a vertical Valor / Nivel table beside it.
+- **Weights Table:** categories by profile. Weight bars are ink (35 %, full ink when unsaved), never a band hue, because a weight is not a health value. The λ bar splits Level Umber and Trajectory Slate, the two chart series colours for level and trajectory.
+- **Change Tray:** a fixed bottom bar in viewer material (the frame carries every control). Summary in viewer ink, actions as a text button, an outlined button and an inverted primary. The review list and the consent checkbox open in place above the actions. While the backend works, the tray shows the pipeline lamp vocabulary (amber pulse, then cyan when the data is ready) and a 4px progress rule.
+- **Section Menu:** a sticky column from `lg` (top 24px) and a sticky scrolling strip below `lg`. Cells on a hairline gap. The section being read inverts to ink with film text, like a pressed question filter. An unsaved count sits in a small ink cell (inverted inside the active entry).
+- **Preset Cards and Dossier:** four presets on the hairline cell grid (1, 2 from `sm`, 4 from `xl`). The open card inverts to ink. The dossier below has a 1px ink border, a close button, then one row per value: "En uso ahora" against "Con el preset" as readout cells (or an Anchor Curve), a status tag (solid hairline for "Con fuente", dashed for "Derivado" and "Sin fuente": dashed means not yet exposed), the reason, and each source as a citation with a 1px ink rule at 30 %, the exact quote, a linked publisher and title, and the read date.
+- **Expert Warning:** a normal film titled "Zona de experto" with a drawn warning triangle in ink (never red: it is a caution, not a critical severity), a 24px semibold statement, the consequences as a muted list, and status cells on a hairline gap.
+
 ## Do's and Don'ts
 
 ### Do:

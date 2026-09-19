@@ -34,6 +34,22 @@ Quantiles: run of 2026-09-19 on `main` after PRs #4 and #5, unit `GROUP`, availa
 
 `reference-rate` (limit engine and `LEV_FUNDING_COST`) is a placeholder of 0.035. Set the current market rate by hand.
 
+**Update 2026-09-19 (presets).** The default in `scoring-config.yml` stays 0.035. The bank and SME presets
+(`docs/PRESETS.md`) propose 0.030: the 12-month Euribor was 3.003 % on the last day of August 2026
+(Banco de España, statistics table 1.7, read on 2026-09-19). An expert applies it from the Algorithm page.
+The applied value lives in `data/scoring-overrides.yml`, not in the shipped file.
+
+**Anchors proposed by presets (not the shipped defaults).** Sources and limits in `docs/PRESETS.md` §3–4.
+
+| Indicator | Shipped status | Preset | Proposed anchors | Status of the proposal |
+|---|---|---|---|---|
+| `LEV_DEBT_TO_CF` | closed | Banco | adds 4.0× → 50, 6.0× → 35 (ECB leveraged-transactions guidance) | sourced |
+| `ACT_COLLECTIONS_GROWTH` | pending | Fondo | 10 % → 80 (Eurostat high-growth definition, 11.9 % share) | sourced |
+| `LIQ_MIN_BALANCE` | pending | Pyme | 0.43 → 35, 0.9 → 50, 2.07 → 65 (JPMorgan Chase Institute quartiles), 4 → 100 (placeholder) | derived |
+
+A preset does not close a pending anchor. Close it here only when the team adopts the proposal as the
+shipped default.
+
 ## Phase 7 A-8 — AHP weights adopted (2026-09-19)
 
 **Change.** `scoring.profiles.<P>.weights` and `scoring.indicators.<ID>.weight` now come from the AHP
