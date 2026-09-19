@@ -1,0 +1,22 @@
+# Render blueprint for the backend. Deployed in demo mode (SPEC §14): no ingest, no pipeline,
+# no CSVs. The frozen results database travels inside the image, so no persistent disk is needed.
+#
+#   Render dashboard -> New -> Blueprint -> pick this repo.
+#
+# Regenerating the database is a local step; see docs/DEPLOY.md.
+services:
+  - type: web
+    name: xray-backend
+    runtime: docker
+    # Free works but spins down after 15 min idle, and a cold start in front of the jury is a
+    # ~1 min blank page. Starter stays warm.
+    plan: starter
+    region: frankfurt
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: XRAY_DEMO_MODE
+        value: "true"
+      - key: XRAY_DATA_DIR
+        value: /data
