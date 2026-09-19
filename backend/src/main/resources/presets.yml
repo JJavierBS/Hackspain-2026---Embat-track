@@ -1,0 +1,119 @@
+# Client presets for the Algorithm page (docs/PRESETS.md).
+# A preset loads its values into the page draft. Nothing changes until the expert applies the draft.
+# Rules for this file:
+#   - Weights never change here: each client already has its sourced profile (docs/WEIGHTS.md), closed on 2026-09-19.
+#   - A change needs a source that we read, or it says "derived" and names the rule, or "placeholder".
+#   - Each path is a dotted path of GET /api/config. The boot applies every preset to the shipped config and
+#     validates it with the same checks as scoring-config.yml, so a bad preset stops the boot.
+#   - quote = exact words of the source, short (under 15 words). finding = a figure read from a table.
+# UI copy is Spanish.
+
+sources:
+  ecb-leverage:
+    publisher: "BCE · Supervisión Bancaria"
+    title: "Guidance on leveraged transactions (mayo de 2017), sección 3"
+    url: "https://www.bankingsupervision.europa.eu/ecb/pub/pdf/ssm.leveraged_transactions_guidance_201705.en.pdf"
+    quote: "exceeding 6.0 times at deal inception – should remain exceptional"
+    read: "2026-09-19"
+  bde-euribor:
+    publisher: "Banco de España"
+    title: "Estadísticas, cuadro 1.7: euríbor y otros tipos de interés"
+    url: "https://www.bde.es/webbe/es/estadisticas/compartido/datos/pdf/ti_1_7.pdf"
+    finding: "Euríbor a 12 meses, último día de agosto de 2026: 3,003 %"
+    read: "2026-09-19"
+  atradius-cost:
+    publisher: "Atradius"
+    title: "What drives credit insurance costs?"
+    url: "https://group.atradius.com/knowledge-and-research/resources/what-drives-credit-insurance-costs"
+    quote: "Premiums often range between 0.1% to 1% of insured business-to-business (B2B) sales."
+    read: "2026-09-19"
+  allianz-cost:
+    publisher: "Allianz Trade"
+    title: "How much does trade credit insurance cost?"
+    url: "https://www.allianz-trade.com/en_GB/insights/protect-revenues/how-much-does-trade-credit-insurance-cost.html"
+    quote: "This is generally a fraction less than 1%."
+    read: "2026-09-19"
+  eurostat-hge:
+    publisher: "Eurostat"
+    title: "High-growth enterprises – statistics (definición)"
+    url: "https://ec.europa.eu/eurostat/statistics-explained/index.php?title=High-growth_enterprises_-_statistics"
+    quote: "average annualised growth … greater than 10% over a 3 year period"
+    read: "2026-09-19"
+  eurostat-hge-share:
+    publisher: "Eurostat"
+    title: "1 in 10 EU enterprises classified as high growth (1-12-2020)"
+    url: "https://ec.europa.eu/eurostat/web/products-eurostat-news/-/ddn-20201201-1"
+    quote: "over one tenth (11.9%) of all active enterprises with at least 10 employees"
+    read: "2026-09-19"
+  jpmc-buffer:
+    publisher: "JPMorgan Chase Institute"
+    title: "Cash Flows, Balances, and Buffer Days (2016)"
+    url: "https://www.jpmorganchase.com/institute/all-topics/business-growth-and-entrepreneurship/report-cash-flows-balances-and-buffer-days"
+    quote: "The median small business holds 27 cash buffer days in reserve."
+    read: "2026-09-19"
+  ec-late-payment:
+    publisher: "Comisión Europea"
+    title: "EU Payment Observatory"
+    url: "https://single-market-economy.ec.europa.eu/smes/challenges-and-resilience/late-payment/eu-payment-observatory_en"
+    quote: "causing one out of four bankruptcies in the European Union"
+    read: "2026-09-19"
+
+presets:
+  - id: bank
+    name: "Banco · línea de circulante"
+    client: "Un banco que concede y revisa líneas de circulante a pymes."
+    profile: BANK
+    weights: "Sin cambios. El perfil Banco ya ordena las categorías con las guías EBA/GL/2020/06: caja operativa y servicio de la deuda primero."
+    changes:
+      - path: indicators.LEV_DEBT_TO_CF.anchors
+        value: [[0, 100], [1, 90], [3, 65], [4, 50], [6, 35], [8, 0]]
+        status: sourced
+        why: "El BCE llama apalancada a una operación con deuda total por encima de 4,0 veces el EBITDA, y pide que más de 6,0 veces sea excepcional. Por eso 4,0× marca el borde de la banda C (nivel 50) y 6,0× el borde de la banda D (nivel 35). Los puntos 0, 1, 3 y 8 siguen como antes."
+        sources: [ecb-leverage]
+      - path: limitEngine.referenceRate
+        value: 0.03
+        status: sourced
+        why: "El tipo de referencia pasa del valor de ejemplo (3,5 %) al euríbor a 12 meses real: 3,003 % el último día de agosto de 2026, redondeado a 3,0 %. Cambia el tipo de la línea y el indicador de coste de financiación."
+        sources: [bde-euribor]
+
+  - id: insurer
+    name: "Aseguradora de crédito comercial"
+    client: "Una aseguradora que fija la prima para cubrir a esta empresa como compradora."
+    profile: INSURER
+    weights: "Sin cambios. El perfil Aseguradora ya pone el comportamiento de pago primero. La Comisión Europea atribuye a los retrasos de pago una de cada cuatro quiebras en la UE."
+    weightsSources: [ec-late-payment]
+    changes:
+      - path: insurer.multiplierByBand
+        value: { A: 0.4, B: 1.0, C: 2.0, D: 4.0 }
+        status: derived
+        why: "Con la prima base de 0,25 %, la banda A paga 0,10 % y la D 1,00 %: los dos extremos del rango que publica Atradius (0,1 % a 1 % de las ventas aseguradas). La banda C (0,50 %) es la media geométrica entre B y D: esa regla es nuestra. Antes, el rango iba de 0,175 % a 0,625 %."
+        sources: [atradius-cost, allianz-cost]
+
+  - id: fund
+    name: "Fondo de crecimiento"
+    client: "Un fondo de crecimiento o de crédito privado que busca pymes en ascenso."
+    profile: FUND
+    weights: "Sin cambios. El perfil Fondo ya pone el crecimiento y el momentum primero (Regla del 40)."
+    changes:
+      - path: indicators.ACT_COLLECTIONS_GROWTH.anchors
+        value: [[-0.3, 0], [-0.15, 25], [0, 50], [0.1, 80], [0.3, 100]]
+        status: sourced
+        why: "Eurostat llama de alto crecimiento a una empresa que crece más del 10 % al año, y en 2018 lo era el 11,9 % de las empresas con 10 o más empleados. Por eso un 10 % anual marca el borde de la banda A (nivel 80), el décimo superior. Límite: Eurostat mide 3 años de media, nosotros 12 meses de cobros."
+        sources: [eurostat-hge, eurostat-hge-share]
+
+  - id: sme
+    name: "Pyme · autodiagnóstico"
+    client: "La pyme cliente de Embat, que quiere ver su salud como la ve su banco."
+    profile: BANK
+    weights: "Sin cambios. La pyme usa el perfil Banco: ve su puntuación con los mismos pesos que el banco que le presta."
+    changes:
+      - path: indicators.LIQ_MIN_BALANCE.anchors
+        value: [[-1, 0], [0, 25], [0.43, 35], [0.9, 50], [2.07, 65], [4, 100]]
+        status: derived
+        why: "JPMorgan Chase Institute midió los días de caja de 597.000 pymes: 13 días el cuartil bajo, 27 la mediana, 62 el cuartil alto (0,43, 0,9 y 2,07 meses de pagos). Esos cuartiles marcan los bordes de las bandas D, C y B. El punto de 4 meses → 100 no tiene fuente. Límites: son datos de EE. UU. de 2015, y nuestro indicador usa el saldo mínimo del mes, no el medio, así que es más exigente."
+        sources: [jpmc-buffer]
+      - path: limitEngine.referenceRate
+        value: 0.03
+        status: sourced
+        why: "Euríbor a 12 meses real: 3,003 % el último día de agosto de 2026. Así la pyme ve el tipo de su línea con el mercado de hoy, no con el valor de ejemplo."
+        sources: [bde-euribor]

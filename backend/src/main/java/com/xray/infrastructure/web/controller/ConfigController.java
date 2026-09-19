@@ -2,6 +2,7 @@ package com.xray.infrastructure.web.controller;
 
 import com.xray.XRayApplication;
 import com.xray.application.AlgorithmConfigUseCase;
+import com.xray.application.PresetCatalog;
 import com.xray.infrastructure.web.dto.AlgorithmConfigDto;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -23,14 +24,22 @@ import java.util.Map;
 public class ConfigController {
 
     private final AlgorithmConfigUseCase useCase;
+    private final PresetCatalog presets;
 
-    public ConfigController(AlgorithmConfigUseCase useCase) {
+    public ConfigController(AlgorithmConfigUseCase useCase, PresetCatalog presets) {
         this.useCase = useCase;
+        this.presets = presets;
     }
 
     @GetMapping
     public AlgorithmConfigDto get() {
         return useCase.view();
+    }
+
+    /** Client presets with their evidence (presets.yml). The page loads one into its draft. */
+    @GetMapping("/presets")
+    public Map<String, Object> presets() {
+        return presets.catalog();
     }
 
     @PutMapping
