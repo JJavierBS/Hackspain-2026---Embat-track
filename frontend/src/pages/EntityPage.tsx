@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import type {
+  Alert,
   BandLetter,
   Category,
   CategoryScore,
@@ -17,6 +18,7 @@ import type {
 } from "../api/types";
 import { ApiError } from "../api/client";
 import { useEntity, useMeta, useMethodology, useSimulateLimit } from "../api/queries";
+import { AlertList } from "../components/AlertList";
 import { LimitHistoryChart } from "../components/LimitHistoryChart";
 import { PremiumHistoryChart } from "../components/PremiumHistoryChart";
 import { RateLadder } from "../components/RateLadder";
@@ -33,9 +35,11 @@ import { TrendChart } from "../components/TrendChart";
 import { MONTHS, useGlobalParams } from "../hooks/useGlobalParams";
 import { useLinkSearch } from "../hooks/useLinkSearch";
 import {
+  ALERT_LABELS,
   BINDING_LABELS,
   CATEGORY_LABELS,
   LIMIT_ACTION_LABELS,
+  PROFILE_LABELS,
   REGIME_LABELS,
   bandOf,
   confidenceLabel,
@@ -157,9 +161,12 @@ export function EntityPage() {
               .map((p) => ({ month: p.month, final: p.final, level: p.level, trajectory: p.traj }))}
             activeMonth={month}
             height={300}
+            markers={data.alerts.map((a) => ({ month: a.month, direction: a.direction, label: ALERT_LABELS[a.code] }))}
           />
         </div>
       </Film>
+
+      <EntityAlerts alerts={data.alerts} />
 
       <div className="grid gap-12 lg:grid-cols-2">
         <Drivers categories={data.categories} drivers={data.drivers} final={row.final} />
@@ -171,6 +178,30 @@ export function EntityPage() {
       {data.companies.length > 0 && <Companies companies={data.companies} />}
       <ProductPanel data={data} />
     </div>
+  );
+}
+
+/** This entity's alerts in the active profile, newest first (at most 20, up to the selected month). */
+function EntityAlerts({ alerts }: { alerts: Alert[] }) {
+  const { profile, month } = useGlobalParams();
+  const { data: meta } = useMeta();
+  if (meta && !meta.alertsReady) {
+    return (
+      <PendingFilm
+        title="Alertas"
+        block="bloque 6"
+        items={["Alertas de la entidad, negativas y positivas", "Marcas en la línea temporal", "Acciones sobre el límite"]}
+      />
+    );
+  }
+  return (
+    <Film title="Alertas" meta={`Perfil ${PROFILE_LABELS[profile].name} · hasta ${monthCode(month)}`}>
+      {alerts.length === 0 ? (
+        <p className="text-ink-muted">Sin alertas hasta {monthCode(month)}.</p>
+      ) : (
+        <AlertList alerts={alerts} showMonth />
+      )}
+    </Film>
   );
 }
 

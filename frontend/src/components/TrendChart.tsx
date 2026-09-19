@@ -3,6 +3,7 @@ import {
   Line,
   LineChart,
   ReferenceArea,
+  ReferenceDot,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -23,6 +24,43 @@ interface TrendChartProps {
   /** The month on the viewer. Drawn as the cyan scan band. */
   activeMonth: string;
   height?: number;
+  /** Alerts to mark along the top edge. Several in one month share one mark. */
+  markers?: TrendMarker[];
+}
+
+export interface TrendMarker {
+  month: string;
+  direction: "NEGATIVE" | "POSITIVE";
+  label: string;
+}
+
+interface MonthMark {
+  month: string;
+  /** Negative wins a mixed month: the mark is there to catch the eye on risk. */
+  negative: boolean;
+  label: string;
+}
+
+function groupMarkers(markers: TrendMarker[]): MonthMark[] {
+  const byMonth = new Map<string, TrendMarker[]>();
+  for (const m of markers) byMonth.set(m.month, [...(byMonth.get(m.month) ?? []), m]);
+  return [...byMonth.entries()].map(([month, list]) => ({
+    month,
+    negative: list.some((m) => m.direction === "NEGATIVE"),
+    label: [...new Set(list.map((m) => m.label))].join(" · "),
+  }));
+}
+
+/** A small drawn triangle on the top rule: down in red for a negative month, up in green for a positive one. */
+function AlertMark({ cx, cy, mark }: { cx?: number; cy?: number; mark: MonthMark }) {
+  if (cx === undefined || cy === undefined) return <g />;
+  const s = 5.5;
+  const d = mark.negative ? `M${cx - s} ${cy - 1}h${2 * s}l${-s} ${s * 1.6}z` : `M${cx - s} ${cy + s * 1.6 - 1}h${2 * s}l${-s} ${-s * 1.6}z`;
+  return (
+    <path d={d} fill={mark.negative ? "var(--color-down)" : "var(--color-up)"}>
+      <title>{`${monthShort(mark.month)} · ${mark.label}`}</title>
+    </path>
+  );
 }
 
 const SERIES = [
@@ -53,8 +91,10 @@ function labelOffsets(last: TrendPoint | undefined, height: number): Record<stri
 }
 
 /** Score over time against the band zones, with the active month marked. */
-export function TrendChart({ data, activeMonth, height = 260 }: TrendChartProps) {
+export function TrendChart({ data, activeMonth, height = 260, markers = [] }: TrendChartProps) {
   const offsets = labelOffsets(data[data.length - 1], height);
+  const marks = groupMarkers(markers);
+  const markLabel = new Map(marks.map((m) => [m.month, m.label]));
   return (
     <div>
       <ul className="mb-3 flex flex-wrap gap-x-5 gap-y-1 text-[15px] text-ink-muted">
@@ -70,10 +110,21 @@ export function TrendChart({ data, activeMonth, height = 260 }: TrendChartProps)
           <span aria-hidden className="h-3 w-2.5 bg-scan/40" />
           Mes seleccionado
         </li>
+        {marks.length > 0 && (
+          <li className="flex items-center gap-2">
+            <svg width="12" height="10" aria-hidden>
+              <path d="M1 1h10L6 9.5z" fill="var(--color-down)" />
+            </svg>
+            <svg width="12" height="10" aria-hidden>
+              <path d="M1 9.5h10L6 1z" fill="var(--color-up)" />
+            </svg>
+            Alertas
+          </li>
+        )}
       </ul>
       <div style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 8, right: 92, bottom: 0, left: -8 }}>
+          <LineChart data={data} margin={{ top: marks.length > 0 ? 14 : 8, right: 92, bottom: 0, left: -8 }}>
             {BANDS.map((b, i) => (
               <ReferenceArea
                 key={b.band}
@@ -104,7 +155,10 @@ export function TrendChart({ data, activeMonth, height = 260 }: TrendChartProps)
               axisLine={false}
             />
             <Tooltip
-              labelFormatter={(m) => `${monthShort(String(m))} · ${monthCode(String(m))}`}
+              labelFormatter={(m) => {
+                const alerts = markLabel.get(String(m));
+                return `${monthShort(String(m))} · ${monthCode(String(m))}${alerts ? ` — ${alerts}` : ""}`;
+              }}
               formatter={(v) => formatScore(Number(v))}
               contentStyle={{
                 border: "1px solid var(--color-rule)",
@@ -113,6 +167,15 @@ export function TrendChart({ data, activeMonth, height = 260 }: TrendChartProps)
                 fontVariantNumeric: "tabular-nums",
               }}
             />
+            {marks.map((mark) => (
+              <ReferenceDot
+                key={mark.month}
+                x={mark.month}
+                y={100}
+                ifOverflow="visible"
+                shape={(p: { cx?: number; cy?: number }) => <AlertMark cx={p.cx} cy={p.cy} mark={mark} />}
+              />
+            ))}
             {SERIES.map((s) => (
               <Line
                 key={s.key}
