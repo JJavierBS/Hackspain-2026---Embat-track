@@ -34,6 +34,7 @@ import com.xray.pipeline.stages.S65_Explain;
 import com.xray.pipeline.stages.S70_Dynamics;
 import com.xray.pipeline.stages.S75_Products;
 import com.xray.pipeline.stages.S80_Alerts;
+import com.xray.pipeline.stages.S85_Forecast;
 import com.xray.pipeline.stages.S90_Analytics;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.bind.Binder;
@@ -61,7 +62,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * ARCHITECTURE §9: truncate the panel at M12, recompute, and every value for M00..M12 must be identical
- * to the full run. Runs the Java stages S40 → S90 on seeded synthetic panels, each run on its own
+ * to the full run. forecast_points is dated by its origin month (phase 7 decision H12). Runs the Java
+ * stages S40 → S90 on seeded synthetic panels, each run on its own
  * in-memory DuckDB, and compares the results tables row by row (phase 6 decision G10).
  * The SQL layer is out of scope: balances are reconstructed backwards from the 2026-09-01 snapshot on
  * purpose (SPEC §0.2 static exception, a documented caveat).
@@ -101,6 +103,7 @@ class LookAheadTest {
         }
         assertFalse(a.get("profile_scores").isEmpty(), "the synthetic panels produced no scores");
         assertFalse(a.get("lead_time_events").isEmpty(), "the synthetic panels produced no lead-time events");
+        assertFalse(a.get("forecast_points").isEmpty(), "the synthetic panels produced no forecast");
     }
 
     private static Map<String, List<String>> run(ScoringConfig config, List<EntityPanel> panels) throws Exception {
@@ -119,7 +122,8 @@ class LookAheadTest {
     private static List<PipelineStage> stages(ResultWriter writer, ScoringConfig config) {
         return List.of(new S40_Normalize(), new S50_Trajectory(), new S60_Score(writer),
                 new S65_Explain(writer, new TemplateNarrativeRenderer()), new S70_Dynamics(writer),
-                new S75_Products(writer), new S80_Alerts(writer, rules(config)), new S90_Analytics(writer));
+                new S75_Products(writer), new S80_Alerts(writer, rules(config)), new S85_Forecast(writer),
+                new S90_Analytics(writer));
     }
 
     /** The 15 rules of phase 5. Four take no config; the rest take ScoringConfig. */
