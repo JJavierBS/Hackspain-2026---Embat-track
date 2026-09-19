@@ -8,7 +8,6 @@ import com.xray.domain.model.CategoryScore;
 import com.xray.domain.model.EntityPanel;
 import com.xray.domain.model.IndicatorId;
 import com.xray.domain.model.Profile;
-import com.xray.domain.model.ProfileScore;
 import com.xray.domain.model.RawIndicator;
 import com.xray.domain.model.SubScore;
 import com.xray.domain.service.CategoryAggregator;
@@ -26,7 +25,8 @@ import java.util.Map;
 
 /**
  * Categories and the three profiles (SPEC §7.3–§7.4), then indicator_values, category_scores and profile_scores
- * (phase 3 contract item 10). status, regime and confidence stay NULL until S70.
+ * (phase 3 contract item 10), plus profile_weights.
+ * status, regime, confidence and seasonal stay NULL until S70 rewrites profile_scores.
  */
 @Component
 @Order(60)
@@ -37,9 +37,8 @@ public class S60_Score implements PipelineStage {
             + "available BOOLEAN, is_static BOOLEAN, fallback BOOLEAN, anchor_status VARCHAR";
     private static final String CATEGORY_SCORES_DDL = "entity_type VARCHAR, entity_id VARCHAR, month VARCHAR, "
             + "category VARCHAR, level DOUBLE, traj DOUBLE, n_available INTEGER";
-    private static final String PROFILE_SCORES_DDL = "entity_type VARCHAR, entity_id VARCHAR, month VARCHAR, "
-            + "profile VARCHAR, final DOUBLE, level DOUBLE, traj DOUBLE, band VARCHAR, momentum DOUBLE, "
-            + "mom_persistence INTEGER, status VARCHAR, regime VARCHAR, confidence VARCHAR";
+    /** lambda is a DuckDB keyword: readers must quote the column too ("lambda"). */
+    private static final String PROFILE_WEIGHTS_DDL = "profile VARCHAR, category VARCHAR, weight DOUBLE, \"lambda\" DOUBLE";
 
     private final ResultWriter writer;
 
@@ -59,13 +58,8 @@ public class S60_Score implements PipelineStage {
             return;
         }
         ScoringConfig config = ctx.config();
-        Map<Category, List<IndicatorId>> members = new EnumMap<>(Category.class);
-        for (Category c : Category.values()) {
-            if (c != Category.MOMENTUM) {
-                members.put(c, new ArrayList<>());
-            }
-        }
-        config.indicators().forEach((id, ic) -> members.get(ic.category()).add(id));
+        Map<Category, List<IndicatorId>> members = CategoryMembers.of(config);
+        Map<IndicatorId, Double> indicatorWeights = CategoryMembers.weights(config);
 
         ScoringConfig.BandConfig b = config.bands();
         BandThresholds bands = new BandThresholds(b.a(), b.b(), b.c(), b.d());
@@ -76,7 +70,7 @@ public class S60_Score implements PipelineStage {
                     config.momentum().pointsPerMonth(), config.momentum().cap(), bands));
         }
 
-        ctx.panels().parallelStream().forEach(panel -> score(panel, members, params));
+        ctx.panels().parallelStream().forEach(panel -> score(panel, members, indicatorWeights, params));
         ctx.report(id(), 70, "writing results");
 
         List<Object[]> indicatorRows = ctx.panels().parallelStream()
@@ -84,18 +78,20 @@ public class S60_Score implements PipelineStage {
         List<Object[]> categoryRows = ctx.panels().parallelStream()
                 .flatMap(panel -> categoryRows(panel, members).stream()).toList();
         List<Object[]> profileRows = ctx.panels().parallelStream()
-                .flatMap(panel -> profileRows(panel).stream()).toList();
+                .flatMap(panel -> ProfileScoreTable.rows(panel).stream()).toList();
         writer.replace("indicator_values", INDICATOR_VALUES_DDL, indicatorRows);
         writer.replace("category_scores", CATEGORY_SCORES_DDL, categoryRows);
-        int rows = writer.replace("profile_scores", PROFILE_SCORES_DDL, profileRows);
+        writer.replace("profile_weights", PROFILE_WEIGHTS_DDL, weightRows(config));
+        int rows = writer.replace(ProfileScoreTable.NAME, ProfileScoreTable.DDL, profileRows);
         ctx.report(id(), 80, rows + " profile rows");
     }
 
     private static void score(EntityPanel panel, Map<Category, List<IndicatorId>> members,
-                              Map<Profile, ProfileScorer.Params> params) {
+                              Map<IndicatorId, Double> indicatorWeights, Map<Profile, ProfileScorer.Params> params) {
         Map<Category, CategoryScore[]> cats = new EnumMap<>(Category.class);
         members.forEach((c, ids) -> {
-            CategoryScore[] s = CategoryAggregator.aggregate(ids.stream().map(panel::subScores).toList(), panel.size());
+            CategoryScore[] s = CategoryAggregator.aggregate(ids.stream().map(panel::subScores).toList(),
+                    ids.stream().mapToDouble(indicatorWeights::get).toArray(), panel.size());
             panel.setCategoryScores(c, s);
             cats.put(c, s);
         });
@@ -130,17 +126,11 @@ public class S60_Score implements PipelineStage {
         return rows;
     }
 
-    private static List<Object[]> profileRows(EntityPanel panel) {
-        List<Object[]> rows = new ArrayList<>(Profile.values().length * panel.size());
-        for (Profile p : Profile.values()) {
-            ProfileScore[] s = panel.profileScores(p);
-            for (int m = 0; m < panel.size(); m++) {
-                ProfileScore x = s[m];
-                rows.add(new Object[]{panel.key().type().name(), panel.key().id(), panel.months().get(m).toString(),
-                        p.name(), x.finalScore(), x.level(), x.traj(), x.band() == null ? null : x.band().name(),
-                        x.momentum(), x.momPersistence(), null, null, null});
-            }
-        }
+    /** The weights that produced this run's scores, so the UI never shows other weights (decision E1). */
+    private static List<Object[]> weightRows(ScoringConfig config) {
+        List<Object[]> rows = new ArrayList<>();
+        config.profiles().forEach((p, pc) -> pc.weights().forEach((c, w) ->
+                rows.add(new Object[]{p.name(), c.name(), w, pc.lambda()})));
         return rows;
     }
 }

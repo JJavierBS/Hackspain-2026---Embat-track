@@ -2,6 +2,7 @@ package com.xray.pipeline.stages;
 
 import com.xray.config.XRayProperties;
 import com.xray.domain.model.EntityPanel;
+import com.xray.domain.model.EntityType;
 import com.xray.domain.model.IndicatorId;
 import com.xray.domain.model.Month;
 import com.xray.domain.model.RawIndicator;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -69,14 +71,18 @@ public class S30_RawIndicators implements PipelineStage {
         List<Month> months = Month.range(
                 Month.parse(ctx.config().months().start()), Month.parse(ctx.config().months().end()));
         List<EntityPanel> panels = loader.load(ctx.unit(), months);
-        ctx.setPanels(panels);
-        log.info("{} loaded {} panels", id(), panels.size());
         for (IndicatorId id : IndicatorId.values()) {
             long avail = panels.stream().flatMap(p -> Arrays.stream(p.rawSeries(id))).filter(RawIndicator::available).count();
             long total = (long) panels.size() * months.size();
             log.info("{} availability {} {}/{} ({}%)", id(), id, avail, total, total == 0 ? 0 : avail * 100 / total);
         }
-        ctx.report(id(), 40, panels.size() + " panels");
+        List<EntityPanel> all = new ArrayList<>(panels);
+        if (ctx.unit() == EntityType.GROUP) {
+            all.addAll(loader.load(EntityType.COMPANY, months));   // standalone company scores for the drilldown (E2)
+        }
+        ctx.setPanels(all);
+        log.info("{} loaded {} {} panels, {} in total", id(), panels.size(), ctx.unit(), all.size());
+        ctx.report(id(), 40, all.size() + " panels");
     }
 
     private static List<String> indicatorScripts() {

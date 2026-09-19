@@ -1,6 +1,8 @@
 package com.xray.domain.model;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +19,9 @@ public final class EntityPanel {
     private final Map<IndicatorId, SubScore[]> subScores = new EnumMap<>(IndicatorId.class);   // S40, S50
     private final Map<Category, CategoryScore[]> categories = new EnumMap<>(Category.class);  // S60
     private final Map<Profile, ProfileScore[]> profileScores = new EnumMap<>(Profile.class);  // S60
+    private final Map<Profile, List<List<Contribution>>> contributions = new EnumMap<>(Profile.class); // S65
+    private final Map<Profile, DynamicsPoint[]> dynamics = new EnumMap<>(Profile.class);                // S70
+    private final List<Changepoint> changepoints = new ArrayList<>();                                  // S70
 
     public EntityPanel(EntityKey key, List<Month> months) {
         this.key = key;
@@ -81,5 +86,31 @@ public final class EntityPanel {
 
     public void setProfileScores(Profile p, ProfileScore[] series) {
         profileScores.put(p, series);
+    }
+
+    /** One list per month ordinal, empty when final is null. Null until S65 runs. */
+    public List<List<Contribution>> contributions(Profile p) {
+        return contributions.get(p);
+    }
+
+    public void setContributions(Profile p, List<List<Contribution>> series) {
+        contributions.put(p, series);
+    }
+
+    /** Null until S70 runs. An element is null for a month with no final score. */
+    public DynamicsPoint[] dynamics(Profile p) {
+        return dynamics.get(p);
+    }
+
+    public void setDynamics(Profile p, DynamicsPoint[] series) {
+        dynamics.put(p, series);
+    }
+
+    public List<Changepoint> changepoints() {
+        return Collections.unmodifiableList(changepoints);
+    }
+
+    public void addChangepoint(Changepoint c) {
+        changepoints.add(c);
     }
 }

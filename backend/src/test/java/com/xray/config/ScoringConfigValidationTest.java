@@ -44,7 +44,7 @@ class ScoringConfigValidationTest {
         var ind = new EnumMap<>(base.indicators());
         var cf = ind.get(IndicatorId.CF_VOLATILITY);
         ind.put(IndicatorId.CF_VOLATILITY,
-                new IndicatorConfig(cf.category(), cf.method(), cf.status(), cf.source(), List.of()));
+                new IndicatorConfig(cf.category(), cf.method(), cf.status(), cf.source(), List.of(), cf.weight()));
         var ex = assertThrows(IllegalStateException.class, () -> copyWith(ind, base.profiles()));
         assertTrue(ex.getMessage().contains("CF_VOLATILITY"), ex.getMessage());
     }
@@ -54,7 +54,7 @@ class ScoringConfigValidationTest {
         var ind = new EnumMap<>(base.indicators());
         var lr = ind.get(IndicatorId.LIQ_RUNWAY);
         ind.put(IndicatorId.LIQ_RUNWAY, new IndicatorConfig(lr.category(), lr.method(), lr.status(), lr.source(),
-                List.of(List.of(0.0, 0.0), List.of(3.0, 50.0), List.of(1.0, 20.0))));
+                List.of(List.of(0.0, 0.0), List.of(3.0, 50.0), List.of(1.0, 20.0)), lr.weight()));
         var ex = assertThrows(IllegalStateException.class, () -> copyWith(ind, base.profiles()));
         assertTrue(ex.getMessage().contains("LIQ_RUNWAY"), ex.getMessage());
     }
@@ -96,11 +96,35 @@ class ScoringConfigValidationTest {
         assertTrue(base.taxRegularity().monthlyCadenceMonths() < base.taxRegularity().quarterlyCadenceMonths());
     }
 
+    @Test
+    void phase4KeysBind() {
+        assertEquals(6, base.regimes().baselineMonths());
+        assertTrue(base.regimes().baselineMinPoints() <= base.regimes().baselineMonths());
+        assertTrue(base.regimes().sigmaFloor() > 0);
+        assertEquals(List.of(IndicatorId.CF_NOCF_MARGIN, IndicatorId.PAY_DSO, IndicatorId.LIQ_RUNWAY),
+                base.regimes().cusumIndicators());
+        assertTrue(base.statuses().criticalBelow() < base.statuses().healthyMinFinal());
+        assertTrue(base.confidence().lowHistoryMonths() < base.confidence().mediumHistoryMonths());
+        assertTrue(base.explanation().narrativeTopN() > 0);
+        assertTrue(base.indicators().values().stream().allMatch(ic -> ic.weightOrDefault() > 0));
+    }
+
+    @Test
+    void nonPositiveIndicatorWeightFails() {
+        var ind = new EnumMap<>(base.indicators());
+        var ds = ind.get(IndicatorId.PAY_DSO);
+        ind.put(IndicatorId.PAY_DSO,
+                new IndicatorConfig(ds.category(), ds.method(), ds.status(), ds.source(), ds.anchors(), 0.0));
+        var ex = assertThrows(IllegalStateException.class, () -> copyWith(ind, base.profiles()));
+        assertTrue(ex.getMessage().contains("PAY_DSO"), ex.getMessage());
+    }
+
     private static ScoringConfig copyWith(Map<IndicatorId, IndicatorConfig> ind, Map<Profile, ProfileConfig> prof) {
         return new ScoringConfig(base.unit(), base.months(), base.cashProductTypes(), base.semiLiquidTypes(),
                 base.bookedStatusValues(), base.runwayCapMonths(), base.trajectory(), base.flowClasses(),
                 base.defaultFlowClass(), base.otherSignFallback(), ind, prof, base.regimes(), base.bands(),
                 base.limitEngine(), base.insurer(), base.debtDscr(), base.dataRules(),
-                base.levDebtToCf(), base.momentum(), base.concentration(), base.windows(), base.taxRegularity());
+                base.levDebtToCf(), base.momentum(), base.concentration(), base.windows(), base.taxRegularity(),
+                base.statuses(), base.confidence(), base.explanation());
     }
 }

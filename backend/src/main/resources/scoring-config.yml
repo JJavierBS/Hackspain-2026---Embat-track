@@ -134,7 +134,13 @@ scoring:
     FUND:    { lambda: 0.50, weights: { ACTIVITY_GROWTH: 30, MOMENTUM: 25, OPERATING_CASH_FLOW: 20, LIQUIDITY: 10, CONCENTRATION: 10, LEVERAGE: 5 } }
     INSURER: { lambda: 0.70, weights: { PAYMENT_BEHAVIOUR: 30, DELINQUENCY: 20, CONCENTRATION: 20, LIQUIDITY: 15, OPERATING_CASH_FLOW: 10, LEVERAGE: 5 } }
 
-  regimes: { cusum-k: 0.5, cusum-h: 4.0, persistence-months: 3, slope-threshold: 1.5, dip-z: -2.0, dip-max-months: 2 }
+  # SPEC §8.1–§8.2. CUSUM runs on final and on the level scores of cusum-indicators (phase 4 decision E3).
+  # Baseline = median and MAD x 1.4826 of the previous baseline-months non-null values, sigma >= sigma-floor (points).
+  # Each z adds at most cusum-z-cap to the sums (Huber CUSUM), so one outlier cannot hold an alarm for months (E4).
+  # sigma-floor and cusum-z-cap are PROVISIONAL: review with the status mix of the first run.
+  regimes: { cusum-k: 0.5, cusum-h: 4.0, cusum-z-cap: 3.0, persistence-months: 3, slope-threshold: 1.5, dip-z: -2.0, dip-max-months: 2,
+             baseline-months: 6, baseline-min-points: 4, sigma-floor: 2.0, dip-recovery-months: 2,
+             slope-months: 6, slope-min-points: 4, cusum-indicators: [CF_NOCF_MARGIN, PAY_DSO, LIQ_RUNWAY] }
   bands: { a: 80, b: 65, c: 50, d: 35 }
 
   limit-engine:
@@ -182,3 +188,24 @@ scoring:
     monthly-cadence-months: 1
     quarterly-cadence-months: 3
     min-tax-months: 2                # fewer TAX months in the history up to m -> cadence unknown -> unavailable
+
+  # SPEC §8.3: statuses in precedence order CRITICAL > STRUCTURAL_DECLINE > TURNING > DIP > IMPROVING > EXCEPTIONAL > HEALTHY > WATCH.
+  statuses:
+    critical-below: 35
+    turning-min-level: 60
+    turning-max-traj: 40
+    improving-min-traj: 65
+    exceptional-min-final: 85
+    exceptional-min-traj: 45
+    healthy-min-final: 65
+
+  # SPEC §7.6: history = scored months up to m; share = available indicators of the profile's weighted categories.
+  confidence:
+    low-history-months: 6
+    medium-history-months: 12
+    low-available-share: 0.5
+
+  # SPEC §7.5: narratives for the top movers of each entity-month-profile (phase 4 decision E6).
+  explanation:
+    narrative-top-n: 5
+    min-narrated-delta: 0.05
