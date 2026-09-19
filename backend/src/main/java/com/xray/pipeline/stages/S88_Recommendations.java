@@ -63,18 +63,14 @@ public class S88_Recommendations implements PipelineStage {
         ScoringConfig config = ctx.config();
         RecommendationEngine.Params params = params(config);
         Map<IndicatorId, Double> weights = CategoryMembers.weights(config);
-        List<Object[]> items = new ArrayList<>();
-        List<Object[]> summaries = new ArrayList<>();
-        ctx.panels().parallelStream()
-                .map(panel -> rows(panel, config, params, weights))
-                .toList()
-                .forEach(r -> {
-                    items.addAll(r[0]);
-                    summaries.addAll(r[1]);
-                });
-        writer.replace("recommendations", DDL, items);
-        writer.replace("recommendation_summaries", SUMMARY_DDL, summaries);
-        ctx.report(id(), 89, items.size() + " recommendations");
+        // One batch of panels at a time: every row with its texts together does not fit a 512 MB instance.
+        // Each table makes its own pass, so the engine runs twice per panel; the heap holds one batch only.
+        int n = writer.replaceInBatches("recommendations", DDL, ctx.panels(),
+                panel -> rows(panel, config, params, weights)[0]);
+        ctx.report(id(), 88, "writing recommendation summaries");
+        writer.replaceInBatches("recommendation_summaries", SUMMARY_DDL, ctx.panels(),
+                panel -> rows(panel, config, params, weights)[1]);
+        ctx.report(id(), 89, n + " recommendations");
     }
 
     @SuppressWarnings("unchecked")
