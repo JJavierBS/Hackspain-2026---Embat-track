@@ -33,8 +33,8 @@ public class ExportDemoDb {
             "category_scores", "profile_scores", "contributions",
             "alerts", "alert_states", "watchlist", "changepoints",
             "limit_decisions", "premium_quotes", "momentum_screen",
-            "lead_time_events", "lead_time_signals", "showcase_pairs",
-            "months", "threshold_quantiles");
+            "lead_time_events", "lead_time_signals", "lead_time_baseline", "showcase_pairs",
+            "forecast_points", "months", "threshold_quantiles");
 
     public static void main(String[] args) throws Exception {
         if (args.length < 2) {
