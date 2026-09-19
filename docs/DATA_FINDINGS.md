@@ -701,3 +701,32 @@ Read it with two cautions:
    by a deterioration condition within 6 months (base 63 %), mostly from DSCR flicker. This agrees with
    R3: the score detects distress when it arrives, not 3 or more months before. The pitch must not
    claim more than the lift shows.
+
+## Coverage gate: "Sin historial" on thin evidence (2026-09-19)
+
+**Problem.** In the Cartera view, early months showed many entities at exactly 100. In 2024-09 (BANK),
+397 of 437 scored entities had final = 100, and 363 of them rested on one indicator only:
+`LEV_FACTORING_RELIANCE`. That indicator is static, and an entity with no debt gets value 0, which maps
+to 100. Most other indicators need a window of 3 to 12 active months, so a new entity has none of them.
+The rule "missing ≠ zero" renormalizes the weights over the available categories, so one category at
+100 gave a final score of 100. `confidence = LOW` did not separate these rows from real ones.
+
+**Rule.** `scoring.confidence.min-trusted-weight-share` (default 0.4). S70 sets confidence to
+`INSUFFICIENT` when the available categories hold less than this share of the profile weight. MOMENTUM
+is not in the sum, because it comes from the other categories. The score is still computed and stored,
+as SPEC §7.6 asks ("scored, never excluded, shown with a badge"). The Cartera view shows these rows
+after the ranking with a "Sin historial" badge, a neutral colour and no band, rank or status. They do
+not count in the band ladder, the six questions or the rising-star chip. The export keeps their score.
+
+The rule is general: it reads only the profile weights and category availability, never an entity, a
+product or a month of this dataset. The value 0.4 means "at least 40 % of what the profile values is
+known". It is a config value, not a value fitted to these CSVs.
+
+**Effect on this data (GROUP unit).**
+- BANK, 2024-09 and 2024-10: every scored group is `INSUFFICIENT` (95 and 99 rows, 74 and 76 at 100).
+- BANK, 2025-01 and 2026-01: no trusted row is at 100. The 16 and 26 rows at 100 are all `INSUFFICIENT`.
+- M23: all 248 groups keep a score. 3 FUND and 5 INSURER groups are `INSUFFICIENT`, 0 BANK groups.
+
+**Separate finding.** Two runs of the same code gave different values for 52 rows of `LIQ_RUNWAY`,
+`LIQ_BUFFER` and `LIQ_MIN_BALANCE`, on 15 entities. The pipeline is not fully deterministic there.
+Not fixed here.

@@ -59,6 +59,7 @@ public record ScoringConfig(
         ScoringConfigValidator.validatePhase5(products, alerts, limitEngine);
         ScoringConfigValidator.validatePhase6(leadTime, showcase);
         ScoringConfigValidator.validatePhase7(forecast);
+        ScoringConfigValidator.validateConfidence(confidence);
     }
 
     public record MonthRange(String start, String end) {
@@ -81,8 +82,12 @@ public record ScoringConfig(
                                double healthyMinFinal) {
     }
 
-    /** SPEC §7.6. */
-    public record ConfidenceConfig(int lowHistoryMonths, int mediumHistoryMonths, double lowAvailableShare) {
+    /**
+     * SPEC §7.6. minTrustedWeightShare: below this share of the profile weight in available categories,
+     * the confidence is INSUFFICIENT (coverage gate, DATA_FINDINGS).
+     */
+    public record ConfidenceConfig(int lowHistoryMonths, int mediumHistoryMonths, double lowAvailableShare,
+                                   double minTrustedWeightShare) {
     }
 
     /** SPEC §7.5 narratives (phase 4 decision E6). */

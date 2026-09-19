@@ -100,6 +100,7 @@ export const CONFIDENCE_LABELS: Record<Confidence, string> = {
   HIGH: "Alta",
   MEDIUM: "Media",
   LOW: "Baja",
+  INSUFFICIENT: "Insuficiente",
 };
 
 export const CATEGORY_LABELS: Record<Category, string> = {

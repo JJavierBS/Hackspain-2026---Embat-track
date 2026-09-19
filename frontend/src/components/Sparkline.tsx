@@ -4,10 +4,12 @@ interface SparklineProps {
   values: number[];
   width?: number;
   height?: number;
+  /** A score without track record: neutral line, no band color. */
+  neutral?: boolean;
 }
 
-/** 12 months of the final score. The line takes the band color of its last value. */
-export function Sparkline({ values, width = 112, height = 32 }: SparklineProps) {
+/** 12 months of the final score. The line takes the band color of its last value, unless neutral. */
+export function Sparkline({ values, width = 112, height = 32, neutral = false }: SparklineProps) {
   if (values.length < 2) return <span className="text-ink-muted">—</span>;
   const min = Math.min(...values, 50) - 2;
   const max = Math.max(...values, 50) + 2;
@@ -15,7 +17,7 @@ export function Sparkline({ values, width = 112, height = 32 }: SparklineProps) 
   const y = (v: number) => height - 2 - ((v - min) / (max - min)) * (height - 4);
   const points = values.map((v, i) => `${x(i)},${y(v)}`).join(" ");
   const last = values[values.length - 1];
-  const color = bandOf(last).color;
+  const color = neutral ? "var(--color-ink-muted)" : bandOf(last).color;
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`Evolución 12 meses, de ${values[0]} a ${last}`}>
       <line x1="0" x2={width} y1={y(50)} y2={y(50)} stroke="var(--color-rule)" strokeDasharray="2 3" />
