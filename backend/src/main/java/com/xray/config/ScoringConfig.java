@@ -8,6 +8,7 @@ import com.xray.domain.model.IndicatorId;
 import com.xray.domain.model.Profile;
 import com.xray.domain.service.LeadTimeAnalyzer;
 import com.xray.domain.service.MomentumScreen;
+import com.xray.domain.service.ShowcaseFinder;
 import com.xray.domain.service.PremiumEngine;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -187,5 +188,9 @@ public record ScoringConfig(
 
     /** SPEC §10.4 showcase pairs (phase 6 decision G9). */
     public record ShowcaseConfig(double maxFinalGap, double upMinTraj, double downMaxTraj, int topN) {
+
+        public ShowcaseFinder.Params toParams() {
+            return new ShowcaseFinder.Params(maxFinalGap, upMinTraj, downMaxTraj, topN);
+        }
     }
 }
