@@ -40,8 +40,8 @@ WINDOW w3  AS (PARTITION BY entity_type, entity_id ORDER BY month_idx ROWS BETWE
        w12 AS (PARTITION BY entity_type, entity_id ORDER BY month_idx ROWS BETWEEN 11 PRECEDING AND CURRENT ROW);
 
 -- LIQ_RUNWAY: cash_eom / monthly burn, burn = (OPERATING_OUT + TAX + DEBT_SERVICE - OPERATING_IN) over 3m / 3
--- (decision D1). Burn <= 0 gives the cap. Negative cash gives a negative runway (the anchors clamp it).
--- No cash row (no cash product) means unavailable.
+-- (decision D1). Burn <= 0 gives the cap (SPEC §6) only when cash is positive. An overdrawn entity has no
+-- runway whatever its burn: negative or zero cash gives the worst anchor x. No cash row means unavailable.
 INSERT INTO indicator_values_raw
 SELECT entity_type, entity_id, month, 'LIQ_RUNWAY', CASE WHEN ok THEN v END, ok, FALSE, FALSE
 FROM (
@@ -49,16 +49,20 @@ FROM (
   FROM (
     SELECT *, CASE
                 WHEN cash_eom IS NULL THEN NULL
+                WHEN cash_eom <= 0 THEN ${worst_x_LIQ_RUNWAY}
                 WHEN op_out_3m + tax_3m + ds_3m - op_in_3m <= 0 THEN ${runway_cap_months}
                 ELSE LEAST(cash_eom / ((op_out_3m + tax_3m + ds_3m - op_in_3m) / 3.0), ${runway_cap_months})
               END AS v
     FROM ind30_base));
 
 -- LIQ_BUFFER: cash_eom / (RECEIVED invoices due in 90 days and unpaid + DEBT_SERVICE 3m).
--- No invoice rows at all means payables are unknown, not zero (rule 3): unavailable.
+-- Payables are known from the first month with a RECEIVED invoice row. Before it, or with no RECEIVED rows,
+-- payables are unknown, not zero (rule 3), and the month is unavailable. The check reads only months <= m (rule 1).
 -- Zero denominator (D3): positive cash gives the best anchor x, otherwise unavailable.
 INSERT INTO indicator_values_raw
-WITH inv_entities AS (SELECT DISTINCT entity_type, entity_id FROM monthly_invoices),
+WITH inv_entities AS (
+  SELECT entity_type, entity_id, MIN(month) AS first_month
+  FROM monthly_invoices WHERE direction = 'RECEIVED' GROUP BY 1, 2),
 due AS (
   SELECT entity_type, entity_id, month, SUM(due_90d_unpaid_eur) AS due_90d
   FROM monthly_invoices WHERE direction = 'RECEIVED' GROUP BY 1, 2, 3)
@@ -75,6 +79,7 @@ FROM (
            END AS v
     FROM ind30_base b
     LEFT JOIN inv_entities ie ON ie.entity_type = b.entity_type AND ie.entity_id = b.entity_id
+                             AND ie.first_month <= b.month
     LEFT JOIN due d ON d.entity_type = b.entity_type AND d.entity_id = b.entity_id AND d.month = b.month));
 
 -- LIQ_MIN_BALANCE: lowest daily cash in the month / average monthly OPERATING_OUT over 3m.

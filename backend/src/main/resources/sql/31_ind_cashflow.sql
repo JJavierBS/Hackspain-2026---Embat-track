@@ -1,7 +1,8 @@
 -- 31_ind_cashflow.sql — CF_NOCF_MARGIN, CF_VOLATILITY, CF_IN_OUT_RATIO (SPEC §6). Reads ind30_base (sql/30).
 -- A non-positive denominator counts as zero (decision D3): a net OPERATING_IN below zero is not a base for a ratio.
 
--- CF_NOCF_MARGIN: NOCF 3m / OPERATING_IN 3m. Zero denominator and positive NOCF gives the best anchor x.
+-- CF_NOCF_MARGIN: NOCF 3m / OPERATING_IN 3m. Zero denominator: positive NOCF gives the best anchor x,
+-- negative NOCF (no collections, costs still paid) the worst anchor x. Both zero means unavailable.
 INSERT INTO indicator_values_raw
 SELECT entity_type, entity_id, month, 'CF_NOCF_MARGIN', CASE WHEN ok THEN v END, ok, FALSE, FALSE
 FROM (
@@ -10,6 +11,7 @@ FROM (
     SELECT *, CASE
                 WHEN op_in_3m > 0 THEN nocf_3m / op_in_3m
                 WHEN nocf_3m > 0 THEN ${best_x_CF_NOCF_MARGIN}
+                WHEN nocf_3m < 0 THEN ${worst_x_CF_NOCF_MARGIN}
               END AS v
     FROM ind30_base));
 

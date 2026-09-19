@@ -431,14 +431,14 @@ Checks (`scripts/validate_block3_a.sql`):
 
 | indicator | type | avail % | avail % active | p5 | p50 | p95 |
 |---|---|---:|---:|---:|---:|---:|
-| LIQ_RUNWAY | GROUP | 63.1 | 88.4 | 0.03 | 24 | 24 |
+| LIQ_RUNWAY | GROUP | 63.1 | 88.4 | 0 | 24 | 24 |
 | LIQ_RUNWAY | COMPANY | 62.6 | 87.6 | 0 | 24 | 24 |
-| LIQ_BUFFER | GROUP | 42.7 | 59.9 | −0.02 | 2.76 | 224.5 |
-| LIQ_BUFFER | COMPANY | 39.8 | 55.7 | −0.01 | 3.0 | 529.2 |
+| LIQ_BUFFER | GROUP | 41.8 | 58.5 | −0.02 | 2.58 | 204.2 |
+| LIQ_BUFFER | COMPANY | 38.0 | 53.2 | −0.02 | 3.0 | 463.5 |
 | LIQ_MIN_BALANCE | GROUP | 62.8 | 88.1 | −0.23 | 0.72 | 17.0 |
 | LIQ_MIN_BALANCE | COMPANY | 62.3 | 87.2 | −0.19 | 0.53 | 60.3 |
-| CF_NOCF_MARGIN | GROUP | 60.5 | 84.8 | −1.20 | 0.016 | 0.59 |
-| CF_NOCF_MARGIN | COMPANY | 59.0 | 82.5 | −9.55 | 0.002 | 0.73 |
+| CF_NOCF_MARGIN | GROUP | 61.1 | 85.7 | −1.19 | 0.013 | 0.58 |
+| CF_NOCF_MARGIN | COMPANY | 61.7 | 86.2 | −8.52 | −0.004 | 0.72 |
 | CF_VOLATILITY | GROUP | 49.9 | 69.9 | 0.08 | 0.37 | 2.0 |
 | CF_VOLATILITY | COMPANY | 50.1 | 70.0 | 0.09 | 0.60 | 6.66 |
 | CF_IN_OUT_RATIO | GROUP | 61.1 | 85.7 | 0.40 | 1.01 | 2.29 |
@@ -460,6 +460,9 @@ Checks (`scripts/validate_block3_a.sql`):
 
 Notes on the values:
 - `LIQ_RUNWAY`: the median is the cap (24). In half of the entity-months the operating flows cover the burn (burn ≤ 0).
+- `LIQ_RUNWAY` **differs from SPEC §6:** the SPEC gives the cap when burn ≤ 0, and does not say what happens when cash is ≤ 0. Here cash ≤ 0 gives the worst anchor x (score 0) for any burn. An overdrawn entity has no runway. Found in the branch review.
+- `LIQ_BUFFER`: payables are known from the first month with a `RECEIVED` invoice row, never before (rules 1 and 3). An entity with only `ISSUED` invoices is unavailable.
+- `CF_NOCF_MARGIN`: `OPERATING_IN` 3m ≤ 0 with negative NOCF gives the worst anchor x (decision D3, the negative side).
 - `DEBT_DSCR`: the tails are very long because `DEBT_SERVICE` 3m is often tiny. The anchors clamp them.
 - `ACT_COLLECTIONS_GROWTH`: every available row before M14 is a QoQ fallback. After M14, 7,403 rows are YoY and 4,410 are QoQ (entities with a short history).
 - `TAX_REGULARITY`: the median gap is ≤ 1.5 months (monthly cadence) for 94 % of groups and 83 % of companies with at least two tax months. GROUP_0206 stops paying tax after 2026-04. Its value falls month by month: 0.40, 0.18, 0.11, 0.08.
