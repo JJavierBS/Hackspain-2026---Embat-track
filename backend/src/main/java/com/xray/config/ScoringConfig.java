@@ -3,6 +3,7 @@ package com.xray.config;
 import com.xray.domain.model.Band;
 import com.xray.domain.model.EntityType;
 import com.xray.domain.model.FlowClass;
+import com.xray.domain.model.HealthStatus;
 import com.xray.domain.model.IndicatorId;
 import com.xray.domain.model.Profile;
 import com.xray.domain.service.MomentumScreen;
@@ -44,11 +45,14 @@ public record ScoringConfig(
         ConfidenceConfig confidence,
         ExplanationConfig explanation,
         ProductsConfig products,
-        AlertsConfig alerts) {
+        AlertsConfig alerts,
+        LeadTimeConfig leadTime,
+        ShowcaseConfig showcase) {
 
     public ScoringConfig {
         ScoringConfigValidator.validate(indicators, profiles);
         ScoringConfigValidator.validatePhase5(products, alerts, limitEngine);
+        ScoringConfigValidator.validatePhase6(leadTime, showcase);
     }
 
     public record MonthRange(String start, String end) {
@@ -151,5 +155,25 @@ public record ScoringConfig(
 
     /** SPEC §8.5 watchlist (phase 5 decision F15). */
     public record WatchlistConfig(int minCritical, int minWarn) {
+    }
+
+    /** SPEC §8.4 measured anticipation (phase 6 decisions G3–G7). Evaluation only: nothing scores from it. */
+    public record LeadTimeConfig(int minHistoryMonths, int windowMonths, int horizonMonths,
+                                 EventsConfig events, SignalConfig signal) {
+    }
+
+    /** The proxy events of SPEC §8.4: no default label exists, so the conditions stand in for one. */
+    public record EventsConfig(double runwayBelow, int runwayMonths, double dscrBelow, int dscrMonths,
+                               double overdueMaxLevel, double scoreBelow, double improvementCross,
+                               double improvementBelow, int improvementBelowMonths) {
+    }
+
+    /** When the system "raised its hand" (decision G5). */
+    public record SignalConfig(List<HealthStatus> deteriorationStatuses, double deteriorationMaxTraj,
+                               List<HealthStatus> improvementStatuses, double improvementMinTraj) {
+    }
+
+    /** SPEC §10.4 showcase pairs (phase 6 decision G9). */
+    public record ShowcaseConfig(double maxFinalGap, double upMinTraj, double downMaxTraj, int topN) {
     }
 }

@@ -113,6 +113,48 @@ final class ScoringConfigValidator {
         }
     }
 
+    /** Phase 6 keys: lead-time windows, event thresholds and showcase ranking (decisions G3–G9, G16). */
+    static void validatePhase6(ScoringConfig.LeadTimeConfig leadTime, ScoringConfig.ShowcaseConfig showcase) {
+        if (leadTime == null || leadTime.events() == null || leadTime.signal() == null) {
+            throw fail("scoring.lead-time is missing");
+        }
+        positive("scoring.lead-time.min-history-months", leadTime.minHistoryMonths());
+        positive("scoring.lead-time.window-months", leadTime.windowMonths());
+        positive("scoring.lead-time.horizon-months", leadTime.horizonMonths());
+        ScoringConfig.EventsConfig e = leadTime.events();
+        positive("scoring.lead-time.events.runway-months", e.runwayMonths());
+        positive("scoring.lead-time.events.dscr-months", e.dscrMonths());
+        positive("scoring.lead-time.events.improvement-below-months", e.improvementBelowMonths());
+        if (!(e.improvementBelow() < e.improvementCross())) {
+            throw fail("scoring.lead-time.events.improvement-below " + e.improvementBelow()
+                    + " must be below improvement-cross " + e.improvementCross());
+        }
+        ScoringConfig.SignalConfig s = leadTime.signal();
+        if (s.deteriorationStatuses() == null || s.deteriorationStatuses().isEmpty()) {
+            throw fail("scoring.lead-time.signal.deterioration-statuses is empty");
+        }
+        if (s.improvementStatuses() == null || s.improvementStatuses().isEmpty()) {
+            throw fail("scoring.lead-time.signal.improvement-statuses is empty");
+        }
+        if (showcase == null) {
+            throw fail("scoring.showcase is missing");
+        }
+        if (!(showcase.maxFinalGap() > 0)) {
+            throw fail("scoring.showcase.max-final-gap " + showcase.maxFinalGap() + " must be > 0");
+        }
+        positive("scoring.showcase.top-n", showcase.topN());
+        if (!(showcase.downMaxTraj() < showcase.upMinTraj())) {
+            throw fail("scoring.showcase.down-max-traj " + showcase.downMaxTraj()
+                    + " must be below up-min-traj " + showcase.upMinTraj());
+        }
+    }
+
+    private static void positive(String key, int value) {
+        if (value < 1) {
+            throw fail(key + " " + value + " must be >= 1");
+        }
+    }
+
     private static void below(String key, ScoringConfig.Level l) {
         if (l == null) {
             throw fail("scoring.alerts." + key + " is missing");

@@ -241,3 +241,30 @@ scoring:
     drift-baseline-min-points: 4
     band-downgrade-critical-steps: 2
     watchlist: { min-critical: 1, min-warn: 2 }
+
+  # SPEC §8.4 lead time. Phase 6 decisions G3–G7. PROVISIONAL: review with the first run.
+  lead-time:
+    min-history-months: 6
+    window-months: 12
+    horizon-months: 6
+    events:
+      runway-below: 1.5
+      runway-months: 2
+      dscr-below: 1.0
+      dscr-months: 2
+      overdue-max-level: 20        # both DEL_OVERDUE_RECEIVABLES and PAY_OVERDUE_PAYABLES, pending anchors
+      score-below: 35
+      improvement-cross: 65
+      improvement-below: 50
+      improvement-below-months: 3
+    signal:
+      deterioration-statuses: [TURNING, STRUCTURAL_DECLINE]
+      deterioration-max-traj: 35
+      improvement-statuses: [IMPROVING]
+      improvement-min-traj: 65
+  # SPEC §10.4 showcase pairs. Phase 6 decision G9.
+  showcase:
+    max-final-gap: 3
+    up-min-traj: 65
+    down-max-traj: 35
+    top-n: 10
