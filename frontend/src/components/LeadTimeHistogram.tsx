@@ -59,7 +59,7 @@ export function LeadTimeHistogram({ histogram, median = null, height = 220 }: Le
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <p className="mt-1 text-center text-sm text-ink-muted">Meses de antelación de la primera señal · eventos por barra</p>
+      <p className="mt-1 text-center text-sm text-ink-muted">Meses entre el inicio de la señal y el evento · eventos por barra</p>
     </div>
   );
 }

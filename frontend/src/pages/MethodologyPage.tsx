@@ -408,7 +408,7 @@ function AnticipationFilm({ data }: { data: LeadTime }) {
               El límite se recortó antes del evento en {data.limit.cutAhead} de {data.limit.events} casos
             </span>
             {data.limit.meanLead !== null && <>, {formatLead(data.limit.meanLead)} de media</>}.{" "}
-            <span className="text-ink-muted">Recorte = primera reducción o congelación del límite en la ventana.</span>
+            <span className="text-ink-muted">Recorte = primera reducción o congelación del límite después de su última subida antes del evento.</span>
           </span>
         </p>
       )}
@@ -581,7 +581,7 @@ function Definitions({ data }: { data: LeadTime }) {
     },
     {
       term: "Antelación",
-      text: `Meses entre la primera señal de los ${data.windowMonths} meses anteriores al evento y el evento. Detectado con antelación = al menos un mes antes.`,
+      text: `Meses entre el inicio de la señal que llega al evento y el evento, dentro de los ${data.windowMonths} meses anteriores. Una señal que se apagó antes del evento no cuenta: era otro episodio. Detectado con antelación = al menos un mes antes.`,
     },
     {
       term: "Historia mínima",

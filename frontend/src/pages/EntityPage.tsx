@@ -264,10 +264,10 @@ function EventRow({ event: e }: { event: EntityEvent }) {
           Evento en <span className="font-semibold text-ink">{monthShort(e.eventMonth)}</span> · {monthCode(e.eventMonth)}
           <br />
           {e.signalMonth === null ? (
-            "Sin señal de la nota en la ventana"
+            "La nota no avisaba al llegar el evento"
           ) : (
             <>
-              Primera señal en <span className="font-semibold text-ink">{monthShort(e.signalMonth)}</span> · {monthCode(e.signalMonth)}
+              Señal desde <span className="font-semibold text-ink">{monthShort(e.signalMonth)}</span> · {monthCode(e.signalMonth)}
             </>
           )}
         </p>
@@ -279,7 +279,7 @@ function EventRow({ event: e }: { event: EntityEvent }) {
         ) : lead === 0 ? (
           <p className="text-2xl font-semibold [font-stretch:88%]">detectado el mismo mes</p>
         ) : (
-          <p className="flex items-baseline gap-2 md:justify-end" title="Meses entre la primera señal de la nota y el evento">
+          <p className="flex items-baseline gap-2 md:justify-end" title="Meses entre el inicio de la señal que llega al evento y el evento">
             <span className="text-[15px]">detectado</span>
             <span className="text-6xl leading-none font-semibold [font-stretch:80%]">{lead}</span>
             <span className="text-[15px]">{lead === 1 ? "mes antes" : "meses antes"}</span>
