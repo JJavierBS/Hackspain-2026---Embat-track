@@ -1,6 +1,7 @@
+import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { CartesianGrid, Line, LineChart, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import type { EntityDetail } from "../api/types";
+import type { EntityDetail, PortfolioRow } from "../api/types";
 import { useEntity, usePortfolio } from "../api/queries";
 import { Film } from "../components/Film";
 import { LoadState } from "../components/LoadState";
@@ -11,16 +12,40 @@ import { StatusTag, TrendTag } from "../components/StatusTag";
 import { MONTHS, useGlobalParams } from "../hooks/useGlobalParams";
 import { BANDS, formatScore, monthCode, monthShort } from "../lib/format";
 
-/** SPEC §10.4 showcase pair: similar score today, opposite trajectories. */
-const DEFAULT_PAIR = { a: "G-002", b: "G-003" };
+/** Largest final-score gap that still counts as "the same score today" for the showcase pair. */
+const SAME_SCORE_GAP = 3;
+
+/**
+ * SPEC §10.4 showcase pair, picked from the data: among entities whose final scores differ by
+ * SAME_SCORE_GAP points or less, the pair with the largest trajectory gap. Falls back to the top two rows.
+ */
+function showcasePair(rows: PortfolioRow[]): { a: string; b: string } | null {
+  if (rows.length < 2) return null;
+  const sorted = [...rows].sort((x, y) => x.final - y.final);
+  let best: { a: string; b: string; gap: number } | null = null;
+  for (let i = 0; i < sorted.length; i++) {
+    for (let j = i + 1; j < sorted.length && sorted[j].final - sorted[i].final <= SAME_SCORE_GAP; j++) {
+      const ti = sorted[i].traj;
+      const tj = sorted[j].traj;
+      if (ti === null || tj === null) continue;
+      const gap = Math.abs(ti - tj);
+      if (best === null || gap > best.gap) {
+        // A is the one heading up, B the one heading down.
+        best = ti >= tj ? { a: sorted[i].id, b: sorted[j].id, gap } : { a: sorted[j].id, b: sorted[i].id, gap };
+      }
+    }
+  }
+  return best ?? { a: rows[0].id, b: rows[1].id };
+}
 const COLORS = { a: "var(--color-ink)", b: "var(--color-series-trajectory)" } as const;
 
 export function ComparePage() {
   const { profile, month } = useGlobalParams();
   const [params, setParams] = useSearchParams();
-  const a = params.get("a") ?? DEFAULT_PAIR.a;
-  const b = params.get("b") ?? DEFAULT_PAIR.b;
   const portfolio = usePortfolio(profile, month);
+  const pair = useMemo(() => showcasePair(portfolio.data?.rows ?? []), [portfolio.data]);
+  const a = params.get("a") ?? pair?.a ?? "";
+  const b = params.get("b") ?? pair?.b ?? "";
   const ea = useEntity(a, profile, month);
   const eb = useEntity(b, profile, month);
 

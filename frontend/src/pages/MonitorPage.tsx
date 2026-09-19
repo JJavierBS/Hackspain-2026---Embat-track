@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { Alert } from "../api/types";
+import { ApiError } from "../api/client";
 import { useMonitor } from "../api/queries";
 import { Film } from "../components/Film";
 import { IconDown, IconUp } from "../components/Icons";
 import { LoadState } from "../components/LoadState";
 import { PageHeader } from "../components/PageHeader";
+import { PendingFilm } from "../components/PendingFilm";
 import { StatusTag } from "../components/StatusTag";
 import { useGlobalParams } from "../hooks/useGlobalParams";
 import { useLinkSearch } from "../hooks/useLinkSearch";
@@ -41,7 +43,14 @@ export function MonitorPage() {
     <div className="grid gap-12">
       <PageHeader title="Monitor" lede="Alertas tempranas que saltan solas, mes a mes. Las buenas noticias también avisan." />
 
-      {error ? (
+      {error instanceof ApiError && error.status === 404 ? (
+        // The alert engine is Block 6. Until its endpoint exists, the view is unexposed, not broken.
+        <PendingFilm
+          title="Alertas"
+          block="bloque 6"
+          items={["Alertas del mes, negativas y positivas", "Lista de vigilancia", "Resumen mensual de alertas", "Enlace a cada entidad"]}
+        />
+      ) : error ? (
         <LoadState error={error} />
       ) : isPending ? (
         <LoadState />
