@@ -14,6 +14,7 @@ import { RateLadder } from "../components/RateLadder";
 import { ScoreReadout } from "../components/ScoreReadout";
 import { TrendChart } from "../components/TrendChart";
 import { MONTHS, type Profile, useGlobalParams } from "../hooks/useGlobalParams";
+import { useHashScroll } from "../hooks/useHashScroll";
 import { useLinkSearch } from "../hooks/useLinkSearch";
 import {
   ALERT_LABELS,
@@ -374,6 +375,7 @@ function Anticipation() {
   const { profile } = useGlobalParams();
   const { data: meta } = useMeta();
   const { data, error, isPending } = useLeadTime(profile);
+  useHashScroll(data !== undefined);
   const pending = (
     <PendingFilm
       title="Anticipación"

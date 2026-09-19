@@ -34,11 +34,13 @@ import { ScoreReadout } from "../components/ScoreReadout";
 import { StatusTag, TrendTag } from "../components/StatusTag";
 import { TrendChart } from "../components/TrendChart";
 import { MONTHS, useGlobalParams } from "../hooks/useGlobalParams";
+import { useHashScroll } from "../hooks/useHashScroll";
 import { useLinkSearch } from "../hooks/useLinkSearch";
 import {
   ALERT_LABELS,
   BINDING_LABELS,
   CATEGORY_LABELS,
+  EVENT_MARK_LABELS,
   EVENT_TYPE_LABELS,
   LIMIT_ACTION_LABELS,
   PROFILE_LABELS,
@@ -66,6 +68,7 @@ export function EntityPage() {
   const { profile, month } = useGlobalParams();
   const { data, error, isPending } = useEntity(id, profile, month);
   const linkSearch = useLinkSearch();
+  useHashScroll(data !== undefined);
 
   if (error || isPending) {
     return (
@@ -170,7 +173,7 @@ export function EntityPage() {
             events={data.events.map((e) => ({
               month: e.eventMonth,
               direction: e.eventType === "DETERIORATION" ? "NEGATIVE" : "POSITIVE",
-              label: `${e.eventType === "DETERIORATION" ? "Evento" : "Mejora"}: ${TRIGGER_LABELS[e.trigger].toLowerCase()}`,
+              label: `${EVENT_MARK_LABELS[e.eventType]}: ${TRIGGER_LABELS[e.trigger].toLowerCase()}`,
             }))}
           />
         </div>

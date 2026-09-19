@@ -270,6 +270,12 @@ export const EVENT_TYPE_LABELS: Record<EventType, string> = {
   IMPROVEMENT: "Mejora",
 };
 
+/** The word for an event mark on a chart or in a sentence: a deterioration is "Evento", an improvement "Mejora". */
+export const EVENT_MARK_LABELS: Record<EventType, string> = {
+  DETERIORATION: "Evento",
+  IMPROVEMENT: "Mejora",
+};
+
 /** What confirmed the proxy event (decisions G3, G4). */
 export const TRIGGER_LABELS: Record<EventTrigger, string> = {
   RUNWAY: "Caja",

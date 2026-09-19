@@ -12,7 +12,7 @@ import { ScoreReadout } from "../components/ScoreReadout";
 import { StatusTag, TrendTag } from "../components/StatusTag";
 import { MONTHS, useGlobalParams } from "../hooks/useGlobalParams";
 import { useLinkSearch } from "../hooks/useLinkSearch";
-import { BANDS, TRIGGER_LABELS, formatLead, formatScore, leadText, monthCode, monthShort } from "../lib/format";
+import { BANDS, EVENT_MARK_LABELS, TRIGGER_LABELS, formatLead, formatScore, leadText, monthCode, monthShort } from "../lib/format";
 
 /** Largest final-score gap that still counts as "the same score today" for the showcase pair. */
 const SAME_SCORE_GAP = 3;
@@ -182,7 +182,7 @@ function Anticipation({ events }: { events: EntityEvent[] }) {
           <li key={`${e.eventType}-${e.eventMonth}`} className="flex items-baseline gap-2">
             <Icon width={15} height={15} className={`shrink-0 translate-y-0.5 ${down ? "text-down" : "text-up"}`} />
             <span>
-              {down ? "Evento" : "Mejora"} <span className="font-semibold">{TRIGGER_LABELS[e.trigger].toLowerCase()}</span> en{" "}
+              {EVENT_MARK_LABELS[e.eventType]} <span className="font-semibold">{TRIGGER_LABELS[e.trigger].toLowerCase()}</span> en{" "}
               {monthShort(e.eventMonth)} ·{" "}
               <span className={e.leadMonths !== null && e.leadMonths > 0 ? "font-semibold" : "text-ink-muted"}>
                 {down ? leadText(e.leadMonths) : e.leadMonths === null ? "no anticipada" : e.leadMonths === 0 ? "vista el mismo mes" : `vista ${formatLead(e.leadMonths)} antes`}
