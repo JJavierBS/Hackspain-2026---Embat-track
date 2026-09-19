@@ -549,6 +549,7 @@ function Recommendations({
       const priority = (rules[a.category]?.priority ?? 99) - (rules[b.category]?.priority ?? 99);
       return priority || (a.level ?? 100) - (b.level ?? 100) || (a.traj ?? 50) - (b.traj ?? 50);
     })
+    .filter((indicator, index, all) => all.findIndex((candidate) => candidate.category === indicator.category) === index)
     .slice(0, topN);
 
   return (
@@ -602,9 +603,11 @@ function Recommendations({
                 activeAlerts,
                 changes,
                 recommendations: rows.map((indicator) => ({
+                  category: indicator.category,
                   title: recommendationTitle(indicator, rules),
                   action: recommendationAction(indicator, rules),
                   indicator: indicatorLabel(indicator.indicatorId),
+                  value: indicator.value,
                   level: indicator.level ?? 0,
                   trajectory: indicator.traj,
                 })),
@@ -648,10 +651,10 @@ function ActionPlanView({ plan }: { plan: ActionPlan }) {
           </ul>
         </div>
       )}
-      <ol className="grid gap-4 md:grid-cols-3">
+      <ol className="grid list-none gap-4 md:grid-cols-3">
         {plan.steps.map((step, index) => (
           <li key={`${step.title}-${index}`} className="border border-rule bg-paper p-4">
-            <div className="flex items-center justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
               <span>Fase {index + 1} · {step.phase ?? "Ejecutar"}</span>
               <span className={step.priority === "HIGH" ? "text-down" : "text-ink"}>{step.priority}</span>
             </div>
@@ -659,10 +662,10 @@ function ActionPlanView({ plan }: { plan: ActionPlan }) {
             <p className="mt-2 text-sm text-ink-muted">{step.why ?? "Esta prioridad requiere seguimiento financiero."}</p>
             <p className="mt-3 text-[15px]">{step.action}</p>
             <dl className="mt-4 grid gap-2 border-t border-rule pt-3 text-sm">
-              <div><dt className="font-semibold">Primer paso</dt><dd className="text-ink-muted">{step.firstStep ?? step.action}</dd></div>
-              <div><dt className="font-semibold">Responsable</dt><dd className="text-ink-muted">{step.owner ?? "Dirección financiera"}</dd></div>
-              <div><dt className="font-semibold">Plazo</dt><dd className="text-ink-muted">{step.timeframe}</dd></div>
-              <div><dt className="font-semibold">Comprobar</dt><dd className="text-ink-muted">{step.metric}</dd></div>
+              <div className="grid gap-0.5"><dt className="font-semibold">Primer paso</dt><dd className="text-ink-muted">{step.firstStep ?? step.action}</dd></div>
+              <div className="grid gap-0.5"><dt className="font-semibold">Responsable</dt><dd className="text-ink-muted">{step.owner ?? "Dirección financiera"}</dd></div>
+              <div className="grid gap-0.5"><dt className="font-semibold">Plazo</dt><dd className="text-ink-muted">{step.timeframe}</dd></div>
+              <div className="grid gap-0.5"><dt className="font-semibold">Comprobar</dt><dd className="text-ink-muted">{step.metric}</dd></div>
             </dl>
           </li>
         ))}

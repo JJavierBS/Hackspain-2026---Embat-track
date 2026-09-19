@@ -122,7 +122,7 @@ export function ChangeTray({ changes, invalid, phase, onUndo, onDiscard, onApply
                       type="button"
                       disabled={!consent || invalid > 0}
                       onClick={onApply}
-                      className="inline-flex items-center gap-2 bg-viewer-ink px-4 py-1.5 text-[15px] font-semibold text-viewer hover:bg-white disabled:cursor-not-allowed disabled:bg-viewer-rule disabled:text-viewer-muted"
+                        className="inline-flex items-center gap-2 border border-viewer-ink bg-viewer-ink px-3.5 py-1.5 text-[15px] font-medium text-viewer transition-colors hover:bg-white disabled:cursor-not-allowed disabled:border-viewer-rule disabled:bg-viewer-rule disabled:text-viewer-muted"
                     >
                       <IconRestart width={15} height={15} />
                       Aplicar y recalcular

@@ -53,7 +53,7 @@ public class ActionPlanService {
         body.put("temperature", 0.2);
         body.put("max_tokens", 1400);
         ArrayNode messages = body.putArray("messages");
-        messages.addObject().put("role", "system").put("content", "You are a cautious SME treasury advisor. Return only valid JSON with keys objective, diagnosis, risks, summary and steps. Build a decision-ready plan, not a restatement of the recommendations. Explain the interaction between score, trend, alerts and indicators. Each step must have phase, priority, title, why, action, firstStep, timeframe, owner and metric. Use Spanish. Make the steps sequential across 7 days, 30 days and 90 days where the data supports it. State uncertainty when data is missing. Never invent numbers, facts, or guarantees. Base every statement on the supplied entity context.");
+        messages.addObject().put("role", "system").put("content", "You are a cautious SME treasury advisor. Return only valid JSON with keys objective, diagnosis, risks, summary and steps. Build a decision-ready plan, never copy or paraphrase the recommendation titles or actions. Use the raw indicator values, levels, trajectories, score, regime, alerts and recent changes to explain likely causes and tradeoffs. Each step must have phase, priority, title, why, action, firstStep, timeframe, owner and metric. Make the steps genuinely different and sequential: diagnose/root cause, contain or correct, then verify. Use 7 days, 30 days and 90 days where the data supports it. State uncertainty when data is missing. Never invent numbers, facts, or guarantees. Base every statement on the supplied entity context.");
         messages.addObject().put("role", "user").put("content", mapper.writeValueAsString(request));
 
         HttpRequest httpRequest = HttpRequest.newBuilder()
@@ -91,15 +91,34 @@ public class ActionPlanService {
     }
 
     private ActionPlanDto fallback(ActionPlanRequest request) {
-        List<ActionPlanDto.ActionStepDto> steps = request.recommendations().stream().limit(3).map(r ->
-            new ActionPlanDto.ActionStepDto("Contener", r.level() < 40 ? "HIGH" : "MEDIUM", r.title(),
-                "El nivel actual indica que esta prioridad necesita seguimiento.", r.action(),
-                "Asignar un responsable y confirmar el dato con el equipo financiero.",
-                r.level() < 40 ? "Próximos 7 días" : "Próximos 30 días", "Dirección financiera", r.indicator())).toList();
+        List<ActionPlanDto.ActionStepDto> steps = new ArrayList<>();
+        List<ActionPlanRequest.Recommendation> recommendations = request.recommendations();
+        for (int index = 0; index < recommendations.size(); index++) {
+            ActionPlanRequest.Recommendation r = recommendations.get(index);
+            String phase = index == 0 ? "Diagnosticar" : index == 1 ? "Corregir" : "Verificar";
+            String timeframe = index == 0 ? "Próximos 7 días" : index == 1 ? "Próximos 30 días" : "Próximos 90 días";
+            String why = "" + r.indicator() + " tiene nivel " + fmt(r.level())
+                + (r.trajectory() == null ? " y no hay trayectoria suficiente." : " con trayectoria " + fmt(r.trajectory()) + ".");
+            String action = index == 0
+                ? "Desglosar este indicador por sus operaciones y confirmar qué componente explica el resultado antes de tomar medidas."
+                : index == 1
+                ? "Aplicar una medida correctora concreta sobre el componente confirmado y revisarla semanalmente."
+                : "Comparar el indicador con su línea base, documentar el cambio y mantener la medida solo si mejora la tendencia.";
+            steps.add(new ActionPlanDto.ActionStepDto(phase, r.level() < 40 ? "HIGH" : "MEDIUM",
+                "Analizar " + r.indicator(), why, action,
+                index == 0 ? "Extraer los 10 movimientos o saldos que más contribuyen al indicador." :
+                    index == 1 ? "Asignar responsable, fecha y objetivo de revisión." :
+                        "Programar una revisión mensual con el mismo indicador.", timeframe,
+                "Dirección financiera", r.indicator()));
+        }
         return new ActionPlanDto("RULES", "Recuperar las prioridades financieras más débiles.",
                 "La entidad requiere atención sobre sus indicadores con menor nivel; el plan debe confirmarse con el equipo financiero.",
                 request.changes() == null || request.changes().isEmpty() ? List.of("La información disponible no permite identificar riesgos adicionales.") : request.changes(),
             "Plan generado a partir de las prioridades financieras detectadas.", steps);
+    }
+
+    private static String fmt(Double value) {
+        return value == null ? "—" : String.format(java.util.Locale.ROOT, "%.1f", value);
     }
 
     private static List<String> strings(JsonNode node, List<String> fallback) {

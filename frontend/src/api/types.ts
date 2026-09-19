@@ -263,9 +263,11 @@ export interface ActionPlanRequest {
   activeAlerts: number;
   changes: string[];
   recommendations: Array<{
+    category: string;
     title: string;
     action: string;
     indicator: string;
+    value: number | null;
     level: number;
     trajectory: number | null;
   }>;
