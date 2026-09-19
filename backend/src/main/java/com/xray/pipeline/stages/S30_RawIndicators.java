@@ -29,15 +29,15 @@ import java.util.regex.Pattern;
 
 /**
  * sql/29 creates indicator_values_raw, sql/28 builds the entity_months grid, sql/30..38 fill it,
- * then the panels load into memory. Indicator SQL sees every SqlParams placeholder plus unit,
- * runway_cap_months and reference_rate.
+ * sql/39 writes signal_values, then the panels load into memory. Indicator SQL sees every SqlParams
+ * placeholder plus unit, runway_cap_months and reference_rate.
  */
 @Component
 @Order(30)
 public class S30_RawIndicators implements PipelineStage {
 
     private static final Logger log = LoggerFactory.getLogger(S30_RawIndicators.class);
-    private static final Pattern INDICATOR_SQL = Pattern.compile("3[0-8]_.*\\.sql");
+    private static final Pattern INDICATOR_SQL = Pattern.compile("3[0-9]_.*\\.sql");
 
     private final PanelLoader loader;
     private final XRayProperties props;

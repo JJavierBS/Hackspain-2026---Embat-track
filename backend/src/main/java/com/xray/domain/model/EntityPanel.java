@@ -22,6 +22,7 @@ public final class EntityPanel {
     private final Map<Profile, List<List<Contribution>>> contributions = new EnumMap<>(Profile.class); // S65
     private final Map<Profile, DynamicsPoint[]> dynamics = new EnumMap<>(Profile.class);                // S70
     private final List<Changepoint> changepoints = new ArrayList<>();                                  // S70
+    private final Map<SignalId, Double[]> signals = new EnumMap<>(SignalId.class);                     // S30
 
     public EntityPanel(EntityKey key, List<Month> months) {
         this.key = key;
@@ -33,6 +34,9 @@ public final class EntityPanel {
             SubScore[] scores = new SubScore[months.size()];
             Arrays.fill(scores, SubScore.missing());
             subScores.put(id, scores);
+        }
+        for (SignalId id : SignalId.values()) {
+            signals.put(id, new Double[months.size()]);
         }
     }
 
@@ -112,5 +116,14 @@ public final class EntityPanel {
 
     public void addChangepoint(Changepoint c) {
         changepoints.add(c);
+    }
+
+    /** Contract item 2. Null = missing (never zero). */
+    public Double signal(SignalId id, int m) {
+        return signals.get(id)[m];
+    }
+
+    public void setSignal(SignalId id, int m, Double value) {
+        signals.get(id)[m] = value;
     }
 }

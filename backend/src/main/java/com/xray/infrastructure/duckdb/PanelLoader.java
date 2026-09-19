@@ -6,6 +6,7 @@ import com.xray.domain.model.EntityType;
 import com.xray.domain.model.IndicatorId;
 import com.xray.domain.model.Month;
 import com.xray.domain.model.RawIndicator;
+import com.xray.domain.model.SignalId;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -14,7 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** indicator_values_raw → one EntityPanel for each entity of the unit (ARCHITECTURE §3, §4.2). */
+/** indicator_values_raw and signal_values → one EntityPanel for each entity of the unit (ARCHITECTURE §3, §4.2). */
 @Component
 public class PanelLoader {
 
@@ -57,10 +58,32 @@ public class PanelLoader {
             panel.setRaw(m, new RawIndicator(IndicatorId.valueOf(r.indicatorId()),
                     r.value(), r.available(), r.isStatic(), r.fallback()));
         }
+
+        if (DuckDbTables.exists(sql, "signal_values")) {
+            List<SignalRow> signals = sql.query(
+                    "SELECT entity_id, month, signal_id, value FROM signal_values WHERE entity_type = ?",
+                    (rs, i) -> new SignalRow(rs.getString(1), rs.getString(2), rs.getString(3),
+                            rs.getObject(4) == null ? null : rs.getDouble(4)),
+                    unit.name());
+            for (SignalRow r : signals) {
+                EntityPanel panel = panels.get(r.entityId());
+                if (panel == null) {
+                    throw new IllegalStateException("signal_values has unknown entity " + r.entityId());
+                }
+                Integer m = monthIndex.get(r.month());
+                if (m == null) {
+                    continue;   // outside M00..M23
+                }
+                panel.setSignal(SignalId.valueOf(r.signalId()), m, r.value());
+            }
+        }
         return new ArrayList<>(panels.values());
     }
 
     private record Row(String entityId, String month, String indicatorId, Double value,
                        boolean available, boolean isStatic, boolean fallback) {
+    }
+
+    private record SignalRow(String entityId, String month, String signalId, Double value) {
     }
 }
