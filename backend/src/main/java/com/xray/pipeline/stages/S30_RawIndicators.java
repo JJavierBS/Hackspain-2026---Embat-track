@@ -2,7 +2,9 @@ package com.xray.pipeline.stages;
 
 import com.xray.config.XRayProperties;
 import com.xray.domain.model.EntityPanel;
+import com.xray.domain.model.IndicatorId;
 import com.xray.domain.model.Month;
+import com.xray.domain.model.RawIndicator;
 import com.xray.infrastructure.duckdb.DuckDbTables;
 import com.xray.infrastructure.duckdb.PanelLoader;
 import com.xray.pipeline.PipelineContext;
@@ -69,6 +71,11 @@ public class S30_RawIndicators implements PipelineStage {
         List<EntityPanel> panels = loader.load(ctx.unit(), months);
         ctx.setPanels(panels);
         log.info("{} loaded {} panels", id(), panels.size());
+        for (IndicatorId id : IndicatorId.values()) {
+            long avail = panels.stream().flatMap(p -> Arrays.stream(p.rawSeries(id))).filter(RawIndicator::available).count();
+            long total = (long) panels.size() * months.size();
+            log.info("{} availability {} {}/{} ({}%)", id(), id, avail, total, total == 0 ? 0 : avail * 100 / total);
+        }
         ctx.report(id(), 40, panels.size() + " panels");
     }
 
