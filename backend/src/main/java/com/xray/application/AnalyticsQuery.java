@@ -201,7 +201,7 @@ public class AnalyticsQuery {
                        limit_signal_month, limit_lead_months
                 FROM lead_time_events
                 WHERE entity_type = ? AND profile = ? AND event_type = ? AND lead_months IS NOT NULL
-                ORDER BY lead_months DESC, entity_id LIMIT """ + MAX_EXAMPLES,
+                ORDER BY lead_months DESC, entity_id""" + " LIMIT " + MAX_EXAMPLES,
                 (rs, i) -> new LeadTimeExampleDto(rs.getString(1), rs.getString(1), rs.getString(2), rs.getString(3),
                         rs.getString(4), rs.getString(5), Scores.integer(rs, "lead_months"), rs.getString(7),
                         Scores.integer(rs, "limit_lead_months")),

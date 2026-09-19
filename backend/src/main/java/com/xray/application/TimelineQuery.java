@@ -22,21 +22,24 @@ public class TimelineQuery {
     private final EntityLookup lookup;
     private final AlertReads alerts;
     private final ScoringConfig config;
+    private final AnalyticsQuery analytics;
 
     public TimelineQuery(SqlRunner sql, ApiParams params, EntityLookup lookup, AlertReads alerts,
-                         ScoringConfig config) {
+                         ScoringConfig config, AnalyticsQuery analytics) {
         this.sql = sql;
         this.params = params;
         this.lookup = lookup;
         this.alerts = alerts;
         this.config = config;
+        this.analytics = analytics;
     }
 
     public TimelineDto timeline(String id, String profileRaw) {
         Profile p = params.profile(profileRaw);
         EntityLookup.Entity e = lookup.find(id);
         return new TimelineDto(id, p.name(), points(e.type(), id, p, params.lastMonth()),
-                changepoints(e.type(), id, p, params.lastMonth()), alerts(e.type(), id, p));
+                changepoints(e.type(), id, p, params.lastMonth()), alerts(e.type(), id, p),
+                analytics.events(e.type(), id, p, null));
     }
 
     /** Oldest first. */
