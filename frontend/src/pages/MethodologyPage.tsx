@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import type { BandLetter, Category, LeadTime, LeadTimeBlock, Methodology } from "../api/types";
+import type { BandLetter, Category, LeadTime, LeadTimeBlock, Methodology, Status } from "../api/types";
 import { ApiError } from "../api/client";
 import { useLeadTime, useMeta, useMethodology, useProfiles } from "../api/queries";
 import { BandLadder } from "../components/BandLadder";
 import { Film } from "../components/Film";
 import { IconDown, IconUp } from "../components/Icons";
+import { JumpNav, type JumpSection } from "../components/JumpNav";
 import { LeadTimeHistogram } from "../components/LeadTimeHistogram";
 import { LoadState } from "../components/LoadState";
 import { PageHeader } from "../components/PageHeader";
@@ -21,6 +22,7 @@ import {
   CATEGORY_LABELS,
   EVENT_TYPE_LABELS,
   PROFILE_LABELS,
+  STATUS_LABELS,
   TRIGGER_LABELS,
   bandOf,
   formatDscr,
@@ -36,28 +38,73 @@ import {
 } from "../lib/format";
 
 /**
- * Illustrative series for the reading guide. Not Embat data, and not the scoring formula:
- * the final line only has to sit near the level and lean with the trajectory.
+ * Illustrative series for the reading guide. Not Embat data. The final line blends level and
+ * trajectory with the active profile's λ, as SPEC §7.4 does per category (Momentum left out).
  */
-const EXAMPLE = MONTHS.map((month, i) => {
-  // An entity that climbs from band D to band B, with a short dip around M10.
-  const level = 36 + 1.6 * i - 7 * Math.exp(-((i - 10) ** 2) / 6);
-  const trajectory = 55 + 15 * Math.cos((i - 14) / 6);
-  const round = (v: number) => Math.round(v * 10) / 10;
-  return { month, level: round(level), trajectory: round(trajectory), final: round(level + (trajectory - 50) / 4) };
-});
+function example(lambda: number) {
+  return MONTHS.map((month, i) => {
+    // An entity that climbs from band D to band B, with a short dip around M10.
+    const level = 36 + 1.6 * i - 7 * Math.exp(-((i - 10) ** 2) / 6);
+    const trajectory = 55 + 15 * Math.cos((i - 14) / 6);
+    const round = (v: number) => Math.round(v * 10) / 10;
+    return { month, level: round(level), trajectory: round(trajectory), final: round(lambda * level + (1 - lambda) * trajectory) };
+  });
+}
+
+/** Films with the class of the Algorithm page: they clear the sticky strip on small screens. */
+const JUMP = "scroll-mt-24! lg:scroll-mt-10!";
 
 export function MethodologyPage() {
-  const { month } = useGlobalParams();
-  const m = MONTHS.indexOf(month);
-  const now = EXAMPLE[m];
-  const before = EXAMPLE[Math.max(0, m - 3)];
+  const { data: methodology } = useMethodology();
+  const sections: JumpSection[] = [
+    { id: "lectura", title: "Cómo leer una puntuación" },
+    { id: "bandas", title: "Bandas" },
+    { id: "pesos", title: "Pesos por perfil" },
+    { id: "estados", title: "Estados y regímenes" },
+    { id: "anticipacion", title: "Anticipación" },
+    { id: "alertas", title: "Alertas tempranas" },
+    { id: "producto", title: "Producto" },
+    ...(methodology?.forecast ? [{ id: "proyeccion", title: "Proyección" }] : []),
+    { id: "limitaciones", title: "Limitaciones" },
+  ];
 
   return (
     <div className="grid gap-12">
-      <PageHeader title="Metodología" lede="Cómo leer cada número de X-Ray: bandas, dirección, pesos por perfil y limitaciones." />
+      <PageHeader
+        title="Metodología"
+        lede="Cómo leer cada número de X-Ray y de dónde sale: bandas, pesos, estados, anticipación medida, alertas, producto y limitaciones."
+      />
 
-      <Film title="Cómo leer una puntuación" meta="Ejemplo ilustrativo · no son datos reales">
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-8">
+        <JumpNav sections={sections} label="Secciones de la metodología" />
+        <div className="grid min-w-0 gap-12">
+          <ReadingGuide />
+          <Weights />
+          <Statuses />
+          <Anticipation />
+          <MethodologyFilms />
+          <Caveats />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** The reading guide and the band ladder share one illustrative entity, blended with the active profile's λ. */
+function ReadingGuide() {
+  const { month, profile } = useGlobalParams();
+  const { data, error, isPending } = useProfiles();
+  if (error || isPending) return <LoadState error={error} title="Cómo leer una puntuación" />;
+  const lambda = data.profiles.find((p) => p.profile === profile)?.lambda;
+  if (lambda === undefined) return <LoadState error={null} title="Cómo leer una puntuación" />;
+  const series = example(lambda);
+  const m = MONTHS.indexOf(month);
+  const now = series[m];
+  const before = series[Math.max(0, m - 3)];
+
+  return (
+    <>
+      <Film id="lectura" className={JUMP} title="Cómo leer una puntuación" meta="Ejemplo ilustrativo · no son datos reales">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
           <div className="grid content-start gap-6">
             <ScoreReadout score={now.final} delta={now.final - before.final} against={`vs ${monthCode(before.month)}`} />
@@ -65,6 +112,14 @@ export function MethodologyPage() {
               <div>
                 <dt className="font-semibold">Número y letra</dt>
                 <dd className="text-ink-muted">La puntuación final (0–100) toma el color de su banda, de A a E.</dd>
+              </div>
+              <div>
+                <dt className="font-semibold">Final, nivel y trayectoria</dt>
+                <dd className="text-ink-muted">
+                  Nivel: lo sana que está la entidad hoy. Trayectoria: hacia dónde va (50 es estable). La final las mezcla: λ × nivel + (1 − λ)
+                  × trayectoria, con λ = {LAMBDA_FORMAT.format(lambda)} en el perfil {PROFILE_LABELS[profile].name}, más el peso de la
+                  categoría Momentum.
+                </dd>
               </div>
               <div>
                 <dt className="font-semibold">Flecha</dt>
@@ -84,23 +139,83 @@ export function MethodologyPage() {
               </div>
             </dl>
           </div>
-          <TrendChart data={EXAMPLE} activeMonth={month} />
+          <TrendChart data={series} activeMonth={month} />
         </div>
       </Film>
 
-      <Film title="Bandas" meta="Umbrales de la puntuación final">
+      <Film id="bandas" className={JUMP} title="Bandas" meta="Umbrales de la puntuación final">
         <BandLadder active={bandOf(now.final).band} hideCounts />
         <p className="mt-4 text-[15px] text-ink-muted">
           Iluminada: la banda del ejemplo ({formatScore(now.final)} → {bandOf(now.final).band}).
         </p>
       </Film>
+    </>
+  );
+}
 
-      <Weights />
-      <Anticipation />
-      <MethodologyFilms />
-      <Export />
-      <Caveats />
-    </div>
+/** Status precedence of SPEC §8.3 (StatusResolver): the first rule that holds wins. No threshold is written here. */
+const STATUS_ORDER: { status: Status; text: string }[] = [
+  { status: "CRITICAL", text: "La nota final está por debajo del umbral crítico." },
+  { status: "STRUCTURAL_DECLINE", text: "Caída estructural: el detector de cambios avisa a la baja, la pendiente es negativa y dura varios meses." },
+  { status: "TURNING", text: "El nivel aún es bueno, pero la trayectoria cae o el detector de cambios avisa a la baja." },
+  { status: "DIP", text: "Bache: una caída corta frente a la referencia de la propia entidad, sin las condiciones de una caída estructural." },
+  { status: "IMPROVING", text: "Mejora estructural, o trayectoria alta." },
+  { status: "EXCEPTIONAL", text: "Nota final muy alta y trayectoria que no cae." },
+  { status: "HEALTHY", text: "Nota final alta." },
+  { status: "WATCH", text: "Ninguna de las anteriores." },
+];
+
+/** Plain meaning of statuses, regimes and confidence. The thresholds live on the Algorithm page. */
+function Statuses() {
+  const linkSearch = useLinkSearch();
+  const more = (hash: string, text: string) => (
+    <Link to={`/algorithm${linkSearch}#${hash}`} className="underline decoration-rule underline-offset-4 hover:decoration-ink">
+      {text}
+    </Link>
+  );
+  return (
+    <Film id="estados" className={JUMP} title="Estados y regímenes" meta="Se evalúan en este orden">
+      <div className="grid gap-x-12 gap-y-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+        <section className="min-w-0">
+          <p className="max-w-[62ch] text-[15px] text-ink-muted">
+            Cada mes, cada entidad recibe un estado. Se prueban las reglas en este orden y gana la primera que se cumple.
+          </p>
+          <ol className="mt-4 grid text-[15px]">
+            {STATUS_ORDER.map((s) => (
+              <li key={s.status} className="grid gap-x-6 border-b border-dashed border-rule py-2 sm:grid-cols-[11rem_minmax(0,1fr)]">
+                <span className="font-semibold">{STATUS_LABELS[s.status]}</span>
+                <span className="text-ink-muted">{s.text}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+        <dl className="grid content-start gap-4 text-[15px]">
+          <div>
+            <dt className="font-semibold">Bache frente a deterioro</dt>
+            <dd className="text-ink-muted">
+              Un bache es una caída de uno o dos meses que no cumple las condiciones de una caída estructural. Si vuelve a su referencia
+              pronto, queda como bache superado. Un deterioro necesita las tres pruebas a la vez: aviso del detector de cambios,
+              pendiente negativa y varios meses seguidos.
+            </dd>
+          </div>
+          <div>
+            <dt className="font-semibold">Confianza</dt>
+            <dd className="text-ink-muted">
+              Alta, media o baja, según los meses de historia y la parte de indicadores con datos. Una entidad con confianza baja se
+              puntúa igual y lleva una marca: no se excluye.
+            </dd>
+          </div>
+          <div>
+            <dt className="font-semibold">Umbrales e indicadores</dt>
+            <dd className="text-ink-muted">
+              Los umbrales de cada estado están en {more("estados", "Algoritmo · Estados")}, los del bache y la caída en{" "}
+              {more("trayectoria", "Algoritmo · Trayectoria")} y las anclas de cada indicador en{" "}
+              {more("indicadores", "Algoritmo · Indicadores")}.
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </Film>
   );
 }
 
@@ -118,6 +233,8 @@ function Weights() {
   );
   return (
     <Film
+      id="pesos"
+      className={JUMP}
       title="Pesos por perfil"
       meta={data.source === "run" ? "Pesos con los que se calcularon las notas" : "Pesos de la configuración"}
     >
@@ -179,7 +296,7 @@ function Caveats() {
   const { data } = useMeta();
   if (!data) return null;
   return (
-    <Film title="Limitaciones de los datos" meta="Lo que este modelo no puede ver">
+    <Film id="limitaciones" className={JUMP} title="Limitaciones de los datos" meta="Lo que este modelo no puede ver">
       <ul className="grid gap-2 text-[15px]">
         {data.caveats.map((c) => (
           <li key={c} className="max-w-[80ch] border-t border-dashed border-rule pt-2 first:border-t-0 first:pt-0">
@@ -215,13 +332,13 @@ function MethodologyFilms() {
 /** Phase 7 projection (plan B-4). Every number comes from /api/methodology, i.e. scoring.forecast. */
 function ForecastMethod({ forecast: f }: { forecast: NonNullable<Methodology["forecast"]> }) {
   return (
-    <Film title="Proyección" meta="Parámetros de la configuración actual">
+    <Film id="proyeccion" className={JUMP} title="Proyección" meta="Parámetros de la configuración actual">
       <div className="grid gap-x-12 gap-y-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
         <section className="min-w-0">
           <p className="max-w-[62ch] text-[15px] text-ink-muted">
             Cada mes proyectado se acerca a la mediana de la propia entidad: proyección = mediana + ρ × (mes anterior −
-            mediana). La mediana usa solo los meses hasta el mes elegido, nunca meses posteriores. Este método ganó al de
-            tendencia lineal en la prueba sobre los datos reales: la tendencia lineal es peor que repetir el último valor.
+            mediana). La mediana usa solo los meses hasta el mes elegido, nunca meses posteriores. En la prueba retrospectiva sobre
+            las notas calculadas, este método ganó a la tendencia lineal, y la tendencia lineal fue peor que repetir el último valor.
           </p>
           <p className="mt-4 max-w-[62ch] text-[15px] font-semibold">
             La proyección es una señal de orientación, no una medición.
@@ -247,7 +364,7 @@ const PROVISIONAL_TAG = "border border-dashed border-ink-muted/60 px-1.5 text-sm
 function AlertCatalogue({ data }: { data: Methodology }) {
   const { minCritical, minWarn, confirmMonths, recentMonths } = data.watchlist;
   return (
-    <Film title="Alertas tempranas" meta={`${data.alertRules.length} reglas · marco EBA/GL/2020/06`}>
+    <Film id="alertas" className={JUMP} title="Alertas tempranas" meta={`${data.alertRules.length} reglas · marco EBA/GL/2020/06`}>
       <p className="max-w-[62ch] text-[15px] text-ink-muted">
         Cada regla mira un dato del mes y salta sola. Una regla de estado avisa cuando aparece o cambia de gravedad; una regla de
         evento avisa cada mes que ocurre. Los umbrales vienen de la configuración.
@@ -263,7 +380,7 @@ function AlertCatalogue({ data }: { data: Methodology }) {
                 Tipo
               </th>
               <th className="px-5 py-2 text-right font-medium" title="Alertas de la unidad en el último cálculo, todos los perfiles">
-                Activaciones
+                Activaciones en el último cálculo
               </th>
             </tr>
           </thead>
@@ -284,13 +401,9 @@ function AlertCatalogue({ data }: { data: Methodology }) {
                 <td className="px-2 py-2.5 text-ink-muted">{r.event ? "Evento" : "Estado"}</td>
                 <td className="px-5 py-2.5 text-right whitespace-nowrap">
                   {r.fired > 0 ? (
-                    <>
-                      <span className="font-semibold">{r.fired}</span> <span className="text-ink-muted">en el último cálculo</span>
-                    </>
+                    <span className="font-semibold">{r.fired}</span>
                   ) : (
-                    <span className={PROVISIONAL_TAG}>
-                      {r.code === "FACTORING_SPIKE" ? "sin datos en este conjunto" : "no se activa con estos datos"}
-                    </span>
+                    <span className={PROVISIONAL_TAG}>no se activa con estos datos</span>
                   )}
                 </td>
               </tr>
@@ -338,7 +451,7 @@ function ProductParameters({ data }: { data: Methodology }) {
     multipliers[band] = `× ${formatNumber(m)}`;
   const profileName = (p: string) => PROFILE_LABELS[p as Profile]?.name ?? p;
   return (
-    <Film title="Producto" meta="Parámetros de la configuración actual">
+    <Film id="producto" className={JUMP} title="Producto" meta="Parámetros de la configuración actual">
       <div className="grid gap-x-12 gap-y-10 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
         <section className="min-w-0">
           <h3 className="text-lg font-semibold">Límite de circulante</h3>
@@ -425,21 +538,21 @@ function AnticipationFilm({ data }: { data: LeadTime }) {
   const { profile } = useGlobalParams();
   const name = PROFILE_LABELS[profile].name;
   return (
-    <Film id="anticipacion" title="Anticipación" meta={`Perfil ${name} · eventos proxy · ventana de ${data.windowMonths} meses`}>
+    <Film id="anticipacion" className={JUMP} title="Anticipación" meta={`Perfil ${name} · eventos proxy · ventana de ${data.windowMonths} meses`}>
       <p className="max-w-[70ch] text-[15px] text-ink-muted">
         Cuántos meses antes de un evento la nota ya avisaba. Medido contra <span className="font-semibold text-ink">eventos proxy</span>:
-        los datos no traen etiquetas de impago. La nota detecta bien el deterioro cuando llega: el mismo mes o el anterior.
-        Con dos meses de antelación el aviso es útil pero débil. Con tres meses o más, en estos 24 meses de datos, la nota no
-        ordena mejor que el azar qué entidades van a entrar en riesgo (docs/DATA_FINDINGS.md, R3). Las cifras son del perfil{" "}
-        {name} y cambian con el perfil.
+        los datos no traen etiquetas de impago. Lee primero <span className="font-semibold text-ink">frente al azar</span>: compara el
+        acierto de la señal con la tasa base del mismo evento. Por encima de 1, la señal añade información. Cerca de 1, no añade nada,
+        aunque haya casos con antelación. En la mejora, la trayectoria sube después de la nota: la señal confirma la subida más que
+        adelantarla. Las cifras son del perfil {name} y cambian con el perfil.
       </p>
 
       <LeadBlock block={data.deterioration} horizon={data.horizonMonths} className="mt-8" />
 
       {data.limit && (
-        <p className="mt-6 flex flex-wrap items-baseline gap-x-2 border-t border-rule pt-4 text-[15px]">
+        <p className="mt-6 flex items-baseline gap-x-2 border-t border-rule pt-4 text-[15px]">
           <IconDown width={15} height={15} className="shrink-0 translate-y-0.5 text-down" />
-          <span>
+          <span className="min-w-0">
             <span className="font-semibold">
               El límite se recortó antes del evento en {data.limit.cutAhead} de {data.limit.events} casos
             </span>
@@ -486,6 +599,13 @@ function LeadBlock({ block, horizon, className = "" }: { block: LeadTimeBlock; h
           sub={`${block.detectedAhead} de ${block.events} · ${block.detected} con señal en la ventana`}
           lead
         />
+        <Figure
+          label="Frente al azar"
+          title={`Acierto de la señal dividido por la tasa base: cualquier mes fuera del evento seguido del evento en ${horizon} meses. Por encima de 1, la señal aporta.`}
+          value={block.lift === null ? "—" : `×${formatNumber(block.lift)}`}
+          sub={`señal ${block.hitRate === null ? "—" : formatShare(block.hitRate)} · base ${block.baseRate === null ? "—" : formatShare(block.baseRate)}`}
+          lead
+        />
         <Figure label="Antelación media" title="Media de meses entre la señal y el evento, sobre los detectados" value={months(block.meanLead)} />
         <Figure label="Mediana" title="Mediana de meses entre la señal y el evento, sobre los detectados" value={months(block.medianLead)} />
         <Figure
@@ -494,18 +614,7 @@ function LeadBlock({ block, horizon, className = "" }: { block: LeadTimeBlock; h
           value={block.falseAlarmRate === null ? "—" : formatShare(block.falseAlarmRate)}
           sub={`${block.evaluable} de ${block.signals} señales evaluables`}
         />
-        <Figure
-          label="Frente al azar"
-          title={`Acierto de la señal dividido por la tasa base: cualquier mes fuera del evento seguido del evento en ${horizon} meses. Por encima de 1, la señal aporta.`}
-          value={block.lift === null ? "—" : `×${formatNumber(block.lift)}`}
-          sub={`señal ${block.hitRate === null ? "—" : formatShare(block.hitRate)} · base ${block.baseRate === null ? "—" : formatShare(block.baseRate)}`}
-        />
       </dl>
-      <p className="mt-2 text-sm text-ink-muted">
-        Falsa alarma: señal sin evento en los {horizon} meses siguientes; solo se cuentan las evaluables (con {horizon} meses de datos
-        después, o ya seguidas de un evento). Frente al azar: el acierto de la señal comparado con la tasa base del mismo evento, así
-        la cifra se lee igual con cualquier conjunto de datos.
-      </p>
 
       <div className="mt-8 grid gap-x-12 gap-y-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
         <section className="min-w-0">
@@ -552,7 +661,7 @@ function LeadBlock({ block, horizon, className = "" }: { block: LeadTimeBlock; h
   );
 }
 
-/** A headline figure cell. `lead` marks the headline number of the block (detected ahead). */
+/** A headline figure cell. `lead` marks the headline numbers of the block (detected ahead, and its lift over chance). */
 function Figure({ label, value, sub, title, lead = false }: { label: string; value: ReactNode; sub?: string; title: string; lead?: boolean }) {
   return (
     <div className="bg-film px-4 py-3" title={title}>
@@ -628,6 +737,14 @@ function Definitions({ data }: { data: LeadTime }) {
       text: `Meses entre el inicio de la señal que llega al evento y el evento, dentro de los ${data.windowMonths} meses anteriores. Una señal que se apagó antes del evento no cuenta: era otro episodio. Detectado con antelación = al menos un mes antes.`,
     },
     {
+      term: "Frente al azar",
+      text: `El acierto de la señal (un evento en los ${data.horizonMonths} meses siguientes) dividido por la tasa base: cualquier mes fuera del evento seguido del evento en ${data.horizonMonths} meses. La cifra se lee igual con cualquier conjunto de datos.`,
+    },
+    {
+      term: "Falsa alarma",
+      text: `Señal sin evento en los ${data.horizonMonths} meses siguientes. Solo cuentan las señales evaluables: con ${data.horizonMonths} meses de datos después, o ya seguidas de un evento.`,
+    },
+    {
       term: "Historia mínima",
       text: `Solo cuentan eventos con ${data.minHistoryMonths} meses puntuados antes. Una entidad que ya empieza en riesgo no tiene evento.`,
     },
@@ -648,44 +765,5 @@ function Definitions({ data }: { data: LeadTime }) {
         ))}
       </dl>
     </section>
-  );
-}
-
-/** SPEC §12.7 item 5: the submission file, straight from the backend. */
-function Export() {
-  const { profile, month } = useGlobalParams();
-  const { data: meta } = useMeta();
-  const last = meta?.months.at(-1) ?? MONTHS[MONTHS.length - 1];
-  const files = [
-    {
-      format: "entity",
-      label: "Por entidad",
-      text: `Una fila por entidad con la nota de ${monthShort(last)} (${monthCode(last)}).`,
-    },
-    { format: "entity-month", label: "Por entidad y mes", text: "Una fila por entidad y mes, con toda la serie." },
-  ];
-  return (
-    <Film title="Exportar" meta={`Perfil ${PROFILE_LABELS[profile].name} · CSV`}>
-      <ul className="-mx-5">
-        {files.map((f) => (
-          <li key={f.format} className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-rule px-5 py-3 last:border-b-0">
-            <span>
-              <span className="block font-semibold">{f.label}</span>
-              <span className="text-[15px] text-ink-muted">{f.text}</span>
-            </span>
-            <a
-              href={`/api/export/submission?profile=${profile}&format=${f.format}`}
-              download
-              className="border border-ink px-3 py-2 text-[15px] font-semibold transition-colors hover:bg-ink hover:text-film"
-            >
-              Descargar CSV
-            </a>
-          </li>
-        ))}
-      </ul>
-      <p className="mt-4 text-sm text-ink-muted">
-        El formato definitivo del test oculto se confirma el domingo. El mes de la vista ({monthCode(month)}) no cambia el archivo.
-      </p>
-    </Film>
   );
 }
