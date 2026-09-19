@@ -406,3 +406,70 @@ RECEIVED 26.1. Share of overdue that is 90+ days: ISSUED 41 %, RECEIVED 36 %.
 3. COMP_1185 has 48 bn EUR of operating flows from own-account sweeps without exact mirrors (Q5d). Check its indicators.
 4. A high share of overdue invoices is 90+ days. Unpaid invoices stay open up to the snapshot (Q10). Check `DEL_AGING_90` quantiles before the anchors close.
 5. `FINANCING_IN` is empty: no category marks a disbursement (Q1).
+
+## Block 3 run (A) (2026-09-19)
+Clean run on the real CSVs with plan A's files (`sql/30`–`34`, `sql/38`).
+State `DONE`. B's files (`sql/35`–`37`) are not on this branch.
+
+| stage | ms |
+|---|---:|
+| S00_INGEST | 239 |
+| S10_STAGING | 6,098 |
+| S20_MONTHLY | 319 |
+| S25_ROLLUP | 153 |
+| S30_RAW_INDICATORS | 943 |
+| S95_QUANTILES | 5 |
+| total | 7,757 |
+
+Checks (`scripts/validate_block3_a.sql`):
+- **V5:** 13 indicators × 2 entity types, one row per `entity_months` row (30,864 company, 6,000 group). 0 bad pairs.
+- **V6:** `available` with a NULL value only for `DEBT_DSCR` (12,475 rows, no debt service) and `LEV_DEBT_TO_CF` (2,283 rows, debt with NOCF 12m ≤ 0).
+- **V7:** 0 available rows in an inactive month. 0 NULL flags.
+- **V9:** at M12, `CF_NOCF_MARGIN` and `LIQ_RUNWAY` recomputed from rows dated ≤ 2025-09 match the stored values exactly (GROUP_0016, 0017, 0019).
+
+**V8** availability (% of all rows / % of active rows) and quantiles:
+
+| indicator | type | avail % | avail % active | p5 | p50 | p95 |
+|---|---|---:|---:|---:|---:|---:|
+| LIQ_RUNWAY | GROUP | 63.1 | 88.4 | 0.03 | 24 | 24 |
+| LIQ_RUNWAY | COMPANY | 62.6 | 87.6 | 0 | 24 | 24 |
+| LIQ_BUFFER | GROUP | 42.7 | 59.9 | −0.02 | 2.76 | 224.5 |
+| LIQ_BUFFER | COMPANY | 39.8 | 55.7 | −0.01 | 3.0 | 529.2 |
+| LIQ_MIN_BALANCE | GROUP | 62.8 | 88.1 | −0.23 | 0.72 | 17.0 |
+| LIQ_MIN_BALANCE | COMPANY | 62.3 | 87.2 | −0.19 | 0.53 | 60.3 |
+| CF_NOCF_MARGIN | GROUP | 60.5 | 84.8 | −1.20 | 0.016 | 0.59 |
+| CF_NOCF_MARGIN | COMPANY | 59.0 | 82.5 | −9.55 | 0.002 | 0.73 |
+| CF_VOLATILITY | GROUP | 49.9 | 69.9 | 0.08 | 0.37 | 2.0 |
+| CF_VOLATILITY | COMPANY | 50.1 | 70.0 | 0.09 | 0.60 | 6.66 |
+| CF_IN_OUT_RATIO | GROUP | 61.1 | 85.7 | 0.40 | 1.01 | 2.29 |
+| CF_IN_OUT_RATIO | COMPANY | 61.7 | 86.2 | 0.002 | 1.00 | 3.19 |
+| ACT_COLLECTIONS_GROWTH | GROUP | 50.2 | 70.4 | −0.98 | 0.03 | 5.84 |
+| ACT_COLLECTIONS_GROWTH | COMPANY | 49.5 | 69.2 | −1.0 | 0.00 | 8.23 |
+| DEBT_DSCR | GROUP | 63.1 | 88.4 | −2,038 | 0.37 | 813 |
+| DEBT_DSCR | COMPANY | 63.2 | 88.4 | −3,731 | 0.21 | 1,118 |
+| DEBT_LINE_UTIL | GROUP | 30.8 | 43.2 | 0 | 0.35 | 1.17 |
+| DEBT_LINE_UTIL | COMPANY | 10.2 | 14.3 | 0 | 0.29 | 1.07 |
+| LEV_DEBT_TO_CF | GROUP | 50.7 | 71.1 | 0 | 0 | 5.88 |
+| LEV_DEBT_TO_CF | COMPANY | 50.8 | 71.0 | 0 | 0 | 2.49 |
+| LEV_FACTORING_RELIANCE | GROUP | 71.3 | 100 | 0 | 0 | 0.10 |
+| LEV_FACTORING_RELIANCE | COMPANY | 71.5 | 100 | 0 | 0 | 0 |
+| LEV_FUNDING_COST | GROUP | 25.6 | 35.8 | −0.035 | −0.030 | 0.12 |
+| LEV_FUNDING_COST | COMPANY | 8.3 | 11.6 | −0.035 | −0.031 | 0.24 |
+| TAX_REGULARITY | GROUP | 47.0 | 65.9 | 0.17 | 1.0 | 1.0 |
+| TAX_REGULARITY | COMPANY | 43.0 | 60.1 | 0.08 | 1.0 | 1.0 |
+
+Notes on the values:
+- `LIQ_RUNWAY`: the median is the cap (24). In half of the entity-months the operating flows cover the burn (burn ≤ 0).
+- `DEBT_DSCR`: the tails are very long because `DEBT_SERVICE` 3m is often tiny. The anchors clamp them.
+- `ACT_COLLECTIONS_GROWTH`: every available row before M14 is a QoQ fallback. After M14, 7,403 rows are YoY and 4,410 are QoQ (entities with a short history).
+- `TAX_REGULARITY`: the median gap is ≤ 1.5 months (monthly cadence) for 94 % of groups and 83 % of companies with at least two tax months. GROUP_0206 stops paying tax after 2026-04. Its value falls month by month: 0.40, 0.18, 0.11, 0.08.
+- `LEV_FUNDING_COST`: 93–95 % of values are within [−0.035, 0.1]. 16 companies go above 0.165 (up to 47). The interest rows are real `interest_charge` outflows. The cause is the denominator: the snapshot debt is small for loans that are almost repaid (COMP_0827: 2 k EUR left of a 250 k EUR loan, 91 k EUR interest in 24 months). The anchors clamp them to score 0. A monthly debt balance for loans does not exist (Q6: 10 loans have transactions), so no fix now.
+- `LEV_FUNDING_COST` is computed only for entities with debt. `reference_rate` is still the placeholder 0.035, so the level moves when a human sets it.
+- `DEBT_LINE_UTIL` and `LEV_FUNDING_COST` flow-based values read snapshot debt, so they set `is_static` (contract item 9). The monthly credit-line rebuild sets `is_static = FALSE` (decision D4).
+
+**Answers to the Block 2 open questions:**
+1. **Months before the first transaction:** `entity_months.is_active` is FALSE for them, and every indicator is unavailable there. Groups: 4,280 of 6,000 group-months are active, 95 of 250 groups are active from M00, 2 are never active. Companies: 22,073 of 30,864 active, 437 of 1,286 from M00, 4 never active.
+2. **`DEBT_LINE_UTIL`:** monthly (rebuilt from `outstanding`, Q13–Q14) for 131 companies and 80 groups. Static for 55 companies and 28 groups. At M23, 46 single-line companies match `outstanding / granted` within 1 %. The 6 that do not match have booked transactions dated 2026-09-01, after the M23 month end.
+3. **COMP_1185:** from 2025-07 its operating flows are 0.8–2.3 bn EUR per month in each direction, with categories `payment` and `collection` (24 bn EUR each way, product PRODUCT_04414 alone has 68 bn EUR gross). Its indicators are absurd from 2025-07: `CF_IN_OUT_RATIO` stays at 0.98–1.00, `CF_NOCF_MARGIN` at −0.02–0.00, and `CF_VOLATILITY` at 0.00–0.02. Its group GROUP_0126 (11 companies) shows the same pattern. **Open: human decision.** No exclusion rule is added.
+4. **`DEL_AGING_90`:** owned by plan B. See B's report.
+5. **`FINANCING_IN` empty:** `LEV_FACTORING_RELIANCE` uses only the debt mix (factoring and confirming outstanding / total outstanding). The SPEC component "growth of factoring-classified inflows" is not built, because no category marks a factoring advance. The value is 0 for most entities (p95 0 for companies).
