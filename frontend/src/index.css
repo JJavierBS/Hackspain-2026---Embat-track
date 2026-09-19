@@ -1,0 +1,184 @@
+@import "@fontsource-variable/archivo/wdth.css";
+@import "tailwindcss";
+
+/*
+ * Radiology Lightbox. A dark viewer frame holds a cool backlit panel.
+ * Content sits on "films": flat panels with hairline rules and corner marks.
+ * Band colors (A–E) name health. Green and red name direction only.
+ */
+@theme {
+  --font-sans: "Archivo Variable", "Archivo", ui-sans-serif, system-ui, sans-serif;
+
+  --color-viewer: #0d1b26;
+  --color-viewer-raised: #16293a;
+  --color-viewer-rule: #2a4052;
+  --color-viewer-ink: #e4edf3;
+  --color-viewer-muted: #8fa6b8;
+
+  --color-panel: #eef3f7;
+  --color-panel-grid: #dde6ed;
+  --color-film: #fbfcfd;
+  --color-rule: #cfdae3;
+  --color-ink: #0d1b26;
+  --color-ink-muted: #4a5d6d;
+
+  --color-scan: #0fa3c2;
+  --color-scan-soft: #d3eff5;
+
+  --color-band-a: #1f5fd1;
+  --color-band-b: #0b7a88;
+  --color-band-c: #9a6b00;
+  --color-band-d: #c2500a;
+  --color-band-e: #8e1b8f;
+
+  /* Chart series: neutral hues kept off cyan, the band colors and green/red. */
+  --color-series-level: #7a6a55;
+  --color-series-trajectory: #4f6a8f;
+
+  --color-up: #15803d;
+  --color-down: #c62828;
+
+  /* Kept for the template Button until block 4 restyles it. */
+  --color-brand: #1f5fd1;
+  --color-brand-dark: #184ca8;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  background: var(--color-viewer);
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink);
+  background: var(--color-panel);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-scan-soft);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-scan);
+  outline-offset: 2px;
+}
+
+* {
+  scrollbar-color: var(--color-rule) transparent;
+  scrollbar-width: thin;
+}
+
+/*
+ * The lit panel: a full-width diffuser grid whose origin sits on the content column.
+ * Columns are 1/24 of the content width (max-w-7xl minus 2 × 24px padding),
+ * rows are 48px, so full-width films sit on the outer lines.
+ */
+.lightbox {
+  --content: calc(min(100cqw, 80rem) - 48px);
+  background-color: var(--color-panel);
+  background-image:
+    linear-gradient(var(--color-panel-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-panel-grid) 1px, transparent 1px);
+  background-size: calc(var(--content) / 24) 48px;
+  background-position: calc(max(0px, (100cqw - 80rem) / 2) + 24px) 0;
+}
+
+/* A film: a flat hairline sheet held by clips, with a tab that carries its title. */
+.film {
+  position: relative;
+  /* Lets wide content (the ranking table) scroll inside the film, not stretch the page. */
+  min-width: 0;
+  background: var(--color-film);
+  border: 1px solid var(--color-rule);
+}
+
+.film::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 10px;
+  height: 10px;
+  border: solid var(--color-ink);
+  border-width: 0 2px 2px 0;
+  pointer-events: none;
+}
+
+.film-tab {
+  position: absolute;
+  top: 0;
+  left: 20px;
+  transform: translateY(-50%);
+  max-width: calc(100% - 120px);
+  padding: 4px 12px;
+  background: var(--color-ink);
+  color: var(--color-film);
+  font-size: 1.125rem;
+  line-height: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* A notch cut into the top edge, where the viewer clip holds the sheet. */
+.film-notch {
+  position: absolute;
+  top: -1px;
+  width: 16px;
+  height: 8px;
+  background: var(--color-panel);
+  border: 1px solid var(--color-rule);
+  border-top: 0;
+}
+
+/* The measurement readout printed on the top rule, opposite the tab. */
+.film-meta {
+  position: absolute;
+  top: 0;
+  right: 20px;
+  transform: translateY(-50%);
+  padding: 0 8px;
+  background: var(--color-film);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-ink-muted);
+}
+
+/* The one authored moment: a scan line passes over the panel once per view. */
+.scanline {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 2px;
+  background: var(--color-scan);
+  box-shadow: 0 6px 24px 4px rgb(15 163 194 / 0.28);
+  opacity: 0;
+  pointer-events: none;
+  animation: scan 1100ms cubic-bezier(0.16, 1, 0.3, 1) 80ms 1 both;
+}
+
+@keyframes scan {
+  0% {
+    opacity: 0.9;
+    transform: translateY(0);
+  }
+  85% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(var(--scan-distance, 70vh));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scanline {
+    display: none;
+  }
+}

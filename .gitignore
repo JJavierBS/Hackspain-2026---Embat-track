@@ -26,3 +26,15 @@ mobile/.expo/
 
 # Logs
 *.log
+
+# Data (CSVs and DuckDB file) never go to git
+data/
+
+# Frontend build
+frontend/dist/
+
+# Local env
+.env
+
+# Impeccable review captures (local only)
+.impeccable/review/

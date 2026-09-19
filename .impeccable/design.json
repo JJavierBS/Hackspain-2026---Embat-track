@@ -1,0 +1,569 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-18T23:28:14+00:00",
+  "title": "Design System: X-Ray",
+  "extensions": {
+    "colorMeta": {
+      "viewer": {
+        "role": "neutral",
+        "displayName": "Viewer Black",
+        "canonical": "#0d1b26",
+        "tonalRamp": [
+          "#050c12",
+          "#1d262e",
+          "#38444e",
+          "#55636f",
+          "#748593",
+          "#98a7b4",
+          "#bdcbd7",
+          "#e4f0fb"
+        ]
+      },
+      "viewer-raised": {
+        "role": "neutral",
+        "displayName": "Viewer Raised",
+        "canonical": "#16293a",
+        "tonalRamp": [
+          "#040c15",
+          "#1a2632",
+          "#344453",
+          "#516475",
+          "#6f859a",
+          "#93a8bb",
+          "#b9ccdd",
+          "#e0f1ff"
+        ]
+      },
+      "viewer-rule": {
+        "role": "neutral",
+        "displayName": "Viewer Rule",
+        "canonical": "#2a4052",
+        "tonalRamp": [
+          "#030c15",
+          "#192732",
+          "#334453",
+          "#4f6475",
+          "#6e869a",
+          "#92a8bb",
+          "#b8ccde",
+          "#dff1ff"
+        ]
+      },
+      "viewer-ink": {
+        "role": "neutral",
+        "displayName": "Viewer Ink",
+        "canonical": "#e4edf3",
+        "tonalRamp": [
+          "#060c10",
+          "#1f262a",
+          "#3c4348",
+          "#5b6268",
+          "#7c8489",
+          "#9ea6ac",
+          "#c2cbd0",
+          "#e7f0f6"
+        ]
+      },
+      "viewer-muted": {
+        "role": "neutral",
+        "displayName": "Viewer Muted",
+        "canonical": "#8fa6b8",
+        "tonalRamp": [
+          "#040c14",
+          "#1a2731",
+          "#344451",
+          "#516473",
+          "#6f8697",
+          "#94a8b8",
+          "#b9ccdb",
+          "#e0f1fe"
+        ]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Lit Panel",
+        "canonical": "#eef3f7",
+        "tonalRamp": [
+          "#080c0e",
+          "#222628",
+          "#3f4346",
+          "#5e6265",
+          "#7e8386",
+          "#a1a6a9",
+          "#c5cace",
+          "#eaeff3"
+        ]
+      },
+      "panel-grid": {
+        "role": "neutral",
+        "displayName": "Diffuser Grid",
+        "canonical": "#dde6ed",
+        "tonalRamp": [
+          "#060c10",
+          "#1f262b",
+          "#3c4349",
+          "#5b6268",
+          "#7b848a",
+          "#9ea6ad",
+          "#c2cad1",
+          "#e7f0f7"
+        ]
+      },
+      "film": {
+        "role": "neutral",
+        "displayName": "Film White",
+        "canonical": "#fbfcfd",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242526",
+          "#414243",
+          "#606162",
+          "#818283",
+          "#a4a5a6",
+          "#c8c9ca",
+          "#edeeef"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#cfdae3",
+        "tonalRamp": [
+          "#050c12",
+          "#1e262d",
+          "#3a434b",
+          "#59636a",
+          "#7a848c",
+          "#9ca7af",
+          "#c0cbd4",
+          "#e5f0f9"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#0d1b26",
+        "tonalRamp": [
+          "#050c12",
+          "#1d262e",
+          "#38444e",
+          "#55636f",
+          "#748593",
+          "#98a7b4",
+          "#bdcbd7",
+          "#e4f0fb"
+        ]
+      },
+      "ink-muted": {
+        "role": "neutral",
+        "displayName": "Ink Muted",
+        "canonical": "#4a5d6d",
+        "tonalRamp": [
+          "#040c13",
+          "#1b2630",
+          "#354450",
+          "#526472",
+          "#718596",
+          "#95a8b8",
+          "#bbccda",
+          "#e2f1fe"
+        ]
+      },
+      "scan": {
+        "role": "primary",
+        "displayName": "Scan Cyan",
+        "canonical": "#0fa3c2",
+        "tonalRamp": [
+          "#00101e",
+          "#002d3f",
+          "#004c63",
+          "#006e89",
+          "#0092b0",
+          "#4ab5d0",
+          "#80d8f1",
+          "#b1fcff"
+        ]
+      },
+      "scan-soft": {
+        "role": "primary",
+        "displayName": "Scan Wash",
+        "canonical": "#d3eff5",
+        "tonalRamp": [
+          "#030d10",
+          "#19282b",
+          "#33464a",
+          "#50666a",
+          "#6e888d",
+          "#92aaaf",
+          "#b8ced2",
+          "#e0f3f7"
+        ]
+      },
+      "band-a": {
+        "role": "secondary",
+        "displayName": "Cobalt A",
+        "canonical": "#1f5fd1",
+        "tonalRamp": [
+          "#000039",
+          "#001b63",
+          "#093a90",
+          "#225abf",
+          "#3c7cf0",
+          "#67a2ff",
+          "#91c9ff",
+          "#bdefff"
+        ]
+      },
+      "band-b": {
+        "role": "secondary",
+        "displayName": "Teal B",
+        "canonical": "#0b7a88",
+        "tonalRamp": [
+          "#001017",
+          "#002d35",
+          "#004c56",
+          "#116e7a",
+          "#32919f",
+          "#64b3c0",
+          "#92d6e2",
+          "#bffbff"
+        ]
+      },
+      "band-c": {
+        "role": "secondary",
+        "displayName": "Ochre C",
+        "canonical": "#9a6b00",
+        "tonalRamp": [
+          "#1a0500",
+          "#3a1e00",
+          "#5c3a00",
+          "#815800",
+          "#a8781e",
+          "#c99d55",
+          "#eac283",
+          "#ffe9b2"
+        ]
+      },
+      "band-d": {
+        "role": "secondary",
+        "displayName": "Amber-Orange D",
+        "canonical": "#c2500a",
+        "tonalRamp": [
+          "#270000",
+          "#4d0300",
+          "#762100",
+          "#a13d00",
+          "#cd5b1f",
+          "#ee8454",
+          "#ffad83",
+          "#ffd7b1"
+        ]
+      },
+      "band-e": {
+        "role": "secondary",
+        "displayName": "Plum E",
+        "canonical": "#8e1b8f",
+        "tonalRamp": [
+          "#200022",
+          "#440045",
+          "#6a136b",
+          "#923192",
+          "#bc4ebc",
+          "#dd79db",
+          "#fea4fc",
+          "#ffceff"
+        ]
+      },
+      "series-level": {
+        "role": "tertiary",
+        "displayName": "Level Umber",
+        "canonical": "#7a6a55",
+        "tonalRamp": [
+          "#110a03",
+          "#2d2317",
+          "#4c4030",
+          "#6d5f4c",
+          "#907f6a",
+          "#b2a28f",
+          "#d5c7b5",
+          "#f9ecdc"
+        ]
+      },
+      "series-trajectory": {
+        "role": "tertiary",
+        "displayName": "Trajectory Slate",
+        "canonical": "#4f6a8f",
+        "tonalRamp": [
+          "#020b1c",
+          "#15263b",
+          "#2f435e",
+          "#4b6384",
+          "#6884aa",
+          "#8da7cb",
+          "#b3cbec",
+          "#dbf0ff"
+        ]
+      },
+      "up": {
+        "role": "tertiary",
+        "displayName": "Direction Green",
+        "canonical": "#15803d",
+        "tonalRamp": [
+          "#001300",
+          "#003106",
+          "#00511f",
+          "#197439",
+          "#389854",
+          "#68ba7c",
+          "#95dda4",
+          "#c2ffce"
+        ]
+      },
+      "down": {
+        "role": "tertiary",
+        "displayName": "Direction Red",
+        "canonical": "#c62828",
+        "tonalRamp": [
+          "#2c0000",
+          "#550000",
+          "#810009",
+          "#af2423",
+          "#de433e",
+          "#ff7368",
+          "#ff9f93",
+          "#ffcbbf"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The score in fixed numeral slots; 72px mobile, 96px desktop, 48px in the md readout."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page titles (36px mobile, 48px desktop, wdth 88); band letters at wdth 80."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Film tab titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Ledes (max 62ch) and film copy."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Nav, profile cord, month select, chart legend, question filters, list copy, meter labels, caliper caption."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Film meta, study readout cells, ladder ranges and counts, chart ticks and line-end labels, table headers, status and trend tags."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "A score seated in a row: 24px in the ranking table, 30px in compact rows and the watchlist, wdth 85, band color."
+      }
+    },
+    "shadows": [
+      {
+        "name": "scan-glow",
+        "value": "0 6px 24px 4px rgb(15 163 194 / 0.28)",
+        "purpose": "Trails the scan line."
+      },
+      {
+        "name": "tick-glow",
+        "value": "0 0 10px 1px rgb(15 163 194 / 0.7)",
+        "purpose": "Selected month tick."
+      },
+      {
+        "name": "lamp-glow",
+        "value": "0 0 10px 2px rgb(15 163 194 / 0.6)",
+        "purpose": "Pipeline lamp when lit (color follows lamp state)."
+      }
+    ],
+    "motion": [
+      {
+        "name": "scan-pass",
+        "value": "1100ms cubic-bezier(0.16, 1, 0.3, 1) 80ms, once",
+        "purpose": "The one authored moment: scan line passes down the panel on view or profile change; hidden under prefers-reduced-motion."
+      },
+      {
+        "name": "state-color",
+        "value": "Tailwind transition-colors (150ms)",
+        "purpose": "Hover color shifts on nav and profile cord."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "content-max",
+        "value": "1280px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Film",
+      "kind": "card",
+      "refersTo": "film",
+      "description": "Every content section: flat hairline sheet, title tab and meta on the top rule, clip notches, ink corner mark.",
+      "html": "<section class=\"ds-film\"><h2 class=\"ds-film-tab\">Distribución por banda</h2><span class=\"ds-film-notch\" style=\"left:calc(50% - 28px)\"></span><span class=\"ds-film-notch\" style=\"left:calc(50% + 12px)\"></span><div class=\"ds-film-meta\">Puntuación final 0–100</div><p class=\"ds-film-body\">Sin datos todavía.</p></section>",
+      "css": ".ds-film { position: relative; margin-top: 16px; padding: 40px 20px 24px; background: var(--color-film, #fbfcfd); border: 1px solid var(--color-rule, #cfdae3); color: var(--color-ink, #0d1b26); font-family: var(--font-sans, 'Archivo Variable', Archivo, ui-sans-serif, system-ui, sans-serif); font-variant-numeric: tabular-nums; } .ds-film::after { content: ''; position: absolute; right: -1px; bottom: -1px; width: 10px; height: 10px; border: solid var(--color-ink, #0d1b26); border-width: 0 2px 2px 0; } .ds-film-tab { position: absolute; top: 0; left: 20px; transform: translateY(-50%); margin: 0; padding: 4px 12px; background: var(--color-ink, #0d1b26); color: var(--color-film, #fbfcfd); font-size: 1.125rem; line-height: 1.5rem; font-weight: 600; letter-spacing: -0.01em; } .ds-film-notch { position: absolute; top: -1px; width: 16px; height: 8px; background: var(--color-panel, #eef3f7); border: 1px solid var(--color-rule, #cfdae3); border-top: 0; } .ds-film-meta { position: absolute; top: 0; right: 20px; transform: translateY(-50%); padding: 0 8px; background: var(--color-film, #fbfcfd); font-size: 0.875rem; line-height: 1.25rem; color: var(--color-ink-muted, #4a5d6d); } .ds-film-body { margin: 0; color: var(--color-ink-muted, #4a5d6d); }"
+    },
+    {
+      "name": "Band Ladder",
+      "kind": "custom",
+      "refersTo": "band-chip",
+      "description": "The full A–E scale, always shown together; the current band is lit.",
+      "html": "<ol class=\"ds-ladder\"><li style=\"--b:#1f5fd1\"><b>A</b><span>≥ 80</span></li><li style=\"--b:#0b7a88\" class=\"lit\"><b>B</b><span>65–79,9</span></li><li style=\"--b:#9a6b00\"><b>C</b><span>50–64,9</span></li><li style=\"--b:#c2500a\"><b>D</b><span>35–49,9</span></li><li style=\"--b:#8e1b8f\"><b>E</b><span>&lt; 35</span></li></ol>",
+      "css": ".ds-ladder { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; margin: 0; padding: 0; list-style: none; background: #cfdae3; border: 1px solid #cfdae3; font-family: var(--font-sans, 'Archivo Variable', Archivo, ui-sans-serif, system-ui, sans-serif); font-variant-numeric: tabular-nums; } .ds-ladder li { position: relative; padding: 16px 12px 12px; background: #fbfcfd; } .ds-ladder li::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 4px; background: var(--b); } .ds-ladder b { display: block; font-size: 3rem; line-height: 1; font-weight: 600; font-stretch: 80%; color: var(--b); } .ds-ladder span { display: block; margin-top: 8px; font-size: 0.875rem; color: #4a5d6d; } .ds-ladder li.lit { background: var(--b); color: #fff; } .ds-ladder li.lit b { color: #fff; } .ds-ladder li.lit span { color: rgb(255 255 255 / 0.85); }"
+    },
+    {
+      "name": "Score Readout",
+      "kind": "custom",
+      "refersTo": "band-chip",
+      "description": "Score in five fixed numeral slots in band color, band chip, and a caliper measuring the change.",
+      "html": "<div class=\"ds-readout\"><span class=\"ds-slots\" style=\"--b:#0b7a88\"><i class=\"e\">&nbsp;</i><i>7</i><i>2</i><i class=\"c\">,</i><i>4</i></span><span class=\"ds-chip\" style=\"background:#0b7a88\">B</span><div class=\"ds-caliper\"><strong><svg width=\"22\" height=\"22\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M8 13V3M3.5 7.5 8 3l4.5 4.5\"/></svg>+5,1</strong><span>puntos vs M20</span></div></div>",
+      "css": ".ds-readout { display: flex; align-items: stretch; gap: 20px; font-family: var(--font-sans, 'Archivo Variable', Archivo, ui-sans-serif, system-ui, sans-serif); font-variant-numeric: tabular-nums; } .ds-slots { display: flex; font-size: 6rem; line-height: 1; font-weight: 600; font-stretch: 80%; color: var(--b); } .ds-slots i { font-style: normal; width: 0.52em; text-align: center; border-bottom: 2px solid var(--b); padding-bottom: 4px; } .ds-slots i.e { border-color: #cfdae3; } .ds-slots i.c { width: 0.22em; border: 0; } .ds-chip { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-top: 4px; color: #fff; font-weight: 700; } .ds-caliper { position: relative; display: flex; flex-direction: column; justify-content: center; padding: 8px 0 8px 16px; border-left: 2px solid rgb(13 27 38 / 0.7); } .ds-caliper::before, .ds-caliper::after { content: ''; position: absolute; left: -2px; width: 12px; border-top: 2px solid rgb(13 27 38 / 0.7); } .ds-caliper::before { top: 0; } .ds-caliper::after { bottom: 0; } .ds-caliper strong { display: flex; align-items: center; gap: 4px; font-size: 1.875rem; font-weight: 600; color: #15803d; } .ds-caliper span { font-size: 15px; color: #4a5d6d; }"
+    },
+    {
+      "name": "Top Bar Navigation",
+      "kind": "nav",
+      "refersTo": "nav-link",
+      "description": "Links in the viewer frame; active link carries a scan-cyan underline.",
+      "html": "<nav class=\"ds-nav\"><a class=\"active\" href=\"#\">Cartera</a><a href=\"#\">Monitor</a><a href=\"#\">Comparar</a><a href=\"#\">Metodología</a></nav>",
+      "css": ".ds-nav { display: flex; gap: 4px; padding: 12px 16px 0; background: #0d1b26; font-family: var(--font-sans, 'Archivo Variable', Archivo, ui-sans-serif, system-ui, sans-serif); font-variant-numeric: tabular-nums; font-size: 15px; } .ds-nav a { padding: 8px; border-bottom: 2px solid transparent; color: #8fa6b8; text-decoration: none; transition: color 150ms; } .ds-nav a:hover { color: #e4edf3; } .ds-nav a.active { border-color: #0fa3c2; color: #e4edf3; font-weight: 600; } .ds-nav a:focus-visible { outline: 2px solid #0fa3c2; outline-offset: 2px; }"
+    },
+    {
+      "name": "Profile Cord",
+      "kind": "chip",
+      "refersTo": "profile-cord",
+      "description": "Segmented buyer-profile switch in the viewer frame; the active segment inverts.",
+      "html": "<div class=\"ds-cord\" role=\"radiogroup\"><button>Banco</button><button class=\"on\" aria-checked=\"true\">Fondo</button><button>Aseguradora</button></div>",
+      "css": ".ds-cord { display: inline-flex; border: 1px solid #2a4052; background: #0d1b26; font-family: var(--font-sans, 'Archivo Variable', Archivo, ui-sans-serif, system-ui, sans-serif); font-variant-numeric: tabular-nums; } .ds-cord button { padding: 6px 16px; font: inherit; font-size: 15px; color: #8fa6b8; background: transparent; border: 0; border-radius: 0; cursor: pointer; transition: background 150ms, color 150ms; } .ds-cord button:hover { background: #16293a; color: #e4edf3; } .ds-cord button.on { background: #e4edf3; color: #0d1b26; font-weight: 600; } .ds-cord button:focus-visible { outline: 2px solid #0fa3c2; outline-offset: 2px; }"
+    },
+    {
+      "name": "Month Strip",
+      "kind": "custom",
+      "refersTo": "month-select",
+      "description": "24 exposure ticks; elapsed muted, future dim, selected lit cyan with glow.",
+      "html": "<div class=\"ds-strip\"><button class=\"past\"><span></span></button><button class=\"past\"><span></span></button><button class=\"past\"><span></span></button><button class=\"past\"><span></span></button><button class=\"past\"><span></span></button><button class=\"past\"><span></span></button><button class=\"past\"><span></span></button><button class=\"past\"><span></span></button><button class=\"past\"><span></span></button><button class=\"past\"><span></span></button><button class=\"past\"><span></span></button><button class=\"past\"><span></span></button><button class=\"past\"><span></span></button><button class=\"past\"><span></span></button><button class=\"past\"><span></span></button><button class=\"past\"><span></span></button><button class=\"past\"><span></span></button><button class=\"past\"><span></span></button><button class=\"past\"><span></span></button><button class=\"past\"><span></span></button><button class=\"on\"><span></span></button><button class=\"\"><span></span></button><button class=\"\"><span></span></button><button class=\"\"><span></span></button></div>",
+      "css": ".ds-strip { display: flex; align-items: flex-end; gap: 3px; padding: 12px; background: #0d1b26; } .ds-strip button { display: flex; align-items: flex-end; justify-content: center; width: 12px; height: 32px; padding: 0; background: none; border: 0; cursor: pointer; } .ds-strip span { display: block; width: 3px; height: 12px; background: #2a4052; } .ds-strip button.past span { height: 16px; background: rgb(143 166 184 / 0.7); } .ds-strip button:hover span { height: 24px; background: #e4edf3; } .ds-strip button.on span { width: 5px; height: 32px; background: #0fa3c2; box-shadow: 0 0 10px 1px rgb(15 163 194 / 0.7); } .ds-strip button:focus-visible { outline: 2px solid #0fa3c2; outline-offset: 0; }"
+    },
+    {
+      "name": "Study Readout",
+      "kind": "card",
+      "refersTo": "readout-cell",
+      "description": "Three definition cells on hairline gaps naming view, product and month.",
+      "html": "<dl class=\"ds-study\"><div><dt>Vista</dt><dd>Fondo</dd></div><div><dt>Producto</dt><dd>momentum</dd></div><div><dt>Mes</dt><dd>mayo de 2026 <span>M20</span></dd></div></dl>",
+      "css": ".ds-study { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin: 0; width: 26rem; background: #cfdae3; border: 1px solid #cfdae3; font-size: 0.875rem; font-family: var(--font-sans, 'Archivo Variable', Archivo, ui-sans-serif, system-ui, sans-serif); font-variant-numeric: tabular-nums; } .ds-study div { padding: 8px 12px; background: #fbfcfd; } .ds-study dt { color: #4a5d6d; } .ds-study dd { margin: 0; font-weight: 600; color: #0d1b26; } .ds-study dd span { font-weight: 400; color: #4a5d6d; }"
+    },
+    {
+      "name": "Pipeline Lamp",
+      "kind": "chip",
+      "description": "Exposure lamp in the frame showing pipeline state; replaced by the demo-data marker in mock mode.",
+      "html": "<span class=\"ds-lamp\"><i></i><span class=\"m\">Pipeline</span><b>Listo</b></span>",
+      "css": ".ds-lamp { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border: 1px solid #2a4052; background: #0d1b26; color: #e4edf3; font-size: 0.875rem; font-family: var(--font-sans, 'Archivo Variable', Archivo, ui-sans-serif, system-ui, sans-serif); font-variant-numeric: tabular-nums; } .ds-lamp i { width: 8px; height: 8px; border-radius: 9999px; background: #0fa3c2; box-shadow: 0 0 10px 2px rgb(15 163 194 / 0.6); } .ds-lamp .m { color: #8fa6b8; } .ds-lamp b { font-weight: 500; }"
+    },
+    {
+      "name": "Status Tags",
+      "kind": "chip",
+      "refersTo": "status-tag",
+      "description": "Square hairline tags for status, trend and alert severity; direction arrows in green/red, a solid red fill only for Crítica.",
+      "html": "<div class=\"ds-tags\"><span class=\"ds-tag\"><i class=\"u\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M8 13V3M3.5 7.5 8 3l4.5 4.5\"/></svg></i>Mejorando</span><span class=\"ds-tag\"><i class=\"d\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M8 3v10M3.5 8.5 8 13l4.5-4.5\"/></svg></i>Deterioro</span><span class=\"ds-tag\">Sana</span><span class=\"ds-tag crit\">Crítica</span><span class=\"ds-delta d\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M8 3v10M3.5 8.5 8 13l4.5-4.5\"/></svg>−12,4</span></div>",
+      "css": ".ds-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-family: var(--font-sans, 'Archivo Variable', Archivo, ui-sans-serif, system-ui, sans-serif); font-variant-numeric: tabular-nums; } .ds-tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border: 1px solid var(--color-rule, #cfdae3); border-radius: 0; background: var(--color-film, #fbfcfd); color: var(--color-ink, #0d1b26); font-size: 0.875rem; font-weight: 500; white-space: nowrap; } .ds-tag i { display: inline-flex; } .ds-tag i.u { color: var(--color-up, #15803d); } .ds-tag i.d { color: var(--color-down, #c62828); } .ds-tag.crit { background: var(--color-down, #c62828); border-color: var(--color-down, #c62828); color: #fff; } .ds-delta { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; } .ds-delta.d { color: var(--color-down, #c62828); }"
+    },
+    {
+      "name": "Meter",
+      "kind": "custom",
+      "refersTo": "meter-track",
+      "description": "0–100 reading with the 50 mark: band fill from 0 for Nivel, green/red growth from 50 for Trayectoria.",
+      "html": "<div class=\"ds-meters\"><div class=\"ds-meter\"><div class=\"h\"><span>Nivel</span><b style=\"color:#0b7a88\">68,7</b></div><div class=\"t\"><i style=\"left:0;width:68.7%;background:#0b7a88\"></i><s></s></div><p>Salud actual</p></div><div class=\"ds-meter\"><div class=\"h\"><span>Trayectoria</span><b style=\"color:#15803d\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M8 13V3M3.5 7.5 8 3l4.5 4.5\"/></svg>63,7</b></div><div class=\"t\"><i style=\"left:50%;width:13.7%;background:#15803d\"></i><s></s></div><p>50 = estable · más de 50 mejora</p></div></div>",
+      "css": ".ds-meters { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 30rem; font-family: var(--font-sans, 'Archivo Variable', Archivo, ui-sans-serif, system-ui, sans-serif); font-variant-numeric: tabular-nums; color: var(--color-ink, #0d1b26); } .ds-meter .h { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; } .ds-meter .h span { font-size: 15px; font-weight: 600; } .ds-meter .h b { display: flex; align-items: center; gap: 4px; font-size: 1.5rem; font-weight: 600; } .ds-meter .t { position: relative; height: 10px; margin-top: 8px; background: var(--color-panel-grid, #dde6ed); } .ds-meter .t i { position: absolute; top: 0; bottom: 0; } .ds-meter .t s { position: absolute; top: -4px; bottom: -4px; left: 50%; width: 1px; background: rgb(13 27 38 / 0.6); } .ds-meter p { margin: 6px 0 0; font-size: 0.875rem; color: var(--color-ink-muted, #4a5d6d); }"
+    },
+    {
+      "name": "Question Filters",
+      "kind": "button",
+      "refersTo": "question-filter",
+      "description": "The six portfolio questions as square toggles with counts; the pressed one inverts to ink.",
+      "html": "<div class=\"ds-q\"><button aria-pressed=\"false\">Sanas y excepcionales <span>7</span></button><button aria-pressed=\"true\" class=\"on\">Empiezan a torcerse <span>2</span></button><button disabled>Bache <span>0</span></button></div>",
+      "css": ".ds-q { display: flex; flex-wrap: wrap; gap: 8px; font-family: var(--font-sans, 'Archivo Variable', Archivo, ui-sans-serif, system-ui, sans-serif); font-variant-numeric: tabular-nums; } .ds-q button { display: flex; align-items: center; gap: 8px; padding: 8px 12px; font: inherit; font-size: 15px; background: var(--color-film, #fbfcfd); color: var(--color-ink, #0d1b26); border: 1px solid rgb(13 27 38 / 0.25); border-radius: 0; cursor: pointer; transition: border-color 150ms, background 150ms, color 150ms; } .ds-q button:hover { border-color: var(--color-ink, #0d1b26); } .ds-q button span { min-width: 24px; padding: 0 6px; text-align: center; font-size: 0.875rem; font-weight: 600; background: var(--color-panel, #eef3f7); } .ds-q button.on { background: var(--color-ink, #0d1b26); border-color: var(--color-ink, #0d1b26); color: var(--color-film, #fbfcfd); } .ds-q button.on span { background: var(--color-film, #fbfcfd); color: var(--color-ink, #0d1b26); } .ds-q button:disabled { opacity: 0.45; cursor: not-allowed; } .ds-q button:focus-visible { outline: 2px solid var(--color-scan, #0fa3c2); outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Radiology Lightbox",
+    "overview": "Every company is read like a scan clipped to a lit viewer: measured, annotated with calipers, compared with the prior exam. The screen is two materials. A near-black viewer frame (the top bar and footer) carries every control: navigation, the buyer-profile cord, the 24-tick month strip and the pipeline lamp. Below it, a cool backlit panel with a visible diffuser grid holds the content, and the content sits on films: flat, pale sheets with hairline edges, a dark title tab on the top edge, two clip notches and an ink corner mark.\n\nDensity is operational, not decorative. Numbers are large, tabular and seated in fixed slots so they read from a projector. Color is rationed by meaning: five band colors name health (a 0–100 health value only), green and red name direction, and one cyan names \"now\" (the active month, the scan line, focus). The world refuses the white KPI-tile fintech dashboard: no rounded cards, no drop-shadow tiles, no gradient hero.",
+    "keyCharacteristics": [
+      "Dark viewer frame over a cool lit panel; two materials, never a third.",
+      "Films, not cards: flat, square, hairline-edged, titled by a tab on the top rule.",
+      "One cyan scan color marks the present moment everywhere.",
+      "Band A–E colors carry 0–100 health values; green/red carry direction; nothing else borrows them.",
+      "Tabular figures everywhere; the score sits in fixed numeral slots.",
+      "One authored motion: a single scan line passes down the panel per view or profile change."
+    ],
+    "rules": [
+      {
+        "name": "The Three Voices Rule",
+        "body": "Cyan means now, band hues mean health, green/red mean direction. A color never speaks for another role; a new state gets a neutral, not a borrowed band or direction hue. The one extension is critical severity, which is a solid Direction Red fill.",
+        "section": "colors"
+      },
+      {
+        "name": "The Health-Only Band Rule",
+        "body": "Band hues belong to 0–100 health values (Final, Nivel, category levels). Trajectory and change are direction and read in green/red, even though trajectory is also on a 0–100 scale; a status label, a link or a mode indicator never takes a band hue.",
+        "section": "colors"
+      },
+      {
+        "name": "The Full Ladder Rule",
+        "body": "All five bands appear together whenever bands are shown. The current band is lit (filled, white text); the others stay at rest with only their stripe and letter colored.",
+        "section": "colors"
+      },
+      {
+        "name": "The Measured Figure Rule",
+        "body": "Numbers are tabular, formatted in Spanish (decimal comma, true minus sign \"−\"), and the headline score always occupies five slots sized for \"100,0\", with empty slots underlined in hairline.",
+        "section": "typography"
+      },
+      {
+        "name": "The Width Axis Rule",
+        "body": "Emphasis comes from weight 600 and a narrower width, not from uppercase, tracking or a second family.",
+        "section": "typography"
+      },
+      {
+        "name": "The Backlight Rule",
+        "body": "Glow is allowed only on things that emit light in the viewer (scan line, active tick, lamp). Films and cells never carry a shadow.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** put every content section on a film with a tab title; use the meta slot to state what is measured.",
+      "**Do** show the full A–E ladder whenever bands appear, lighting only the current band.",
+      "**Do** mark the active month in Scan Cyan on every time axis.",
+      "**Do** set figures tabular, in Spanish format, with a true minus sign.",
+      "**Do** tile cells on a 1px hairline gap instead of separate bordered boxes.",
+      "**Do** color 0–100 health values by band and trajectory or change by direction; a meter in direction mode grows from 50.",
+      "**Do** show loading and error states inside a film so the layout holds.",
+      "**Do** keep emphasis to weight 600 plus a narrower width.",
+      "**Do** disable the scan line under `prefers-reduced-motion`."
+    ],
+    "donts": [
+      "**Don't** round corners on films, cells, chips or controls; the lamp is the only circle.",
+      "**Don't** cast shadows from films or cells; glow belongs only to light sources in the viewer.",
+      "**Don't** use green or red for a health value or decoration; they are direction, and a solid red fill means critical severity only.",
+      "**Don't** use Scan Cyan for anything other than \"now\", focus and the viewer's own light.",
+      "**Don't** use band hues outside 0–100 health values (not for status labels, links or mode markers), or chart series hues that collide with cyan, a band or green/red.",
+      "**Don't** add a second authored animation; the scan line is the one moment.",
+      "**Don't** show zero for a missing value; show an em dash."
+    ]
+  }
+}
