@@ -57,6 +57,14 @@ export function IconNext(props: IconProps) {
   );
 }
 
+export function IconChevron(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M3.5 6 8 10.5 12.5 6" />
+    </svg>
+  );
+}
+
 export function IconPlay(props: IconProps) {
   return (
     <svg {...base(props)}>
