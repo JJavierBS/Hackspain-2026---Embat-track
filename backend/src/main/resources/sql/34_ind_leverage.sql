@@ -41,12 +41,7 @@ LEFT JOIN ind34_debt d ON d.entity_type = b.entity_type AND d.entity_id = b.enti
 -- (rate_x_outstanding / rated_outstanding - reference_rate). No debt: unavailable (nothing to score).
 -- reference_rate is a placeholder until a human sets it (CLAUDE.md open items).
 INSERT INTO indicator_values_raw
-WITH ic AS (
-  SELECT company_id, month, SUM(-amount_eur) AS interest,
-         SUM(-amount_eur) FILTER (WHERE NOT is_intragroup) AS interest_ext
-  FROM stg_transactions
-  WHERE is_booked AND category IN (${interest_categories})
-  GROUP BY 1, 2),
+WITH ic AS (SELECT company_id, month, interest, interest_ext FROM monthly_interest),
 i AS (
   SELECT 'COMPANY' AS entity_type, company_id AS entity_id, month, interest FROM ic
   UNION ALL

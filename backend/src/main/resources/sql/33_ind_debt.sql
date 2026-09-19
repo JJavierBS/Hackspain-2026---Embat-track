@@ -22,8 +22,7 @@ WITH lines AS (
     AND TRY_CAST(d.outstanding AS DOUBLE) IS NOT NULL
     AND ABS(TRY_CAST(d.granted AS DOUBLE)) > 0),
 tx AS (
-  SELECT product_id, month, SUM(amount) AS amt
-  FROM stg_transactions WHERE is_booked AND product_id IN (SELECT product_id FROM lines) GROUP BY 1, 2),
+  SELECT product_id, month, amt FROM monthly_line_tx WHERE product_id IN (SELECT product_id FROM lines)),
 rebuilt AS (
   SELECT l.product_id, l.company_id, l.currency, l.granted, m.month,
          l.snap - COALESCE(SUM(tx.amt) FILTER (WHERE tx.month > m.month), 0) AS bal_eom
