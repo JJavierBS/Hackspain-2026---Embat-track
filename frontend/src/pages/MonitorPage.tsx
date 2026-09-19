@@ -1,43 +1,64 @@
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import type { Alert } from "../api/types";
+import { useMemo } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import type { Alert, Direction, Severity, WatchlistRow } from "../api/types";
 import { ApiError } from "../api/client";
-import { useMonitor } from "../api/queries";
+import { useMethodology, useMonitor } from "../api/queries";
+import { AlertList } from "../components/AlertList";
 import { Film } from "../components/Film";
-import { IconDown, IconUp } from "../components/Icons";
 import { LoadState } from "../components/LoadState";
 import { PageHeader } from "../components/PageHeader";
 import { PendingFilm } from "../components/PendingFilm";
 import { StatusTag } from "../components/StatusTag";
 import { useGlobalParams } from "../hooks/useGlobalParams";
 import { useLinkSearch } from "../hooks/useLinkSearch";
-import { bandOf, formatScore, monthCode, monthShort } from "../lib/format";
+import { ALERT_LABELS, bandOf, formatScore, monthCode, monthShort } from "../lib/format";
 
-type DirFilter = "ALL" | "NEGATIVE" | "POSITIVE";
-
-const FILTERS: { key: DirFilter; label: string }[] = [
-  { key: "ALL", label: "Todas" },
+const DIRECTIONS: { key: Direction | null; label: string }[] = [
+  { key: null, label: "Todas" },
   { key: "NEGATIVE", label: "Negativas" },
   { key: "POSITIVE", label: "Positivas" },
 ];
 
-const SEVERITY_LABELS: Record<Alert["severity"], string> = { CRITICAL: "Crítica", WARN: "Aviso", INFO: "Info" };
+const SEVERITIES: { key: Severity | null; label: string }[] = [
+  { key: null, label: "Todas" },
+  { key: "CRITICAL", label: "Críticas" },
+  { key: "WARN", label: "Avisos" },
+  { key: "INFO", label: "Informativas" },
+];
+
+function isDirection(v: string | null): v is Direction {
+  return v === "NEGATIVE" || v === "POSITIVE";
+}
+
+function isSeverity(v: string | null): v is Severity {
+  return v === "CRITICAL" || v === "WARN" || v === "INFO";
+}
+
+/** The feed filters live in the URL (?dir, ?sev) so a filtered monitor is linkable. */
+function useMonitorFilters() {
+  const [params, setParams] = useSearchParams();
+  const dir = params.get("dir");
+  const sev = params.get("sev");
+  function set(key: "dir" | "sev", value: string | null) {
+    setParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (value === null) next.delete(key);
+      else next.set(key, value);
+      return next;
+    });
+  }
+  return {
+    direction: isDirection(dir) ? dir : undefined,
+    severity: isSeverity(sev) ? sev : undefined,
+    setDirection: (d: Direction | null) => set("dir", d),
+    setSeverity: (s: Severity | null) => set("sev", s),
+  };
+}
 
 export function MonitorPage() {
   const { profile, month } = useGlobalParams();
-  const { data, error, isPending } = useMonitor(profile, month);
-  const [dir, setDir] = useState<DirFilter>("ALL");
-  const linkSearch = useLinkSearch();
-
-  const alerts = useMemo(
-    () => (data?.alerts ?? []).filter((a) => dir === "ALL" || a.direction === dir),
-    [data, dir],
-  );
-  const byMonth = useMemo(() => {
-    const groups = new Map<string, Alert[]>();
-    for (const a of alerts) groups.set(a.month, [...(groups.get(a.month) ?? []), a]);
-    return [...groups.entries()];
-  }, [alerts]);
+  const filters = useMonitorFilters();
+  const { data, error, isPending } = useMonitor(profile, month, { direction: filters.direction, severity: filters.severity });
 
   return (
     <div className="grid gap-12">
@@ -56,91 +77,153 @@ export function MonitorPage() {
         <LoadState />
       ) : (
         <div className="grid gap-12 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
-          <Film title="Alertas" meta={`Últimos 6 meses hasta ${monthCode(month)}`}>
-            <div role="radiogroup" aria-label="Dirección" className="mb-5 flex border border-ink/25">
-              {FILTERS.map((f) => (
-                <button
-                  key={f.key}
-                  type="button"
-                  role="radio"
-                  aria-checked={dir === f.key}
-                  onClick={() => setDir(f.key)}
-                  className={`flex-1 px-3 py-1.5 text-[15px] ${dir === f.key ? "bg-ink font-semibold text-film" : "hover:bg-panel"}`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-            {byMonth.length === 0 && <p className="text-ink-muted">No hay alertas en este periodo.</p>}
-            <div className="grid gap-6">
-              {byMonth.map(([m, list]) => (
-                <section key={m}>
-                  <h3 className="mb-2 flex items-baseline gap-2 border-b border-ink/20 pb-1 text-sm font-semibold">
-                    {monthShort(m)} <span className="font-normal text-ink-muted">{monthCode(m)}</span>
-                  </h3>
-                  <ul className="grid">
-                    {list.map((a) => (
-                      <li key={a.id} className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-start gap-3 border-b border-dashed border-rule py-2.5 last:border-b-0">
-                        {a.direction === "POSITIVE" ? (
-                          <IconUp className="mt-0.5 text-up" aria-label="Positiva" />
-                        ) : (
-                          <IconDown className="mt-0.5 text-down" aria-label="Negativa" />
-                        )}
-                        <span>
-                          <Link to={`/entity/${a.entityId}${linkSearch}`} className="font-semibold underline-offset-4 hover:underline">
-                            {a.entityName}
-                          </Link>
-                          <span className="block text-[15px] text-ink-muted">{a.message}</span>
-                        </span>
-                        <span
-                          className={`border px-2 py-0.5 text-sm font-medium ${
-                            a.severity === "CRITICAL"
-                              ? "border-down bg-down text-white"
-                              : a.severity === "WARN"
-                                ? "border-down/60 text-down"
-                                : a.direction === "POSITIVE"
-                                  ? "border-up/60 text-up"
-                                  : "border-rule text-ink-muted"
-                          }`}
-                        >
-                          {SEVERITY_LABELS[a.severity]}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              ))}
-            </div>
+          <Film title="Alertas" meta={`${monthCode(data.fromMonth)} – ${monthCode(month)} · ${data.alerts.length} alertas`}>
+            <FeedFilters {...filters} />
+            <Feed alerts={data.alerts} />
           </Film>
 
           <div className="grid content-start gap-12 self-start lg:sticky lg:top-6">
-          <Film title="Watchlist" meta={`${data.watchlist.length} entidades`}>
-            <p className="mb-4 text-[15px] text-ink-muted">Una alerta crítica o dos avisos negativos en los últimos 3 meses.</p>
-            {data.watchlist.length === 0 ? (
-              <p className="text-ink-muted">Ninguna entidad en vigilancia en {monthCode(month)}.</p>
-            ) : (
-              <ul className="grid">
-                {data.watchlist.map(({ row: r }) => (
-                  <li key={r.id} className="flex items-center justify-between gap-3 border-b border-rule py-3 last:border-b-0">
-                    <span className="min-w-0">
-                      <Link to={`/entity/${r.id}${linkSearch}`} className="block truncate font-semibold underline-offset-4 hover:underline">
-                        {r.name}
-                      </Link>
-                      <StatusTag status={r.status} />
-                    </span>
-                    <span className="text-3xl font-semibold [font-stretch:85%]" style={{ color: bandOf(r.final).color }}>
-                      {formatScore(r.final)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Film>
-          <MonthSummary alerts={data.alerts} />
+            <WatchlistFilm rows={data.watchlist} month={month} />
+            <MonthSummary alerts={data.alerts} />
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+function Segmented<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: { key: T | null; label: string }[];
+  value: T | undefined;
+  onChange: (v: T | null) => void;
+}) {
+  return (
+    <div className="grid gap-1.5">
+      <span className="text-sm text-ink-muted">{label}</span>
+      <div role="radiogroup" aria-label={label} className="flex border border-ink/25">
+        {options.map((o) => {
+          const checked = (value ?? null) === o.key;
+          return (
+            <button
+              key={o.label}
+              type="button"
+              role="radio"
+              aria-checked={checked}
+              onClick={() => onChange(o.key)}
+              className={`flex-1 px-3 py-1.5 text-[15px] whitespace-nowrap ${checked ? "bg-ink font-semibold text-film" : "hover:bg-panel"}`}
+            >
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function FeedFilters(f: ReturnType<typeof useMonitorFilters>) {
+  return (
+    <div className="mb-6 grid gap-4 sm:grid-cols-[minmax(0,3fr)_minmax(0,4fr)]">
+      <Segmented label="Dirección" options={DIRECTIONS} value={f.direction} onChange={f.setDirection} />
+      <Segmented label="Gravedad" options={SEVERITIES} value={f.severity} onChange={f.setSeverity} />
+    </div>
+  );
+}
+
+/** Alerts grouped by month, newest first (the API already sends them in that order). */
+function Feed({ alerts, animateMonth }: { alerts: Alert[]; animateMonth?: string | null }) {
+  const byMonth = useMemo(() => {
+    const groups = new Map<string, Alert[]>();
+    for (const a of alerts) groups.set(a.month, [...(groups.get(a.month) ?? []), a]);
+    return [...groups.entries()];
+  }, [alerts]);
+  if (byMonth.length === 0) return <p className="text-ink-muted">No hay alertas en este periodo con estos filtros.</p>;
+  return (
+    <div className="grid gap-6">
+      {byMonth.map(([m, list]) => (
+        <section key={m}>
+          <h3 className="mb-2 flex items-baseline gap-2 border-b border-ink/20 pb-1 text-sm font-semibold">
+            {monthShort(m)} <span className="font-normal text-ink-muted">{monthCode(m)}</span>
+            <span className="ml-auto font-normal text-ink-muted">{list.length}</span>
+          </h3>
+          <AlertList alerts={list} showEntity animate={m === animateMonth} />
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function WatchlistFilm({ rows, month }: { rows: WatchlistRow[]; month: string }) {
+  const linkSearch = useLinkSearch();
+  const { data: methodology } = useMethodology();
+  const rule = methodology?.watchlist;
+  return (
+    <Film title="Vigilancia" meta={`${rows.length} entidades · ${monthCode(month)}`}>
+      <p className="mb-4 text-[15px] text-ink-muted">
+        {rule
+          ? `Al menos ${rule.minCritical} ${rule.minCritical === 1 ? "alerta crítica" : "alertas críticas"} o ${rule.minWarn} avisos negativos activos este mes.`
+          : "Entidades con alertas negativas activas este mes."}
+      </p>
+      {rows.length === 0 ? (
+        <p className="text-ink-muted">Ninguna entidad en vigilancia en {monthCode(month)}.</p>
+      ) : (
+        <ul className="grid">
+          {rows.map(({ row: r, criticalAlerts, warnAlerts, codes }) => {
+            const band = bandOf(r.final);
+            return (
+              <li key={r.id} className="grid gap-2 border-b border-rule py-3 last:border-b-0">
+                <div className="flex items-start justify-between gap-3">
+                  <span className="min-w-0">
+                    <Link to={`/entity/${r.id}${linkSearch}`} className="block truncate font-semibold underline-offset-4 hover:underline">
+                      {r.name}
+                    </Link>
+                    <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <StatusTag status={r.status} />
+                      <span className="text-sm" title="Estados negativos activos este mes, por gravedad">
+                        {criticalAlerts > 0 && (
+                          <span className="font-semibold text-down">
+                            {criticalAlerts} {criticalAlerts === 1 ? "crítica" : "críticas"}
+                          </span>
+                        )}
+                        {criticalAlerts > 0 && warnAlerts > 0 && <span className="text-ink-muted"> · </span>}
+                        {warnAlerts > 0 && (
+                          <span className="text-down">
+                            {warnAlerts} {warnAlerts === 1 ? "aviso" : "avisos"}
+                          </span>
+                        )}
+                      </span>
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2" title="Puntuación final del perfil activo">
+                    <span className="text-3xl font-semibold [font-stretch:85%]" style={{ color: band.color }}>
+                      {formatScore(r.final)}
+                    </span>
+                    <span className="inline-flex h-6 w-6 items-center justify-center text-sm font-bold text-white" style={{ background: band.color }}>
+                      {band.band}
+                    </span>
+                  </span>
+                </div>
+                {codes.length > 0 && (
+                  <ul className="flex flex-wrap gap-1.5" aria-label="Alertas activas">
+                    {codes.map((c) => (
+                      <li key={c} className="border border-rule px-1.5 text-sm text-ink-muted">
+                        {ALERT_LABELS[c]}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Film>
   );
 }
 
