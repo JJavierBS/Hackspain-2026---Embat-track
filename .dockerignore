@@ -1,0 +1,15 @@
+# The backend image builds from the repo root so it can copy data/xray-demo.duckdb.gz.
+# Everything heavy under data/ must stay out of the context: data/raw alone is ~617 MB.
+.git/
+data/raw/
+data/holdout/
+data/xray.duckdb
+data/xray-demo.duckdb
+data/*.wal
+backend/target/
+backend/.idea/
+frontend/node_modules/
+frontend/dist/
+app/
+.impeccable/
+*.log
