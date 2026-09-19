@@ -1,0 +1,156 @@
+# Sector presets for the per-entity tuning (docs/SECTOR_PRESETS.md).
+# The data has no sector field (SPEC §4), so a user picks the sector of one group or company on the Entity page.
+# The backend then scores that one entity again with the sector anchors. Nothing is written, and no other entity changes.
+# Rules for this file:
+#   - A sector changes indicator anchors only (path indicators.<ID>.anchors). Never a weight: the profile weights
+#     are closed (docs/WEIGHTS_JUSTIFICATION.md). The boot refuses any other path.
+#   - Each change says sourced, derived (a source gives the numbers, a rule of ours named in "why" gives the anchors)
+#     or placeholder. No figure is attributed to a source that we did not read.
+#   - The fixed parts of SPEC §6.1 stay: DPO <= 60 days -> 100 (Ley 3/2004), NOCF margin < 0 -> <= 35 and 0 -> 45.
+#     One exception, stated in its "why": the tech sector moves growth 0 % -> 50 to 0 % -> 35.
+#   - quote = exact words of the source, short (15 words or less). finding = figures read from a table.
+#   - The boot applies each sector to the shipped config and runs the same checks as scoring-config.yml.
+# UI copy is Spanish.
+
+sources:
+  cepyme-pmp:
+    publisher: "CEPYME, con datos de CESCE"
+    title: "Observatorio de Morosidad, II semestre 2025 (tabla 1 y gráfico 4)"
+    url: "https://cepyme.es/storage/2026/04/Observatorio-Morosidad-II-semestre-2025.pdf"
+    finding: "Periodo medio de pago, 4.º trimestre de 2025, ponderado por importe: total 79,0 días; comercio minorista 69,2; actividades profesionales 70,7; maquinaria y equipo 88,8; construcción y promoción 96,5."
+    read: "2026-09-19"
+  cepyme-imfvp:
+    publisher: "CEPYME, con datos de CESCE"
+    title: "Observatorio de Morosidad, II semestre 2025 (gráfico 9)"
+    url: "https://cepyme.es/storage/2026/04/Observatorio-Morosidad-II-semestre-2025.pdf"
+    finding: "Índice de morosidad en ventas a plazo, base 100 = España, 4.º trimestre de 2025: construcción 155,1; comercio minorista 145,0; actividades profesionales 129,1; maquinaria 123,9."
+    read: "2026-09-19"
+  ley-3-2004:
+    publisher: "BOE"
+    title: "Ley 3/2004 de lucha contra la morosidad, artículo 4.3"
+    url: "https://www.boe.es/buscar/act.php?id=BOE-A-2004-21830"
+    quote: "sin que, en ningún caso, se pueda acordar un plazo superior a 60 días naturales"
+    read: "2026-09-19"
+  damodaran-margin-eu:
+    publisher: "Aswath Damodaran, NYU Stern"
+    title: "Margins by Sector (Europe), datos de enero de 2026"
+    url: "https://pages.stern.nyu.edu/~adamodar/pc/datasets/marginEurope.xls"
+    finding: "EBITDA/ventas: mercado total sin financieras 15,70 %; Retail (General) 5,52 %; Retail (Grocery and Food) 4,88 %; Retail (Special Lines) 9,08 %; Software (System & Application) 17,23 %; Engineering/Construction 7,27 %; Machinery 12,97 %."
+    read: "2026-09-19"
+  damodaran-debt-eu:
+    publisher: "Aswath Damodaran, NYU Stern"
+    title: "Debt Fundamentals by Sector (Europe), datos de enero de 2026"
+    url: "https://pages.stern.nyu.edu/~adamodar/pc/datasets/dbtfundEurope.xls"
+    finding: "Deuda/EBITDA: mercado total sin financieras 3,13; Software (System & Application) 2,06; Engineering/Construction 4,53; Machinery 1,87; Retail (General) 7,06."
+    read: "2026-09-19"
+  saas-capital-median:
+    publisher: "SaaS Capital"
+    title: "2026 Private B2B SaaS Company Growth Rate Benchmarks (más de 1.000 empresas)"
+    url: "https://www.saas-capital.com/research/private-saas-company-growth-rate-benchmarks/"
+    quote: "The median growth rate for all companies in the survey registered 22%"
+    read: "2026-09-19"
+  saas-capital-flat:
+    publisher: "SaaS Capital"
+    title: "2026 Private B2B SaaS Company Growth Rate Benchmarks"
+    url: "https://www.saas-capital.com/research/private-saas-company-growth-rate-benchmarks/"
+    quote: "only 7.3% of the companies reported flat or negative growth in 2025"
+    read: "2026-09-19"
+
+sectors:
+  - id: retail
+    name: "Comercio minorista"
+    cnae: "CNAE 47"
+    client: "Tiendas y cadenas que venden al consumidor final. Márgenes finos y pago a proveedores más corto que la media."
+    changes:
+      - path: indicators.PAY_DPO.anchors
+        value: [[60, 100], [80, 60], [110, 30], [170, 0]]
+        status: derived
+        why: "El comercio minorista paga a 69,2 días, 10 días antes que la media española (79,0). La curva de castigo por encima de 60 días se mueve 10 días a la izquierda: pagar a 90 días es normal en la media, pero lento para una tienda. Los 60 días → 100 siguen fijos por ley. La regla de mover la curva por la diferencia con la media es nuestra."
+        sources: [cepyme-pmp, ley-3-2004]
+      - path: indicators.CF_NOCF_MARGIN.anchors
+        value: [[-0.2, 0], [-0.0001, 35], [0, 45], [0.035, 75], [0.07, 100]]
+        status: derived
+        why: "El minorista europeo genera un 5,5 % de EBITDA sobre ventas (mediana de las tres ramas de Damodaran: 4,9 %, 5,5 % y 9,1 %), frente al 15,7 % del mercado. El lado positivo de la curva se escala por 5,52 / 15,70 = 0,35: un margen de caja del 3,5 % ya vale 75. El lado negativo sigue fijo."
+        sources: [damodaran-margin-eu]
+    notes:
+      - text: "No cambiamos el apalancamiento: la deuda de Damodaran para el minorista incluye los alquileres de tienda (NIIF 16) y nuestro indicador solo cuenta deuda bancaria, así que su 7,1× no es comparable."
+        sources: [damodaran-debt-eu]
+      - text: "Como comprador, el minorista paga tarde un 45 % más que la media (índice 145). Es contexto para la aseguradora, no cambia ningún ancla."
+        sources: [cepyme-imfvp]
+
+  - id: tech
+    name: "Tecnología · software B2B"
+    cnae: "CNAE 58.2 y 62"
+    client: "Empresas de software y servicios digitales que venden a otras empresas. Se espera que crezcan y que usen poca deuda."
+    changes:
+      - path: indicators.ACT_COLLECTIONS_GROWTH.anchors
+        value: [[-0.3, 0], [0, 35], [0.22, 65], [0.44, 100]]
+        status: derived
+        why: "La mediana del software B2B privado crece un 22 % al año, y solo el 7,3 % crece cero o menos. Por eso el 22 % marca el borde de la banda B (65) y el 0 % el borde de la banda D (35): en este sector no crecer es estar en el décimo inferior. Es el único ajuste que mueve un punto fijo de la curva general (0 % → 50), y solo para este sector. El punto 44 % → 100 (dos veces la mediana) no tiene fuente."
+        sources: [saas-capital-median, saas-capital-flat]
+      - path: indicators.CF_NOCF_MARGIN.anchors
+        value: [[-0.2, 0], [-0.0001, 35], [0, 45], [0.11, 75], [0.22, 100]]
+        status: derived
+        why: "El software europeo genera un 17,2 % de EBITDA sobre ventas, frente al 15,7 % del mercado. El lado positivo se escala por 17,23 / 15,70 = 1,10: se pide un 11 % de margen de caja para 75."
+        sources: [damodaran-margin-eu]
+      - path: indicators.LEV_DEBT_TO_CF.anchors
+        value: [[0, 100], [0.66, 90], [1.97, 65], [3.29, 40], [5.26, 0]]
+        status: derived
+        why: "El software europeo tiene una deuda de 2,06 veces el EBITDA, frente a 3,13 del mercado. Cada punto de la curva se escala por 2,06 / 3,13 = 0,66: con 3,3 veces ya está en la banda D."
+        sources: [damodaran-debt-eu]
+      - path: indicators.PAY_DPO.anchors
+        value: [[60, 100], [82, 60], [112, 30], [172, 0]]
+        status: derived
+        why: "CEPYME no separa la tecnología. Usamos su rama más cercana, actividades profesionales: 70,7 días, 8 menos que la media (79,0). La curva de castigo se mueve 8 días a la izquierda. Los 60 días → 100 siguen fijos por ley."
+        sources: [cepyme-pmp, ley-3-2004]
+    notes:
+      - text: "Límite: SaaS Capital mide el crecimiento de ingresos recurrentes de empresas de EE. UU. sobre todo. Nuestro indicador mide 12 meses de cobros."
+        sources: [saas-capital-median]
+
+  - id: construction
+    name: "Construcción y promoción"
+    cnae: "CNAE 41 a 43"
+    client: "Constructoras, subcontratas y promotoras. Cobran y pagan tarde, y financian obra con más deuda."
+    changes:
+      - path: indicators.PAY_DPO.anchors
+        value: [[60, 100], [108, 60], [138, 30], [198, 0]]
+        status: derived
+        why: "La construcción paga a 96,5 días, el sector más lento de España y 18 días por encima de la media (79,0). La curva de castigo se mueve 18 días a la derecha: pagar a 95 días es lo normal del sector, no una señal de tensión. Los 60 días → 100 siguen fijos por ley."
+        sources: [cepyme-pmp, ley-3-2004]
+      - path: indicators.CF_NOCF_MARGIN.anchors
+        value: [[-0.2, 0], [-0.0001, 35], [0, 45], [0.046, 75], [0.093, 100]]
+        status: derived
+        why: "La construcción europea genera un 7,3 % de EBITDA sobre ventas, frente al 15,7 % del mercado. El lado positivo se escala por 7,27 / 15,70 = 0,46."
+        sources: [damodaran-margin-eu]
+      - path: indicators.LEV_DEBT_TO_CF.anchors
+        value: [[0, 100], [1.45, 90], [4.35, 65], [7.25, 40], [11.6, 0]]
+        status: derived
+        why: "La construcción europea tiene una deuda de 4,53 veces el EBITDA, frente a 3,13 del mercado. Cada punto de la curva se escala por 4,53 / 3,13 = 1,45. Ojo: el perfil Banco sigue la guía del BCE, que llama excepcional a más de 6×; este ajuste describe el sector, no el apetito de riesgo de un banco."
+        sources: [damodaran-debt-eu]
+    notes:
+      - text: "Como comprador, la construcción paga tarde un 55 % más que la media (índice 155,1). Es contexto para la aseguradora, no cambia ningún ancla."
+        sources: [cepyme-imfvp]
+
+  - id: machinery
+    name: "Industria · maquinaria y equipo"
+    cnae: "CNAE 28"
+    client: "Fabricantes de maquinaria y bienes de equipo. Ciclos de cobro largos, margen medio y poca deuda en el sector."
+    changes:
+      - path: indicators.PAY_DPO.anchors
+        value: [[60, 100], [100, 60], [130, 30], [190, 0]]
+        status: derived
+        why: "Maquinaria y equipo paga a 88,8 días, 10 más que la media (79,0), y lleva tres años por encima de 85. La curva de castigo se mueve 10 días a la derecha. Los 60 días → 100 siguen fijos por ley."
+        sources: [cepyme-pmp, ley-3-2004]
+      - path: indicators.CF_NOCF_MARGIN.anchors
+        value: [[-0.2, 0], [-0.0001, 35], [0, 45], [0.083, 75], [0.165, 100]]
+        status: derived
+        why: "La maquinaria europea genera un 13,0 % de EBITDA sobre ventas, frente al 15,7 % del mercado. El lado positivo se escala por 12,97 / 15,70 = 0,83."
+        sources: [damodaran-margin-eu]
+      - path: indicators.LEV_DEBT_TO_CF.anchors
+        value: [[0, 100], [0.6, 90], [1.8, 65], [2.99, 40], [4.79, 0]]
+        status: derived
+        why: "La maquinaria europea tiene una deuda de 1,87 veces el EBITDA, frente a 3,13 del mercado. Cada punto de la curva se escala por 1,87 / 3,13 = 0,60: el sector es más exigente con la deuda que la media."
+        sources: [damodaran-debt-eu]
+    notes:
+      - text: "Como comprador, la maquinaria paga tarde un 24 % más que la media (índice 123,9)."
+        sources: [cepyme-imfvp]
