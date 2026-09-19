@@ -5,8 +5,9 @@ your laptop. The Algorithm page can still edit the config in prod, and "Recalcul
 `POST /api/pipeline/run`) reruns the pipeline there: S00..S25 skip without the CSVs, and S30 onwards
 reads the input tables that ship in the frozen database.
 
-Edits in prod live on the container disk. A redeploy or a restart of the Render service goes back to the
-shipped config and the shipped data. `XRAY_DEMO_MODE=true` locks the config and the pipeline again, for
+Edits in prod live on a Render disk mounted at `/data`. A restart keeps them. A deploy that ships a
+different `xray-demo.duckdb.gz` replaces the database and deletes the saved edits, because the shipped
+database was exported with the shipped config (`docker-entrypoint.sh` compares a SHA-256 marker). `XRAY_DEMO_MODE=true` locks the config and the pipeline again, for
 example during the jury presentation.
 
 ## The frozen database
@@ -51,7 +52,10 @@ A new query over a table not yet in the slice returns a 500 in the deployed app 
 ## Render (backend)
 
 `render.yaml` is a blueprint: **New → Blueprint** in the Render dashboard, pick this repo, deploy.
-It needs no persistent disk and no manual upload — the database rides inside the image.
+It needs no manual upload: the database is inside the image, and the entrypoint unpacks it to the
+disk at `/data` (`xray-data`, 1 GB). The disk needs a paid plan, and a service with a disk has no
+zero-downtime deploy. A service created from the dashboard needs the disk added by hand: mount path
+`/data`, 1 GB. The entrypoint starts as root, gives `/data` to the `xray` user, then runs Java as it.
 
 - Build context is `backend/`, Dockerfile is `backend/Dockerfile`. A service created from the
   dashboard rather than the blueprint has these as **Root Directory** and **Dockerfile Path**;
@@ -60,15 +64,20 @@ It needs no persistent disk and no manual upload — the database rides inside t
 - Health check is `/actuator/health`.
 - `plan: starter` keeps the service warm. `free` also works but spins down after 15 minutes idle,
   and a cold start in front of the jury is a ~1 minute blank page.
-- Memory is set with `-XX:MaxRAMPercentage=55` rather than `-Xmx`, so the same image fits whatever
-  instance size it lands on. DuckDB is capped with `XRAY_DUCKDB_MEMORY_LIMIT=96MB`: its default
-  (80% of the RAM it sees) leaves no room for the JVM. Measured in a 512 MB / 0.5 CPU container, like
-  starter: a pipeline run needs ~280 MB of heap, the process holds ~480 MB, and three runs in a row
-  plus a save and a reset from the Algorithm page end with no OOM kill.
+- Memory is set with `-XX:MaxRAMPercentage=50` rather than `-Xmx`, so the same image fits whatever
+  instance size it lands on. DuckDB is capped with `XRAY_DUCKDB_MEMORY_LIMIT=64MB` and 1 thread: its
+  default (80% of the RAM it sees) leaves no room for the JVM. The JIT runs C1 only, with a 48 MB code
+  cache. Measured in a 512 MB / 0.5 CPU container, like starter: the live heap is 175-233 MB (the
+  panels), non-heap ~85 MB, and anonymous memory reaches ~470 MB. Three runs in a row end with no OOM
+  kill. The earlier values (55% heap, DuckDB 96 MB, 2 threads) were OOM killed in S50-S65. The margin
+  is small: a larger dataset needs a larger plan, or the panels loaded in batches.
+- The database on disk does not lower the memory use. Only DuckDB's buffer cache is in RAM, and
+  `memory_limit` caps it. The same OOM kill happened with the database on the container disk and on a
+  volume.
 - A pipeline run works on a copy (`xray.run.duckdb`) and replaces the served tables in one transaction
   at the end (`RunDatabase`). A failed run changes nothing that the app shows. A heap
-  `OutOfMemoryError` stops the JVM (`-XX:+ExitOnOutOfMemoryError`), and Render restarts it from the
-  shipped database.
+  `OutOfMemoryError` stops the JVM (`-XX:+ExitOnOutOfMemoryError`), and Render restarts it with the
+  last published database on the disk.
 - Neither the image nor `render.yaml` sets `XRAY_DEMO_MODE`, so the app default (`false`) applies. A
   service created from the dashboard keeps its own env vars: delete `XRAY_DEMO_MODE` there.
 

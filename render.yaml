@@ -1,8 +1,9 @@
 # Render blueprint for the backend. No CSVs in the image: the frozen database carries the results
 # tables and the S30 inputs, so the Algorithm page and POST /api/pipeline/run recalculate from S30
-# onwards (docs/DEPLOY.md). The database lives on the container disk: a redeploy resets it and
-# drops any saved edit. XRAY_DEMO_MODE is not set: the app default is false. Set it to "true" to lock
-# the config and the pipeline again.
+# onwards (docs/DEPLOY.md). The database lives on a Render disk at /data, not on the container
+# filesystem: a restart keeps it and any saved edit. A deploy that ships a different database
+# replaces it and drops the saved edits (docker-entrypoint.sh). XRAY_DEMO_MODE is not set: the app
+# default is false. Set it to "true" to lock the config and the pipeline again.
 #
 #   Render dashboard -> New -> Blueprint -> pick this repo.
 #
@@ -18,6 +19,12 @@ services:
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /actuator/health
+    # Holds xray.duckdb (~112 MB), the run copy of a pipeline run and the DuckDB spill files.
+    # A service with a disk has no zero-downtime deploy: each deploy stops the old instance first.
+    disk:
+      name: xray-data
+      mountPath: /data
+      sizeGB: 1
     envVars:
       - key: XRAY_DATA_DIR
         value: /data
