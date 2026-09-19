@@ -84,8 +84,12 @@ class LookAheadTest {
     /** Evaluation columns that look past the signal on purpose (decision G8). */
     private static final Set<String> IGNORED_COLUMNS = Set.of("evaluable", "followed");
 
-    /** Config, not data: it has no month column and is identical by construction. */
-    private static final Set<String> SKIPPED_TABLES = Set.of("profile_weights");
+    /**
+     * profile_weights: config, not data. It has no month column and is identical by construction.
+     * lead_time_baseline: an evaluation total per entity over the whole series. It reads the months after each
+     * month on purpose (decision G8), like evaluable and followed, and nothing scores from it.
+     */
+    private static final Set<String> SKIPPED_TABLES = Set.of("profile_weights", "lead_time_baseline");
 
     @Test
     void pastValuesDoNotChangeWhenTheFutureIsCut() throws Exception {

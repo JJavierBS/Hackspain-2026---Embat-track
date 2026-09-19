@@ -100,7 +100,7 @@ public class AnalyticsQuery {
     private record Counts(long events, long detected, long ahead, Double meanLead, Double medianLead) {
     }
 
-    private record Signals(long signals, long evaluable, long followed) {
+    private record Signals(long signals, long evaluable, long followed, long baseEvaluable, long baseFollowed) {
     }
 
     private LeadTimeBlockDto block(EventType type, Map<EventType, Counts> counts,
@@ -108,7 +108,9 @@ public class AnalyticsQuery {
                                    Map<EventType, List<LeadTimeBlockDto.TriggerCountDto>> triggers,
                                    Map<EventType, Signals> signals, int windowMonths) {
         Counts c = counts.getOrDefault(type, new Counts(0, 0, 0, null, null));
-        Signals s = signals.getOrDefault(type, new Signals(0, 0, 0));
+        Signals s = signals.getOrDefault(type, new Signals(0, 0, 0, 0, 0));
+        Double hitRate = rate(s.followed(), s.evaluable());
+        Double baseRate = rate(s.baseFollowed(), s.baseEvaluable());
         Map<Integer, Long> h = histogram.getOrDefault(type, Map.of());
         List<LeadTimeBlockDto.HistogramBucketDto> buckets = new ArrayList<>();
         for (int lead = 0; lead <= windowMonths; lead++) {
@@ -118,7 +120,9 @@ public class AnalyticsQuery {
                 rate(c.detected(), c.events()), rate(c.ahead(), c.events()),
                 Scores.round1(c.meanLead()), Scores.round1(c.medianLead()), buckets,
                 triggers.getOrDefault(type, List.of()), s.signals(), s.evaluable(), s.followed(),
-                s.evaluable() == 0 ? null : Scores.round(1 - (double) s.followed() / s.evaluable(), RATE_DECIMALS));
+                s.evaluable() == 0 ? null : Scores.round(1 - (double) s.followed() / s.evaluable(), RATE_DECIMALS),
+                hitRate, s.baseEvaluable(), s.baseFollowed(), baseRate,
+                hitRate == null || baseRate == null || baseRate == 0 ? null : Scores.round(hitRate / baseRate, 2));
     }
 
     private static Double rate(long numerator, long denominator) {
@@ -168,8 +172,20 @@ public class AnalyticsQuery {
                        COUNT(*) FILTER (followed) AS followed
                 FROM lead_time_signals WHERE entity_type = ? AND profile = ? GROUP BY 1""",
                 (rs, i) -> out.put(EventType.valueOf(rs.getString(1)),
-                        new Signals(rs.getLong("signals"), rs.getLong("evaluable"), rs.getLong("followed"))),
+                        new Signals(rs.getLong("signals"), rs.getLong("evaluable"), rs.getLong("followed"), 0, 0)),
                 params.unit().name(), p.name());
+        if (DuckDbTables.exists(sql, "lead_time_baseline")) {
+            sql.query("""
+                    SELECT event_type, SUM(evaluable) AS evaluable, SUM(followed) AS followed
+                    FROM lead_time_baseline WHERE entity_type = ? AND profile = ? GROUP BY 1""",
+                    (rs, i) -> {
+                        EventType type = EventType.valueOf(rs.getString(1));
+                        Signals s = out.getOrDefault(type, new Signals(0, 0, 0, 0, 0));
+                        return out.put(type, new Signals(s.signals(), s.evaluable(), s.followed(),
+                                rs.getLong("evaluable"), rs.getLong("followed")));
+                    },
+                    params.unit().name(), p.name());
+        }
         return out;
     }
 

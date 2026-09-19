@@ -1140,6 +1140,11 @@ function mockBlock(profile: Profile, eventType: EntityEvent["eventType"]): LeadT
     evaluable,
     followed,
     falseAlarmRate: evaluable === 0 ? null : Math.round((1 - followed / evaluable) * 1000) / 1000,
+    hitRate: rate(followed, evaluable),
+    baseEvaluable: evaluable * 10,
+    baseFollowed: Math.round(followed * 6),
+    baseRate: rate(Math.round(followed * 6), evaluable * 10),
+    lift: evaluable === 0 || followed === 0 ? null : Math.round(((followed / evaluable) / ((followed * 6) / (evaluable * 10))) * 100) / 100,
   };
 }
 

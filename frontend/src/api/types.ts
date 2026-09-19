@@ -447,6 +447,14 @@ export interface LeadTimeBlock {
   followed: number;
   /** 1 − followed / evaluable, null when evaluable = 0. */
   falseAlarmRate: number | null;
+  /** followed / evaluable: how often a signal onset was followed by the event. */
+  hitRate: number | null;
+  /** Naive baseline: every month outside the event condition, signal or not. */
+  baseEvaluable: number;
+  baseFollowed: number;
+  baseRate: number | null;
+  /** hitRate / baseRate. Above 1 the signal beats chance. */
+  lift: number | null;
 }
 
 export interface LeadTimeExample {

@@ -51,6 +51,8 @@ public class S90_Analytics implements PipelineStage {
             + "limit_signal_month VARCHAR, limit_lead_months INTEGER";
     static final String SIGNALS_DDL = "entity_type VARCHAR, entity_id VARCHAR, profile VARCHAR, event_type VARCHAR, "
             + "signal_month VARCHAR, evaluable BOOLEAN, followed BOOLEAN";
+    static final String BASELINE_DDL = "entity_type VARCHAR, entity_id VARCHAR, profile VARCHAR, event_type VARCHAR, "
+            + "evaluable INTEGER, followed INTEGER";
     static final String PAIRS_DDL = "entity_type VARCHAR, month VARCHAR, profile VARCHAR, rank INTEGER, "
             + "up_id VARCHAR, down_id VARCHAR, up_final DOUBLE, down_final DOUBLE, up_traj DOUBLE, down_traj DOUBLE, "
             + "final_gap DOUBLE, traj_gap DOUBLE, meets_spec BOOLEAN";
@@ -85,6 +87,7 @@ public class S90_Analytics implements PipelineStage {
 
         List<Object[]> eventRows = new ArrayList<>();
         List<Object[]> signalRows = new ArrayList<>();
+        List<Object[]> baselineRows = new ArrayList<>();
         for (Analysis a : analyses) {
             for (LeadTimeAnalyzer.Event e : a.result().events()) {
                 LeadTimeEvent row = new LeadTimeEvent(a.panel().key(), a.profile(), e.type(), e.trigger(), e.month(),
@@ -100,12 +103,17 @@ public class S90_Analytics implements PipelineStage {
                 signalRows.add(new Object[]{row.key().type().name(), row.key().id(), row.profile().name(),
                         row.type().name(), months.get(row.month()).toString(), row.evaluable(), row.followed()});
             }
+            for (LeadTimeAnalyzer.Baseline b : a.result().baselines()) {
+                baselineRows.add(new Object[]{a.panel().key().type().name(), a.panel().key().id(), a.profile().name(),
+                        b.type().name(), b.evaluable(), b.followed()});
+            }
         }
 
         List<Object[]> pairRows = pairs(ctx.panels(), months, sp);
 
         writer.replace("lead_time_events", EVENTS_DDL, eventRows);
         writer.replace("lead_time_signals", SIGNALS_DDL, signalRows);
+        writer.replace("lead_time_baseline", BASELINE_DDL, baselineRows);
         writer.replace("showcase_pairs", PAIRS_DDL, pairRows);
         log.info("{} wrote {} events, {} signal onsets, {} showcase pairs", id(), eventRows.size(), signalRows.size(),
                 pairRows.size());
