@@ -16,6 +16,11 @@ import type {
   Confidence,
   Direction,
   EntityDetail,
+  EntityEvent,
+  EventTrigger,
+  LeadTime,
+  LeadTimeBlock,
+  LeadTimeExample,
   LimitAction,
   LimitDecision,
   LimitSimulation,
@@ -30,6 +35,8 @@ import type {
   Regime,
   ReplayFrame,
   Severity,
+  ShowcasePair,
+  ShowcasePairs,
   SimulateLimitRequest,
   Status,
   TimelinePoint,
@@ -772,6 +779,8 @@ export function mockEntity(id: string, profile: Profile, month: string): EntityD
     premium: premiumAt(id, m),
     momentum: momentumAt(id, m),
     alerts: book.alerts.filter((_, k) => book.monthIdx[k] <= m).sort(byMonthSeverity).slice(0, 20),
+    // Decision G8: a page at month m never shows a later event.
+    events: entityEvents(id, profile).filter((e) => e.eventMonth <= MONTHS[m]),
   };
 }
 
@@ -860,8 +869,6 @@ export function mockMethodology(): Methodology {
   };
 }
 
-/** The showcase pair of SPEC §10.4: similar score today, opposite trajectories. */
-export const SHOWCASE_PAIR = { a: "G-002", b: "G-003" } as const;
 
 export function mockEntityNames(): { id: string; name: string }[] {
   return SEEDS.map((s) => ({ id: s.id, name: s.name }));
@@ -892,6 +899,252 @@ export function mockMeta(): Meta {
     dynamicsReady: false,
     alertsReady: true,
     productsReady: true,
+    analyticsReady: true,
     caveats: ["Datos sintéticos de demostración: no proceden de Embat."],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Lead time and showcase pairs (phase 6 decisions G3–G9, on synthetic inputs).
+// The event triggers are scaled to this generator's series, NOT the values of
+// scoring-config.yml: the mock runway is the liquidity level / 10, the mock DSCR
+// comes from the debt service level, as in the alert rules above.
+
+const LEAD = {
+  minHistoryMonths: 6,
+  windowMonths: 12,
+  horizonMonths: 6,
+  runwayBelowMonths: 3,
+  dscrBelow: 1,
+  overdueMaxLevel: 20,
+  scoreBelow: 35,
+  improvementCross: 65,
+  improvementBelow: 50,
+  improvementBelowMonths: 3,
+  signalMaxTraj: 35,
+  signalMinTraj: 65,
+};
+
+const mockRunway = (ms: MonthScore) => levelOf(ms, "LIQUIDITY") / 10;
+const mockDscr = (ms: MonthScore) => 0.4 + levelOf(ms, "DEBT_SERVICE") / 40;
+
+/** G3: the deterioration trigger that holds at m (first match wins), or null. */
+function deteriorationAt(series: EntitySeries, m: number): EventTrigger | null {
+  const { months } = series;
+  const twoMonths = (test: (ms: MonthScore) => boolean) => m >= 1 && test(months[m - 1]) && test(months[m]);
+  if (twoMonths((ms) => mockRunway(ms) < LEAD.runwayBelowMonths)) return "RUNWAY";
+  if (twoMonths((ms) => mockDscr(ms) < LEAD.dscrBelow)) return "DSCR";
+  const ms = months[m];
+  if (levelOf(ms, "DELINQUENCY") <= LEAD.overdueMaxLevel && levelOf(ms, "PAYMENT_BEHAVIOUR") <= LEAD.overdueMaxLevel) return "OVERDUE";
+  if (ms.final < LEAD.scoreBelow) return "SCORE";
+  return null;
+}
+
+/** G4: level crosses up through the line, after a stretch below the lower line. */
+function improvementAt(series: EntitySeries, m: number): boolean {
+  const { months } = series;
+  if (m < 1 || months[m].level < LEAD.improvementCross || months[m - 1].level >= LEAD.improvementCross) return false;
+  let run = 0;
+  for (let k = Math.max(0, m - 12); k < m; k++) {
+    run = months[k].level < LEAD.improvementBelow ? run + 1 : 0;
+    if (run >= LEAD.improvementBelowMonths) return true;
+  }
+  return false;
+}
+
+/** G5: the signal of each direction at m. */
+function signalAt(series: EntitySeries, m: number, type: EntityEvent["eventType"]): boolean {
+  const { traj } = series.months[m];
+  const status = series.statuses[m];
+  if (type === "DETERIORATION") return status === "TURNING" || status === "STRUCTURAL_DECLINE" || traj <= LEAD.signalMaxTraj;
+  return status === "IMPROVING" || series.regimes[m] === "STRUCTURAL_IMPROVEMENT" || traj >= LEAD.signalMinTraj;
+}
+
+function firstIn(from: number, to: number, test: (m: number) => boolean): number | null {
+  for (let m = Math.max(0, from); m <= to; m++) if (test(m)) return m;
+  return null;
+}
+
+/** G3/G4: the first onset with enough history before it; an entity already in the condition early on is censored. */
+function firstOnset(test: (m: number) => boolean): number | null {
+  if (firstIn(0, LEAD.minHistoryMonths - 1, test) !== null) return null;
+  return firstIn(LEAD.minHistoryMonths, MONTHS.length - 1, (m) => test(m) && !test(m - 1));
+}
+
+function buildEvent(series: EntitySeries, profile: Profile, type: EntityEvent["eventType"], trigger: EventTrigger, e: number): EntityEvent {
+  const s = firstIn(e - LEAD.windowMonths, e, (m) => signalAt(series, m, type));
+  let limitSignal: number | null = null;
+  if (type === "DETERIORATION" && profile === PARAMS.products.limitProfile) {
+    const limits = limitHistory(series.seed.id);
+    limitSignal = firstIn(e - LEAD.windowMonths, e, (m) => limits[m].action === "REDUCE" || limits[m].action === "FREEZE");
+  }
+  return {
+    eventType: type,
+    trigger,
+    eventMonth: MONTHS[e],
+    signalMonth: s === null ? null : MONTHS[s],
+    leadMonths: s === null ? null : e - s,
+    limitSignalMonth: limitSignal === null ? null : MONTHS[limitSignal],
+    limitLeadMonths: limitSignal === null ? null : e - limitSignal,
+  };
+}
+
+const eventCache = new Map<string, EntityEvent[]>();
+
+/** All lead-time events of one entity in one profile, oldest first (the Timeline shape). */
+function entityEvents(id: string, profile: Profile): EntityEvent[] {
+  const key = `${profile}:${id}`;
+  const hit = eventCache.get(key);
+  if (hit) return hit;
+  const series = allSeries(profile).find((s) => s.seed.id === id)!;
+  const events: EntityEvent[] = [];
+  const e = firstOnset((m) => deteriorationAt(series, m) !== null);
+  if (e !== null) events.push(buildEvent(series, profile, "DETERIORATION", deteriorationAt(series, e)!, e));
+  else if (profile === PARAMS.products.limitProfile && id === demoDownId()) {
+    // Scripted demo case: the "down" entity of the limit profile's top pair gets a runway event at the
+    // last month, so the limit cut, the signal and the event line up on mocks (plan B Task 2).
+    events.push(buildEvent(series, profile, "DETERIORATION", "RUNWAY", MONTHS.length - 1));
+  }
+  const i = firstOnset((m) => improvementAt(series, m));
+  if (i !== null) events.push(buildEvent(series, profile, "IMPROVEMENT", "LEVEL_CROSS", i));
+  events.sort((a, b) => a.eventMonth.localeCompare(b.eventMonth));
+  eventCache.set(key, events);
+  return events;
+}
+
+function demoDownId(): string | undefined {
+  return mockShowcasePairs(PARAMS.products.limitProfile as Profile, MONTHS[MONTHS.length - 1]).pairs[0]?.down.id;
+}
+
+/** GET /api/analytics/showcase-pairs, ranked as decision G9 says. */
+export function mockShowcasePairs(profile: Profile, month: string): ShowcasePairs {
+  const m = monthIndex(month);
+  const rows = mockPortfolio(profile, MONTHS[m]).rows.filter((r) => r.traj !== null);
+  const candidates: ShowcasePair[] = [];
+  for (let i = 0; i < rows.length; i++)
+    for (let j = i + 1; j < rows.length; j++) {
+      const finalGap = Math.abs(rows[i].final - rows[j].final);
+      if (finalGap > 3) continue;
+      const [up, down] = rows[i].traj! >= rows[j].traj! ? [rows[i], rows[j]] : [rows[j], rows[i]];
+      const side = (r: PortfolioRow) => ({ id: r.id, name: r.name, final: r.final, traj: r.traj! });
+      candidates.push({
+        rank: 0,
+        meetsSpec: up.traj! >= 65 && down.traj! <= 35,
+        up: side(up),
+        down: side(down),
+        finalGap: round1(finalGap),
+        trajGap: round1(up.traj! - down.traj!),
+      });
+    }
+  candidates.sort(
+    (a, b) =>
+      Number(b.meetsSpec) - Number(a.meetsSpec) ||
+      b.trajGap - a.trajGap ||
+      a.finalGap - b.finalGap ||
+      a.up.id.localeCompare(b.up.id) ||
+      a.down.id.localeCompare(b.down.id),
+  );
+  const used = new Set<string>();
+  const pairs: ShowcasePair[] = [];
+  for (const c of candidates) {
+    if (pairs.length === 10) break;
+    if (used.has(c.up.id) || used.has(c.down.id)) continue;
+    used.add(c.up.id);
+    used.add(c.down.id);
+    pairs.push({ ...c, rank: pairs.length + 1 });
+  }
+  return { profile, month: MONTHS[m], pairs };
+}
+
+const TRIGGERS_BY_TYPE: Record<EntityEvent["eventType"], EventTrigger[]> = {
+  DETERIORATION: ["RUNWAY", "DSCR", "OVERDUE", "SCORE"],
+  IMPROVEMENT: ["LEVEL_CROSS"],
+};
+
+/**
+ * One synthetic lead-time block. The mock portfolio is too small for a histogram, so the
+ * counts are drawn from a seeded hump at 2–4 months; every figure is derived from them.
+ */
+function mockBlock(profile: Profile, eventType: EntityEvent["eventType"]): LeadTimeBlock {
+  const r = rng(`${profile}:${eventType}`);
+  const scale = eventType === "DETERIORATION" ? 1 : 0.45;
+  const hump = [3, 2, 5, 7, 6, 4, 3, 2, 1, 1, 0, 1, 0];
+  const histogram = hump.map((h, leadMonths) => ({ leadMonths, count: Math.round(h * scale * (0.7 + 0.6 * r())) }));
+  const detected = histogram.reduce((a, b) => a + b.count, 0);
+  const events = detected + Math.round((4 + 4 * r()) * scale);
+  const detectedAhead = detected - histogram[0].count;
+  const leads = histogram.flatMap((b) => Array<number>(b.count).fill(b.leadMonths));
+  const triggers = TRIGGERS_BY_TYPE[eventType];
+  const shares = triggers.map(() => 0.4 + r());
+  const total = shares.reduce((a, b) => a + b, 0);
+  let leftEvents = events;
+  let leftAhead = detectedAhead;
+  const byTrigger = triggers.map((trigger, k) => {
+    const last = k === triggers.length - 1;
+    const n = last ? leftEvents : Math.round((events * shares[k]) / total);
+    const ahead = last ? leftAhead : Math.min(n, Math.round((detectedAhead * shares[k]) / total));
+    leftEvents -= n;
+    leftAhead -= ahead;
+    return { trigger, events: n, detectedAhead: ahead };
+  });
+  const signals = Math.round(events * (2.2 + r()));
+  const evaluable = Math.round(signals * 0.85);
+  const followed = Math.round(evaluable * (0.58 + 0.12 * r()));
+  const rate = (a: number, b: number) => (b === 0 ? null : Math.round((a / b) * 1000) / 1000);
+  return {
+    eventType,
+    events,
+    detected,
+    detectedAhead,
+    detectionRate: rate(detected, events),
+    aheadRate: rate(detectedAhead, events),
+    meanLead: leads.length === 0 ? null : round1(leads.reduce((a, b) => a + b, 0) / leads.length),
+    medianLead: leads.length === 0 ? null : median(leads),
+    histogram,
+    byTrigger,
+    signals,
+    evaluable,
+    followed,
+    falseAlarmRate: evaluable === 0 ? null : Math.round((1 - followed / evaluable) * 1000) / 1000,
+  };
+}
+
+/** GET /api/analytics/lead-time. Aggregates are synthetic; the examples are the mock entities' own events. */
+export function mockLeadTime(profile: Profile): LeadTime {
+  const deterioration = mockBlock(profile, "DETERIORATION");
+  const examples: LeadTimeExample[] = SEEDS.flatMap((seed) =>
+    entityEvents(seed.id, profile)
+      .filter((e) => e.signalMonth !== null && e.leadMonths !== null)
+      .map((e) => ({
+        entityId: seed.id,
+        entityName: seed.name,
+        eventType: e.eventType,
+        trigger: e.trigger,
+        eventMonth: e.eventMonth,
+        signalMonth: e.signalMonth!,
+        leadMonths: e.leadMonths!,
+        limitSignalMonth: e.limitSignalMonth,
+        limitLeadMonths: e.limitLeadMonths,
+      })),
+  )
+    .sort(
+      (a, b) =>
+        (a.eventType === b.eventType ? 0 : a.eventType === "DETERIORATION" ? -1 : 1) ||
+        b.leadMonths - a.leadMonths ||
+        a.entityId.localeCompare(b.entityId),
+    )
+    .slice(0, 5);
+  const isLimit = profile === PARAMS.products.limitProfile;
+  const cutAhead = Math.round(deterioration.events * 0.55);
+  return {
+    profile,
+    unit: "GROUP",
+    windowMonths: LEAD.windowMonths,
+    horizonMonths: LEAD.horizonMonths,
+    minHistoryMonths: LEAD.minHistoryMonths,
+    deterioration,
+    improvement: mockBlock(profile, "IMPROVEMENT"),
+    limit: isLimit ? { events: deterioration.events, cutAhead, meanLead: 4.1, medianLead: 4 } : null,
+    examples,
   };
 }

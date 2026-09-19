@@ -1,9 +1,11 @@
+import { useSyncExternalStore } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { Profile } from "../hooks/useGlobalParams";
-import { ApiError, apiGet, apiPost } from "./client";
+import { ApiError, apiGet, apiPost, getOfflineSnapshot, subscribeOffline } from "./client";
 import type {
   Direction,
   EntityDetail,
+  LeadTime,
   LimitSimulation,
   Meta,
   Methodology,
@@ -11,6 +13,7 @@ import type {
   Portfolio,
   Profiles,
   Severity,
+  ShowcasePairs,
   SimulateLimitRequest,
   Watchlist,
 } from "./types";
@@ -18,9 +21,18 @@ import type {
 /** true when the app runs on synthetic demo data (VITE_MOCKS=true). */
 export const USE_MOCKS = import.meta.env.VITE_MOCKS === "true";
 
-/** A 404 is an answer (unknown entity, or an endpoint of a later block), not a network hiccup: do not retry it. */
+/**
+ * A 404 is an answer (unknown entity, or an endpoint of a later block), not a network hiccup: do not retry it.
+ * Once the app reads the frozen snapshot, the server is known to be down: fail fast to the error film.
+ */
 function retryUnless404(failures: number, error: Error): boolean {
+  if (getOfflineSnapshot()) return false;
   return !(error instanceof ApiError && error.status === 404) && failures < 3;
+}
+
+/** true once any GET was served from the frozen snapshot in public/fallback (SPEC §14). */
+export function useOffline(): boolean {
+  return useSyncExternalStore(subscribeOffline, getOfflineSnapshot);
 }
 
 /** Loads the generator only in mock mode, so a normal build does not ship it. */
@@ -44,8 +56,8 @@ export function useEntity(id: string, profile: Profile, month: string) {
     queryFn: async () => {
       if (!USE_MOCKS) {
         const detail = await apiGet<EntityDetail>(`/entities/${id}?profile=${profile}&month=${month}`);
-        // A backend before block 6 sends no `alerts`: read it as an empty list so the page still renders.
-        return { ...detail, alerts: detail.alerts ?? [] };
+        // A backend before block 6 sends no `alerts`, one before phase 6 no `events`: read them as empty lists.
+        return { ...detail, alerts: detail.alerts ?? [], events: detail.events ?? [] };
       }
       const detail = (await mocks()).mockEntity(id, profile, month);
       if (!detail) throw new Error(`Entidad ${id} no encontrada`);
@@ -97,6 +109,30 @@ export function useMethodology() {
     queryFn: async () => (USE_MOCKS ? (await mocks()).mockMethodology() : apiGet<Methodology>("/methodology")),
     retry: retryUnless404,
     staleTime: 60_000,
+  });
+}
+
+/** Measured anticipation of the profile (SPEC §8.4): events, leads, false alarms. */
+export function useLeadTime(profile: Profile) {
+  return useQuery({
+    queryKey: ["lead-time", profile],
+    queryFn: async () =>
+      USE_MOCKS ? (await mocks()).mockLeadTime(profile) : apiGet<LeadTime>(`/analytics/lead-time?profile=${profile}`),
+    retry: retryUnless404,
+    placeholderData: (previous) => previous,
+  });
+}
+
+/** Ranked pairs with the same score today and opposite trajectories (SPEC §10.4, decision G9). */
+export function useShowcasePairs(profile: Profile, month: string) {
+  return useQuery({
+    queryKey: ["showcase-pairs", profile, month],
+    queryFn: async () =>
+      USE_MOCKS
+        ? (await mocks()).mockShowcasePairs(profile, month)
+        : apiGet<ShowcasePairs>(`/analytics/showcase-pairs?profile=${profile}&month=${month}`),
+    retry: retryUnless404,
+    placeholderData: (previous) => previous,
   });
 }
 

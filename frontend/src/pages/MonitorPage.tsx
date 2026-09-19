@@ -185,6 +185,7 @@ function ReplayFilm({ replay }: { replay: ReturnType<typeof useReplay> }) {
         {state === "error" ? (
           <p role="alert" className="flex flex-wrap items-center gap-3 text-[15px]">
             <span className="font-semibold text-down">No se pudo conectar con el monitor.</span>
+            <span className="text-ink-muted">Esta función necesita el servidor.</span>
             <button type="button" onClick={() => void replay.resume()} className={SECONDARY}>
               Reintentar
             </button>

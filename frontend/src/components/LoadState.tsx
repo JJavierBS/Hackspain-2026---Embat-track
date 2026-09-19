@@ -1,13 +1,25 @@
+import { ApiError, isServerDown } from "../api/client";
+import { useOffline } from "../api/queries";
 import { Film } from "./Film";
 
 /** Loading and error states share the film frame so the page never jumps. */
 export function LoadState({ error, title = "Cargando" }: { error?: unknown; title?: string }) {
+  const offline = useOffline();
   if (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const raw = error instanceof Error ? error.message : String(error);
+    // A 502 from the proxy has an empty body: name the status instead of printing nothing.
+    const message = raw.trim() || (error instanceof ApiError ? `El servidor respondió ${error.status}.` : "Error desconocido.");
     return (
       <Film title="No se pudo cargar">
         <p className="text-ink">{message}</p>
-        <p className="mt-2 text-ink-muted">Comprueba que el backend está en marcha, o arranca el frontend con `npm run dev:mock`.</p>
+        {offline || isServerDown(error) ? (
+          <p className="mt-2 text-ink-muted">
+            Esta función necesita el servidor.{" "}
+            {offline ? "Los datos congelados no la incluyen." : "Comprueba que el backend está en marcha, o arranca el frontend con `npm run dev:mock`."}
+          </p>
+        ) : (
+          <p className="mt-2 text-ink-muted">Comprueba la dirección, o vuelve a la cartera.</p>
+        )}
       </Film>
     );
   }

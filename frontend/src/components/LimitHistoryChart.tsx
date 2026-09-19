@@ -7,6 +7,8 @@ interface LimitHistoryChartProps {
   points: TimelinePoint[];
   activeMonth: string;
   height?: number;
+  /** Month of the deterioration event (lead time), drawn as a dashed "evento" line so the cut and the event read together. */
+  eventMonth?: string | null;
 }
 
 const CUTS: LimitAction[] = ["REDUCE", "FREEZE"];
@@ -55,7 +57,7 @@ function LimitTooltip({ active, payload }: { active?: boolean; payload?: { paylo
 }
 
 /** The recommended limit month by month (step area), the final score behind it, and the months the engine acted. */
-export function LimitHistoryChart({ points, activeMonth, height = 260 }: LimitHistoryChartProps) {
+export function LimitHistoryChart({ points, activeMonth, height = 260, eventMonth = null }: LimitHistoryChartProps) {
   const data: Row[] = points.map((p) => ({
     month: p.month,
     limit: p.limitEur,
@@ -89,6 +91,14 @@ export function LimitHistoryChart({ points, activeMonth, height = 260 }: LimitHi
           </svg>
           Reducción o congelación
         </li>
+        {eventMonth && (
+          <li className="flex items-center gap-2">
+            <svg width="10" height="14" aria-hidden>
+              <line x1="5" y1="0" x2="5" y2="14" stroke="var(--color-down)" strokeWidth={1.5} strokeDasharray="4 2" />
+            </svg>
+            Evento de deterioro
+          </li>
+        )}
       </ul>
       <div style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
@@ -122,6 +132,16 @@ export function LimitHistoryChart({ points, activeMonth, height = 260 }: LimitHi
               axisLine={false}
               width={36}
             />
+            {eventMonth && (
+              <ReferenceLine
+                yAxisId="eur"
+                x={eventMonth}
+                stroke="var(--color-down)"
+                strokeWidth={1.5}
+                strokeDasharray="4 2"
+                label={{ value: "evento", position: "insideTopRight", fill: "var(--color-down)", fontSize: 13, fontWeight: 600 }}
+              />
+            )}
             <Tooltip content={<LimitTooltip />} cursor={{ stroke: "var(--color-rule)" }} />
             <Area
               yAxisId="eur"

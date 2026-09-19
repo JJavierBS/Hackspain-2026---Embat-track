@@ -1,21 +1,24 @@
 import { useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { CartesianGrid, Line, LineChart, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import type { EntityDetail, PortfolioRow } from "../api/types";
-import { useEntity, usePortfolio } from "../api/queries";
+import type { EntityDetail, EntityEvent, PortfolioRow, ShowcasePair } from "../api/types";
+import { useEntity, usePortfolio, useShowcasePairs } from "../api/queries";
 import { Film } from "../components/Film";
+import { IconDown, IconUp } from "../components/Icons";
 import { LoadState } from "../components/LoadState";
 import { Meter } from "../components/Meter";
 import { PageHeader } from "../components/PageHeader";
 import { ScoreReadout } from "../components/ScoreReadout";
 import { StatusTag, TrendTag } from "../components/StatusTag";
 import { MONTHS, useGlobalParams } from "../hooks/useGlobalParams";
-import { BANDS, formatScore, monthCode, monthShort } from "../lib/format";
+import { useLinkSearch } from "../hooks/useLinkSearch";
+import { BANDS, EVENT_MARK_LABELS, TRIGGER_LABELS, formatLead, formatScore, leadText, monthCode, monthShort } from "../lib/format";
 
 /** Largest final-score gap that still counts as "the same score today" for the showcase pair. */
 const SAME_SCORE_GAP = 3;
 
 /**
+ * Fallback when the API has no pair (a backend before phase 6, or a month with none).
  * SPEC §10.4 showcase pair, picked from the data: among entities whose final scores differ by
  * SAME_SCORE_GAP points or less, the pair with the largest trajectory gap. Falls back to the top two rows.
  */
@@ -43,16 +46,32 @@ export function ComparePage() {
   const { profile, month } = useGlobalParams();
   const [params, setParams] = useSearchParams();
   const portfolio = usePortfolio(profile, month);
-  const pair = useMemo(() => showcasePair(portfolio.data?.rows ?? []), [portfolio.data]);
-  const a = params.get("a") ?? pair?.a ?? "";
-  const b = params.get("b") ?? pair?.b ?? "";
+  const showcase = useShowcasePairs(profile, month);
+  // An API error (old backend) or an empty list both fall back to the client-side pick.
+  const apiPairs = showcase.data?.pairs ?? [];
+  const localPair = useMemo(() => showcasePair(portfolio.data?.rows ?? []), [portfolio.data]);
+  const fallback = apiPairs[0] ? { a: apiPairs[0].up.id, b: apiPairs[0].down.id } : localPair;
+  // Wait for the API pair before opening a default one, so the page does not load two pairs in a row.
+  const settled = !showcase.isPending;
+  const a = params.get("a") ?? (settled ? (fallback?.a ?? "") : "");
+  const b = params.get("b") ?? (settled ? (fallback?.b ?? "") : "");
   const ea = useEntity(a, profile, month);
   const eb = useEntity(b, profile, month);
+  const activePair = apiPairs.find((p) => p.up.id === a && p.down.id === b) ?? null;
 
   function pick(key: "a" | "b", id: string) {
     setParams((prev) => {
       const next = new URLSearchParams(prev);
       next.set(key, id);
+      return next;
+    });
+  }
+
+  function pickPair(pair: ShowcasePair) {
+    setParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("a", pair.up.id);
+      next.set("b", pair.down.id);
       return next;
     });
   }
@@ -64,6 +83,8 @@ export function ComparePage() {
   return (
     <div className="grid gap-12">
       <PageHeader title="Comparar" lede="Dos entidades con la misma nota hoy pueden ir en direcciones opuestas. La trayectoria marca la diferencia." />
+
+      {apiPairs.length > 0 && <PairPicker pairs={apiPairs.slice(0, 3)} active={activePair} onPick={pickPair} />}
 
       {error ? (
         <LoadState error={error} />
@@ -92,6 +113,7 @@ export function ComparePage() {
                     </select>
                   </label>
                   <Side entity={e} month={month} />
+                  <Anticipation events={e.events} />
                 </Film>
               );
             })}
@@ -106,16 +128,87 @@ export function ComparePage() {
   );
 }
 
+/** The top showcase pairs of the API as a joined toggle group, with the reason the active one was picked. */
+function PairPicker({ pairs, active, onPick }: { pairs: ShowcasePair[]; active: ShowcasePair | null; onPick: (p: ShowcasePair) => void }) {
+  return (
+    <div className="grid gap-3">
+      <div role="group" aria-label="Parejas destacadas" className="flex flex-wrap gap-2">
+        {pairs.map((p) => {
+          const on = active?.rank === p.rank;
+          return (
+            <button
+              key={p.rank}
+              type="button"
+              aria-pressed={on}
+              onClick={() => onPick(p)}
+              title={`${p.up.name} frente a ${p.down.name}: ${formatScore(p.finalGap)} puntos de diferencia en la nota, ${formatScore(p.trajGap)} en la trayectoria`}
+              className={`flex min-w-0 items-baseline gap-3 border px-3 py-2 text-left text-[15px] transition-colors ${
+                on ? "border-ink bg-ink text-film" : "border-ink/25 bg-film text-ink hover:border-ink"
+              }`}
+            >
+              <span className="font-semibold whitespace-nowrap">Pareja destacada {p.rank}</span>
+              <span className={`truncate text-sm ${on ? "text-film/75" : "text-ink-muted"}`}>
+                {p.up.id} · {p.down.id}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {active && (
+        <p className="max-w-[80ch] text-[15px] text-ink-muted">
+          Misma nota hoy ({formatScore(active.up.final)} vs {formatScore(active.down.final)}),{" "}
+          {active.meetsSpec ? "trayectorias opuestas" : "trayectorias distintas"} ({formatScore(active.up.traj)} vs{" "}
+          {formatScore(active.down.traj)}).
+          {!active.meetsSpec && (
+            <span className="ml-2 border border-dashed border-ink-muted/60 px-1.5 text-sm whitespace-nowrap">
+              sin pareja que cumpla el criterio este mes: la más cercana
+            </span>
+          )}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** One line per lead-time event of the entity (only events up to the selected month reach the page). */
+function Anticipation({ events }: { events: EntityEvent[] }) {
+  if (events.length === 0) return null;
+  return (
+    <ul className="mt-6 grid gap-2 border-t border-rule pt-4 text-[15px]">
+      {events.map((e) => {
+        const down = e.eventType === "DETERIORATION";
+        const Icon = down ? IconDown : IconUp;
+        return (
+          <li key={`${e.eventType}-${e.eventMonth}`} className="flex items-baseline gap-2">
+            <Icon width={15} height={15} className={`shrink-0 translate-y-0.5 ${down ? "text-down" : "text-up"}`} />
+            <span>
+              {EVENT_MARK_LABELS[e.eventType]} <span className="font-semibold">{TRIGGER_LABELS[e.trigger].toLowerCase()}</span> en{" "}
+              {monthShort(e.eventMonth)} ·{" "}
+              <span className={e.leadMonths !== null && e.leadMonths > 0 ? "font-semibold" : "text-ink-muted"}>
+                {down ? leadText(e.leadMonths) : e.leadMonths === null ? "no anticipada" : e.leadMonths === 0 ? "vista el mismo mes" : `vista ${formatLead(e.leadMonths)} antes`}
+              </span>
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function Side({ entity, month }: { entity: EntityDetail; month: string }) {
   const m = MONTHS.indexOf(month);
+  const linkSearch = useLinkSearch();
   const { row } = entity;
   if (row === null) return <p className="text-ink-muted">Sin puntuación en {monthCode(month)}.</p>;
   return (
     <div className="grid gap-6">
       <ScoreReadout score={row.final} delta={row.delta3m} against={`vs ${monthCode(MONTHS[Math.max(0, m - 3)])}`} size="md" />
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <StatusTag status={row.status} />
         <TrendTag traj={row.traj} />
+        <Link to={`/entity/${entity.id}${linkSearch}`} className="ml-auto text-[15px] font-semibold underline underline-offset-4 hover:text-ink-muted">
+          Ver radiografía
+        </Link>
       </div>
       <div className="grid gap-5 sm:grid-cols-2">
         <Meter label="Nivel" value={row.level} />
@@ -140,6 +233,14 @@ function Overlay({ a, b, month }: { a: EntityDetail; b: EntityDetail; month: str
           <span aria-hidden className="h-[3px] w-6" style={{ background: COLORS.b }} />
           {b.name}
         </li>
+        {a.events.length + b.events.length > 0 && (
+          <li className="flex items-center gap-2">
+            <svg width="10" height="14" aria-hidden>
+              <line x1="5" y1="0" x2="5" y2="14" stroke="var(--color-ink)" strokeWidth={1.5} strokeDasharray="5 3" />
+            </svg>
+            Evento (en el color de su entidad)
+          </li>
+        )}
       </ul>
       <div className="h-[300px]">
         <ResponsiveContainer width="100%" height="100%">
@@ -164,6 +265,25 @@ function Overlay({ a, b, month }: { a: EntityDetail; b: EntityDetail; month: str
               formatter={(v, key) => [formatScore(Number(v)), key === "a" ? a.name : b.name]}
               contentStyle={{ border: "1px solid var(--color-rule)", borderRadius: 0, background: "var(--color-film)" }}
             />
+            {(["a", "b"] as const).flatMap((key) =>
+              (key === "a" ? a : b).events.map((e) => (
+                <ReferenceLine
+                  key={`${key}-${e.eventType}-${e.eventMonth}`}
+                  x={e.eventMonth}
+                  stroke={COLORS[key]}
+                  strokeWidth={1.5}
+                  strokeDasharray="5 3"
+                  label={{
+                    value: "evento",
+                    // Past the middle of the axis the label sits left of its line, so it never runs off the plot.
+                    position: `inside${key === "a" ? "Top" : "Bottom"}${data.findIndex((d) => d.month === e.eventMonth) > data.length / 2 ? "Right" : "Left"}`,
+                    fill: COLORS[key],
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}
+                />
+              )),
+            )}
             <Line dataKey="a" stroke={COLORS.a} strokeWidth={3} dot={false} isAnimationActive={false} />
             <Line dataKey="b" stroke={COLORS.b} strokeWidth={3} dot={false} isAnimationActive={false} />
           </LineChart>
