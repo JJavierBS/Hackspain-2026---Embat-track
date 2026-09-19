@@ -84,6 +84,7 @@ export function AlgorithmPage() {
           applied={data.appliedToData}
           busy={apply.busy}
           onReset={apply.reset}
+          onRerun={apply.rerun}
         />
 
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-8">
@@ -242,10 +243,11 @@ interface WarningProps {
   applied: boolean;
   busy: boolean;
   onReset: () => void;
+  onRerun: () => void;
 }
 
 /** The expert gate: what a change does, where the values come from, and whether the data on screen uses them. */
-function ExpertWarning({ editable, overridden, applied, busy, onReset }: WarningProps) {
+function ExpertWarning({ editable, overridden, applied, busy, onReset, onRerun }: WarningProps) {
   const [confirm, setConfirm] = useState(false);
   return (
     <Film title="Zona de experto" meta={editable ? "Los cambios afectan a todas las páginas" : "Solo lectura"}>
@@ -273,7 +275,7 @@ function ExpertWarning({ editable, overridden, applied, busy, onReset }: Warning
           ) : (
             <p className="max-w-[68ch] text-ink-muted">
               El modo demo apaga el pipeline para que los datos no cambien durante la presentación. Para editar, arranca el
-              backend con <code className="text-ink">XRAY_DEMO_MODE=false</code> y los CSV en <code className="text-ink">data/raw</code>.
+              backend con <code className="text-ink">XRAY_DEMO_MODE=false</code>.
             </p>
           )}
         </div>
@@ -293,6 +295,19 @@ function ExpertWarning({ editable, overridden, applied, busy, onReset }: Warning
               <dd className="font-semibold">{editable ? "Permitida" : "Solo lectura · modo demo"}</dd>
             </div>
           </dl>
+          {editable && (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={onRerun}
+                title="Ejecuta el pipeline otra vez con la configuración activa, sin reiniciar el backend"
+                className="border border-ink px-3 py-1.5 text-[15px] hover:bg-ink hover:text-film disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                Recalcular ahora
+              </button>
+            </div>
+          )}
           {editable && overridden && (
             <div className="flex flex-wrap items-center gap-2">
               {!confirm ? (

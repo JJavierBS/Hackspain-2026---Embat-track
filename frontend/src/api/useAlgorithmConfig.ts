@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ConfigTree } from "../lib/algorithm";
-import { ApiError, apiSend } from "./client";
+import { ApiError, apiPost, apiSend } from "./client";
 import type { PipelineStatus } from "./types";
 
 export interface AlgorithmConfig {
@@ -30,7 +30,7 @@ export type ApplyPhase =
   | { kind: "saving" }
   | { kind: "restarting" }
   | { kind: "recalculating"; stage: string | null; percent: number }
-  | { kind: "done"; sections: string[] }
+  | { kind: "done"; sections: string[]; rerun?: boolean }
   | { kind: "error"; message: string };
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -93,11 +93,47 @@ export function useApplyConfig(bootId: string | undefined) {
     [bootId, client],
   );
 
+  /** POST /pipeline/run with the active config, no restart: follow the status until DONE or FAILED. */
+  const rerun = useCallback(async () => {
+    setPhase({ kind: "recalculating", stage: null, percent: 0 });
+    let runId: string;
+    try {
+      runId = (await apiPost<{ runId: string }>("/pipeline/run")).runId;
+    } catch (e) {
+      setPhase({ kind: "error", message: e instanceof Error ? e.message : String(e) });
+      return;
+    }
+    const deadline = Date.now() + 15 * 60_000;
+    while (alive.current && Date.now() < deadline) {
+      await wait(1200);
+      let status: PipelineStatus;
+      try {
+        const res = await fetch("/api/pipeline/status");
+        status = (await res.json()) as PipelineStatus;
+      } catch {
+        continue;
+      }
+      if (status.runId !== runId) continue;
+      if (status.state === "FAILED") {
+        setPhase({ kind: "error", message: `El recálculo falló: ${status.message ?? "sin detalle"}` });
+        return;
+      }
+      if (status.state === "DONE") {
+        await client.invalidateQueries();
+        if (alive.current) setPhase({ kind: "done", sections: [], rerun: true });
+        return;
+      }
+      setPhase({ kind: "recalculating", stage: status.currentStage, percent: status.percent });
+    }
+    if (alive.current) setPhase({ kind: "error", message: "El servidor no terminó el recálculo en 15 minutos." });
+  }, [client]);
+
   return {
     phase,
     busy: phase.kind === "saving" || phase.kind === "restarting" || phase.kind === "recalculating",
     save: (config: ConfigTree) => follow(() => apiSend("PUT", "/config", config)),
     reset: () => follow(() => apiSend("DELETE", "/config")),
+    rerun,
     clear: () => setPhase({ kind: "idle" }),
   };
 }

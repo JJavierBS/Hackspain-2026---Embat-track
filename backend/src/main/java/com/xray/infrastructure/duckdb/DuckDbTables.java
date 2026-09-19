@@ -8,7 +8,8 @@ public final class DuckDbTables {
 
     public static boolean exists(SqlRunner sql, String table) {
         return !sql.query(
-                "SELECT 1 FROM information_schema.tables WHERE table_schema = 'main' AND table_name = ?",
+                "SELECT 1 FROM information_schema.tables WHERE table_catalog = current_database()"
+                        + " AND table_schema = 'main' AND table_name = ?",
                 (rs, i) -> 1, table).isEmpty();
     }
 }

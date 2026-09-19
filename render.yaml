@@ -1,5 +1,8 @@
-# Render blueprint for the backend. Deployed in demo mode (SPEC §14): no ingest, no pipeline,
-# no CSVs. The frozen results database travels inside the image, so no persistent disk is needed.
+# Render blueprint for the backend. No CSVs in the image: the frozen database carries the results
+# tables and the S30 inputs, so the Algorithm page and POST /api/pipeline/run recalculate from S30
+# onwards (docs/DEPLOY.md). The database lives on the container disk: a redeploy resets it and
+# drops any saved edit. XRAY_DEMO_MODE is not set: the app default is false. Set it to "true" to lock
+# the config and the pipeline again.
 #
 #   Render dashboard -> New -> Blueprint -> pick this repo.
 #
@@ -16,7 +19,5 @@ services:
     dockerContext: ./backend
     healthCheckPath: /actuator/health
     envVars:
-      - key: XRAY_DEMO_MODE
-        value: "true"
       - key: XRAY_DATA_DIR
         value: /data

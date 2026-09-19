@@ -6,11 +6,16 @@ import com.xray.domain.model.EntityType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Map;
 
-/** pipeline_runs keeps the run history; it is not dropped per run (ARCHITECTURE §7). */
+/**
+ * pipeline_runs keeps the run history; it is not dropped per run (ARCHITECTURE §7).
+ * started_at and finished_at are UTC. The shipped database comes from a laptop in Madrid and the deployed
+ * app runs in UTC: with local wall-clock times, a run in prod sorted before the laptop run for two hours.
+ */
 @Repository
 public class PipelineRunRepository {
 
@@ -40,11 +45,15 @@ public class PipelineRunRepository {
         ensureTable();
         try {
             jdbc.update("INSERT INTO pipeline_runs VALUES (?, ?, ?, ?, ?, ?)",
-                    runId, unit.name(), Timestamp.from(startedAt), Timestamp.from(finishedAt),
+                    runId, unit.name(), utc(startedAt), utc(finishedAt),
                     json.writeValueAsString(stageTimingsMs), configHash);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Cannot serialize stage timings", e);
         }
+    }
+
+    private static LocalDateTime utc(Instant t) {
+        return LocalDateTime.ofInstant(t, ZoneOffset.UTC);
     }
 
     private void ensureTable() {

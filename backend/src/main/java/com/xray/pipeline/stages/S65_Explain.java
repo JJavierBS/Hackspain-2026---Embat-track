@@ -60,16 +60,18 @@ public class S65_Explain implements PipelineStage {
         int topN = config.explanation().narrativeTopN();
         double minDelta = config.explanation().minNarratedDelta();
 
-        ctx.panels().parallelStream().forEach(panel -> explain(panel, members, indicatorWeights, lambdas));
         ctx.report(id(), 67, "writing contributions");
-        List<Object[]> rows = ctx.panels().parallelStream()
-                .flatMap(panel -> rows(panel, topN, minDelta).stream()).toList();
-        int n = writer.replace("contributions", DDL, rows);
+        // One batch of panels at a time: every contribution row together (~1M) does not fit a 512 MB instance.
+        int n = writer.replaceInBatches("contributions", DDL, ctx.panels(),
+                panel -> rows(panel, explain(panel, members, indicatorWeights, lambdas), topN, minDelta));
         ctx.report(id(), 69, n + " contribution rows");
     }
 
-    private static void explain(EntityPanel panel, Map<Category, List<IndicatorId>> members,
-                                Map<IndicatorId, Double> indicatorWeights, Map<Profile, Double> lambdas) {
+    private static Map<Profile, List<List<Contribution>>> explain(EntityPanel panel,
+                                                                  Map<Category, List<IndicatorId>> members,
+                                                                  Map<IndicatorId, Double> indicatorWeights,
+                                                                  Map<Profile, Double> lambdas) {
+        Map<Profile, List<List<Contribution>>> out = new EnumMap<>(Profile.class);
         for (Profile p : Profile.values()) {
             ProfileScore[] s = panel.profileScores(p);
             List<List<Contribution>> series = new ArrayList<>(panel.size());
@@ -78,14 +80,16 @@ public class S65_Explain implements PipelineStage {
                 series.add(ExplanationService.explain(s[m], members, indicatorWeights, id -> panel.subScores(id)[mm],
                         lambdas.get(p)));
             }
-            panel.setContributions(p, series);
+            out.put(p, series);
         }
+        return out;
     }
 
-    private List<Object[]> rows(EntityPanel panel, int topN, double minDelta) {
+    private List<Object[]> rows(EntityPanel panel, Map<Profile, List<List<Contribution>>> contributions,
+                                int topN, double minDelta) {
         List<Object[]> rows = new ArrayList<>();
         for (Profile p : Profile.values()) {
-            List<List<Contribution>> series = panel.contributions(p);
+            List<List<Contribution>> series = contributions.get(p);
             ProfileScore[] s = panel.profileScores(p);
             for (int m = 0; m < panel.size(); m++) {
                 List<Contribution> now = series.get(m);

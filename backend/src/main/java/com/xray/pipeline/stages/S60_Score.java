@@ -73,16 +73,13 @@ public class S60_Score implements PipelineStage {
         ctx.panels().parallelStream().forEach(panel -> score(panel, members, indicatorWeights, params));
         ctx.report(id(), 70, "writing results");
 
-        List<Object[]> indicatorRows = ctx.panels().parallelStream()
-                .flatMap(panel -> indicatorRows(panel, config).stream()).toList();
-        List<Object[]> categoryRows = ctx.panels().parallelStream()
-                .flatMap(panel -> categoryRows(panel, members).stream()).toList();
-        List<Object[]> profileRows = ctx.panels().parallelStream()
-                .flatMap(panel -> ProfileScoreTable.rows(panel).stream()).toList();
-        writer.replace("indicator_values", INDICATOR_VALUES_DDL, indicatorRows);
-        writer.replace("category_scores", CATEGORY_SCORES_DDL, categoryRows);
+        writer.replaceInBatches("indicator_values", INDICATOR_VALUES_DDL, ctx.panels(),
+                panel -> indicatorRows(panel, config));
+        writer.replaceInBatches("category_scores", CATEGORY_SCORES_DDL, ctx.panels(),
+                panel -> categoryRows(panel, members));
         writer.replace("profile_weights", PROFILE_WEIGHTS_DDL, weightRows(config));
-        int rows = writer.replace(ProfileScoreTable.NAME, ProfileScoreTable.DDL, profileRows);
+        int rows = writer.replaceInBatches(ProfileScoreTable.NAME, ProfileScoreTable.DDL, ctx.panels(),
+                ProfileScoreTable::rows);
         ctx.report(id(), 80, rows + " profile rows");
     }
 

@@ -16,6 +16,7 @@ public class DuckDbConfig {
     public DuckDbDataSource dataSource(XRayProperties props) throws IOException, SQLException {
         Path dir = props.dataPath();
         Files.createDirectories(dir);
-        return new DuckDbDataSource("jdbc:duckdb:" + dir.resolve("xray.duckdb"));
+        return new DuckDbDataSource("jdbc:duckdb:" + dir.resolve("xray.duckdb"), props.duckdbMemoryLimit(),
+                props.duckdbThreads());
     }
 }
