@@ -585,8 +585,7 @@ function Recommendations({
         <div className="mt-6 border-t border-rule pt-5">
           <button
             type="button"
-            className="group flex w-full items-center justify-center gap-3 border-2 border-[var(--color-scan)] px-4 py-3 text-left text-sm font-semibold text-white shadow-[0_4px_0_var(--color-ink)] transition-transform hover:-translate-y-0.5 hover:shadow-[0_6px_0_var(--color-ink)] disabled:cursor-wait disabled:opacity-60 disabled:hover:translate-y-0"
-            style={{ background: "var(--color-scan)" }}
+            className="group flex w-full items-center justify-center gap-3 border border-rule bg-paper px-4 py-2.5 text-left text-[15px] font-medium text-ink transition-colors hover:border-ink hover:bg-white disabled:cursor-wait disabled:opacity-55"
             disabled={actionPlan.isPending}
             aria-label="Generar un plan de acción personalizado con inteligencia artificial"
             onClick={() =>
@@ -614,10 +613,10 @@ function Recommendations({
               })
             }
           >
-            <IconStar width={20} height={20} className="shrink-0 transition-transform group-hover:rotate-12" />
+            <IconStar width={17} height={17} className="shrink-0 text-ink-muted" />
             <span>
-              <span className="block text-base">{actionPlan.isPending ? "Generando plan..." : "Generar plan de acción"}</span>
-              <span className="mt-0.5 block text-xs font-normal text-white/85">Convierte estas prioridades en pasos concretos</span>
+              <span className="block">{actionPlan.isPending ? "Generando plan..." : "Generar plan de acción"}</span>
+              <span className="mt-0.5 block text-xs font-normal text-ink-muted">Convierte estas prioridades en pasos concretos</span>
             </span>
           </button>
           {actionPlan.error && <p className="mt-2 text-sm text-down">No se pudo generar el plan. Puedes intentarlo de nuevo.</p>}
@@ -631,16 +630,16 @@ function Recommendations({
 function ActionPlanView({ plan }: { plan: ActionPlan }) {
   const risks = plan.risks ?? [];
   return (
-    <div className="mt-6 grid gap-5 border-2 border-ink bg-[var(--color-scan-soft)] p-5 shadow-[4px_4px_0_var(--color-ink)]">
+    <div className="mt-6 grid gap-5 border border-rule bg-paper p-5">
       <div>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-lg font-semibold">Plan de acción personalizado</h3>
-          <span className="border border-ink bg-paper px-2 py-1 text-xs font-semibold uppercase tracking-wide">
+          <span className="border border-rule px-2 py-1 text-xs font-medium uppercase tracking-wide text-ink-muted">
             {plan.source === "HELMcode" ? "IA · Helmcode" : "Plan base"}
           </span>
         </div>
-        <p className="mt-3 font-semibold">Objetivo: {plan.objective ?? "Mejorar las prioridades financieras detectadas"}</p>
-        <p className="mt-1 text-[15px]">Diagnóstico: {plan.diagnosis ?? plan.summary}</p>
+        <p className="mt-4 border-l-2 border-rule pl-3 font-semibold">Objetivo: {plan.objective ?? "Mejorar las prioridades financieras detectadas"}</p>
+        <p className="mt-2 text-[15px] text-ink-muted"><span className="font-semibold text-ink">Diagnóstico:</span> {plan.diagnosis ?? plan.summary}</p>
         <p className="mt-1 text-[15px] text-ink-muted">{plan.summary}</p>
       </div>
       {risks.length > 0 && (
