@@ -4,17 +4,32 @@ Provisional anchors are live in `backend/src/main/resources/scoring-config.yml` 
 Quantiles come from `sql/90_threshold_quantiles.sql` after block 3, per `entity_type` of the active unit.
 A human (Fran / José Javier) reviews every proposal before `status: closed`.
 
-| Indicator | Fixed part | Provisional anchors | p5 / p25 / p50 / p75 / p95 | Proposal | Status |
-|---|---|---|---|---|---|
-| `PAY_DPO` | ≤ 60 days → 100 | [[60,100],[90,60],[120,30],[180,0]] | after block 3 | — | pending |
-| `CF_NOCF_MARGIN` | < 0 → ≤ 35, 0 → 45 | [[-0.2,0],[-0.0001,35],[0,45],[0.1,75],[0.2,100]] | after block 3 | — | pending |
-| `ACT_COLLECTIONS_GROWTH` | 0% → 50, symmetric | [[-0.3,0],[-0.15,25],[0,50],[0.15,75],[0.3,100]] | after block 3 | — | pending |
-| `LIQ_MIN_BALANCE` | < 0 → ≤ 25 | [[-1,0],[0,25],[0.5,60],[1,80],[2,100]] | after block 3 | — | pending |
-| `LEV_FACTORING_RELIANCE` | 0% → 100 | [[0,100],[0.2,70],[0.4,45],[0.7,15],[1.0,0]] | after block 3 | — | pending |
-| `PAY_OVERDUE_PAYABLES` | 0% → 100 | [[0,100],[0.1,75],[0.25,45],[0.5,15],[0.8,0]] | after block 3 | — | pending |
-| `DEL_OVERDUE_RECEIVABLES` | 0% → 100 | [[0,100],[0.1,75],[0.25,45],[0.5,15],[0.8,0]] | after block 3 | — | pending |
-| `LEV_FUNDING_COST` | spread over `reference-rate` | [[0,100],[0.01,85],[0.025,60],[0.05,30],[0.08,0]] | after block 3 | — | pending |
-| `CF_VOLATILITY` | — | [[0.1,100],[0.3,70],[0.6,40],[1.0,15],[2.0,0]] | after block 3 | — | pending |
-| `CON_CUSTOMER_CHURN` | — | [[0.0,100],[0.1,75],[0.25,45],[0.5,15],[0.8,0]] | after block 3 | — | pending |
+Quantiles: run of 2026-09-19 on `main` after PRs #4 and #5, unit `GROUP`, available rows of all 24 months.
+`n` = number of available group-months. The config does not change until the review (phase 3 decision D6).
+
+| Indicator | Fixed part | Provisional anchors | n | p5 / p25 / p50 / p75 / p95 | Proposal | Status |
+|---|---|---|---:|---|---|---|
+| `PAY_DPO` | ≤ 60 days → 100 | [[60,100],[90,60],[120,30],[180,0]] | 2,407 | 0 / 4.3 / 17.6 / 31.2 / 70.4 | [[60,100],[75,70],[90,45],[120,15],[150,0]] | pending |
+| `CF_NOCF_MARGIN` | < 0 → ≤ 35, 0 → 45 | [[-0.2,0],[-0.0001,35],[0,45],[0.1,75],[0.2,100]] | 3,668 | −1.19 / −0.157 / 0.013 / 0.164 / 0.584 | [[-0.5,0],[-0.15,20],[-0.0001,35],[0,45],[0.15,75],[0.4,100]] | pending |
+| `ACT_COLLECTIONS_GROWTH` | 0% → 50, symmetric | [[-0.3,0],[-0.15,25],[0,50],[0.15,75],[0.3,100]] | 3,014 | −0.98 / −0.333 / 0.026 / 0.489 / 5.84 | [[-0.6,0],[-0.3,25],[0,50],[0.3,75],[0.6,100]] | pending |
+| `LIQ_MIN_BALANCE` | < 0 → ≤ 25 | [[-1,0],[0,25],[0.5,60],[1,80],[2,100]] | 3,770 | −0.23 / 0.136 / 0.719 / 2.0 / 17.0 | [[-0.5,0],[0,25],[0.25,50],[1,75],[3,100]] | pending |
+| `LEV_FACTORING_RELIANCE` | 0% → 100 | [[0,100],[0.2,70],[0.4,45],[0.7,15],[1.0,0]] | 4,280 | 0 / 0 / 0 / 0 / 0.100 | keep provisional | pending |
+| `PAY_OVERDUE_PAYABLES` | 0% → 100 | [[0,100],[0.1,75],[0.25,45],[0.5,15],[0.8,0]] | 2,409 | 0 / 0 / 0.018 / 0.133 / 0.740 | keep provisional | pending |
+| `DEL_OVERDUE_RECEIVABLES` | 0% → 100 | [[0,100],[0.1,75],[0.25,45],[0.5,15],[0.8,0]] | 2,238 | 0 / 0 / 0.021 / 0.160 / 1.0 | keep provisional | pending |
+| `LEV_FUNDING_COST` | spread over `reference-rate` | [[0,100],[0.01,85],[0.025,60],[0.05,30],[0.08,0]] | 1,534 | −0.035 / −0.035 / −0.030 / −0.015 / 0.119 | keep provisional, review after `reference-rate` is set | pending |
+| `CF_VOLATILITY` | — | [[0.1,100],[0.3,70],[0.6,40],[1.0,15],[2.0,0]] | 2,992 | 0.082 / 0.198 / 0.365 / 0.674 / 2.0 | keep provisional | pending |
+| `CON_CUSTOMER_CHURN` | — | [[0.0,100],[0.1,75],[0.25,45],[0.5,15],[0.8,0]] | 330 | 0 / 0 / 0.143 / 0.294 / 1.0 | keep provisional | pending |
+
+## Why each proposal
+
+- **`PAY_DPO`:** 95 % of group-months are at 70 days or less, so the legal 60 days gives 100 to almost all of them (mean level 97.8 at M23). The fixed part stays. A steeper tail gives a real signal to the rare entity above 60 days.
+- **`CF_NOCF_MARGIN`:** with the provisional anchors, p25 (−0.157) scores about 7 and p75 (0.164) scores 100. The proposal keeps the two fixed points and spreads the tails: p25 → about 20, p75 → about 76, p90 (0.36) → about 96.
+- **`ACT_COLLECTIONS_GROWTH`:** ±30 % saturates. p25 and p75 are −33 % and +49 %. The proposal keeps 0 → 50 and the symmetry, and doubles the span: p25 → about 22, p75 → about 91.
+- **`LIQ_MIN_BALANCE`:** p75 (2.0) is already at the provisional top. The proposal keeps < 0 → ≤ 25 and moves the top to 3: p25 → about 39, p50 → about 66, p75 → about 88.
+- **`LEV_FACTORING_RELIANCE`:** p90 is 0.004. Only the top 5 % has a non-zero value. The data cannot support a finer tail, so the provisional anchors stay.
+- **`PAY_OVERDUE_PAYABLES`, `DEL_OVERDUE_RECEIVABLES`:** the provisional anchors already spread p75 (about 65) and p90 (about 28 and 12). `DEL_OVERDUE_RECEIVABLES` at 0.20 and 0.35 (the SPEC §8.5 alert levels) scores 55 and 33, which agrees with the alerts. Keep.
+- **`LEV_FUNDING_COST`:** p5 to p75 are between −0.035 and −0.015. The measured interest rate is almost zero for most entities, so the spread is about `−reference-rate` and the level is 100. The value moves when a human sets `reference-rate`. Review the anchors after that.
+- **`CF_VOLATILITY`:** the provisional anchors give p25 → about 85, p50 → about 63, p75 → about 35. That is a good spread. Keep.
+- **`CON_CUSTOMER_CHURN`:** only 330 available group-months (13.6 % at M23, concentration coverage guard D9). Too few rows to move anything. Keep.
 
 `reference-rate` (limit engine and `LEV_FUNDING_COST`) is a placeholder of 0.035. Set the current market rate by hand.

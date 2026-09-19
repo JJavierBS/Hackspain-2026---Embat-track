@@ -478,3 +478,53 @@ Notes on the values:
    dataset, so the pipeline never special-cases an ID. The indicators of this company stay as computed.
 4. **`DEL_AGING_90`:** owned by plan B. See B's report.
 5. **`FINANCING_IN` empty:** `LEV_FACTORING_RELIANCE` uses only the debt mix (factoring and confirming outstanding / total outstanding). The SPEC component "growth of factoring-classified inflows" is not built, because no category marks a factoring advance. The value is 0 for most entities (p95 0 for companies).
+
+## Block 3 run (merged) (2026-09-19)
+Clean run on `main` after PRs #4 and #5 (A and B merged), real CSVs, unit `GROUP`. State `DONE`, 9 stages.
+The 4 tests pass (`AnchorInterpolatorTest`, `ProfileRenormalizationTest`, `RollupTest`, `ScoringConfigValidationTest`).
+
+| stage | ms |
+|---|---:|
+| S00_INGEST | 254 |
+| S10_STAGING | 6,297 |
+| S20_MONTHLY | 320 |
+| S25_ROLLUP | 149 |
+| S30_RAW_INDICATORS | 1,789 |
+| S40_NORMALIZE | 9 |
+| S50_TRAJECTORY | 5 |
+| S60_SCORE | 720 |
+| S95_QUANTILES | 4 |
+| total | 9,547 |
+
+Checks:
+- `indicator_values_raw`: 22 indicators × 2 entity types. Every indicator has 6,000 group rows and 30,864 company rows.
+- `profile_scores`: 6,000 rows for each profile, 4,280 with a `final` (the active group-months). Every `final` is in [0, 100]. At M23, 248 of 250 groups have a score (2 groups are never active).
+- `threshold_quantiles`: 22 rows. The 10 pending indicators are in `docs/THRESHOLDS.md` with a proposal.
+
+Plan B indicators, availability over all group rows (% of 6,000):
+
+| indicator | avail % |
+|---|---:|
+| PAY_DSO | 37.1 |
+| PAY_DPO | 40.1 |
+| PAY_SUPPLIER_LATENESS | 40.1 |
+| PAY_OVERDUE_PAYABLES | 40.2 |
+| DEL_OVERDUE_RECEIVABLES | 37.3 |
+| DEL_AGING_90 | 28.3 |
+| CON_HHI_CUSTOMERS | 7.7 |
+| CON_HHI_SUPPLIERS | 3.2 |
+| CON_CUSTOMER_CHURN | 5.5 |
+
+B's final report is not in the repository. Its data findings (open question 4, `DEL_AGING_90`) stay open.
+
+**Histogram of `final` at M23** (248 groups):
+
+| profile | p5 | p25 | p50 | p75 | p95 |
+|---|---:|---:|---:|---:|---:|
+| BANK | 39.8 | 51.6 | 64.5 | 78.6 | 86.2 |
+| FUND | 19.6 | 36.8 | 49.2 | 66.9 | 85.0 |
+| INSURER | 38.5 | 62.7 | 70.9 | 77.7 | 86.0 |
+
+BANK and FUND do not cluster (p5–p95 spans 46 and 65 points). INSURER has a narrow middle: p25–p75 spans 15 points, but p5–p95 spans 48 points.
+A probable cause is the payment and delinquency levels near 100 (mean level at M23: `PAY_DPO` 97.8, `DEL_OVERDUE_RECEIVABLES` 93.8, `PAY_DSO` 93.0), and INSURER gives these two categories 50 % of the weight.
+**Decision:** no anchor change now (D6). The `PAY_DPO` proposal in `THRESHOLDS.md` widens the tail. Weights do not change for this reason (CLAUDE.md).
