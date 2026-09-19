@@ -55,6 +55,7 @@ public class MetaQuery {
                 Arrays.stream(Profile.values()).map(Enum::name).toList(), counts, runId, finishedAt,
                 props.demoMode(), DuckDbTables.exists(sql, "contributions"),
                 DuckDbTables.exists(sql, "changepoints"), CAVEATS, DuckDbTables.exists(sql, "alerts"),
-                DuckDbTables.exists(sql, "limit_decisions"));
+                DuckDbTables.exists(sql, "limit_decisions"),
+                DuckDbTables.exists(sql, "lead_time_events") && DuckDbTables.exists(sql, "showcase_pairs"));
     }
 }

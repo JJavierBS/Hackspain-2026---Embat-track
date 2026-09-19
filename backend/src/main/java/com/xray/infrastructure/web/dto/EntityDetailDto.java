@@ -11,5 +11,5 @@ public record EntityDetailDto(String id, String name, String entityType, String 
                               List<ChangeDto> changes1m, List<ChangeDto> changes3m, List<IndicatorRowDto> indicators,
                               List<TimelinePointDto> timeline, List<ChangepointDto> changepoints,
                               List<PortfolioRowDto> companies, LimitDecisionDto limit, PremiumQuoteDto premium,
-                              MomentumDto momentum, List<AlertDto> alerts) {
+                              MomentumDto momentum, List<AlertDto> alerts, List<EntityEventDto> events) {
 }

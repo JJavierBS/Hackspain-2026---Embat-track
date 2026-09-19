@@ -3,9 +3,12 @@ package com.xray.config;
 import com.xray.domain.model.Band;
 import com.xray.domain.model.EntityType;
 import com.xray.domain.model.FlowClass;
+import com.xray.domain.model.HealthStatus;
 import com.xray.domain.model.IndicatorId;
 import com.xray.domain.model.Profile;
+import com.xray.domain.service.LeadTimeAnalyzer;
 import com.xray.domain.service.MomentumScreen;
+import com.xray.domain.service.ShowcaseFinder;
 import com.xray.domain.service.PremiumEngine;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -13,6 +16,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /** Binds scoring-config.yml. The compact constructor validates, so a bad config stops the boot. */
 @ConfigurationProperties(prefix = "scoring")
@@ -44,11 +48,14 @@ public record ScoringConfig(
         ConfidenceConfig confidence,
         ExplanationConfig explanation,
         ProductsConfig products,
-        AlertsConfig alerts) {
+        AlertsConfig alerts,
+        LeadTimeConfig leadTime,
+        ShowcaseConfig showcase) {
 
     public ScoringConfig {
         ScoringConfigValidator.validate(indicators, profiles);
         ScoringConfigValidator.validatePhase5(products, alerts, limitEngine);
+        ScoringConfigValidator.validatePhase6(leadTime, showcase);
     }
 
     public record MonthRange(String start, String end) {
@@ -151,5 +158,39 @@ public record ScoringConfig(
 
     /** SPEC §8.5 watchlist (phase 5 decision F15). */
     public record WatchlistConfig(int minCritical, int minWarn) {
+    }
+
+    /** SPEC §8.4 measured anticipation (phase 6 decisions G3–G7). Evaluation only: nothing scores from it. */
+    public record LeadTimeConfig(int minHistoryMonths, int windowMonths, int horizonMonths,
+                                 EventsConfig events, SignalConfig signal) {
+
+        /** Domain parameters. The domain never imports config; config flattens itself into the record. */
+        public LeadTimeAnalyzer.Params toParams() {
+            return new LeadTimeAnalyzer.Params(minHistoryMonths, windowMonths, horizonMonths,
+                    events.runwayBelow(), events.runwayMonths(), events.dscrBelow(), events.dscrMonths(),
+                    events.overdueMaxLevel(), events.scoreBelow(), events.improvementCross(),
+                    events.improvementBelow(), events.improvementBelowMonths(),
+                    Set.copyOf(signal.deteriorationStatuses()), signal.deteriorationMaxTraj(),
+                    Set.copyOf(signal.improvementStatuses()), signal.improvementMinTraj());
+        }
+    }
+
+    /** The proxy events of SPEC §8.4: no default label exists, so the conditions stand in for one. */
+    public record EventsConfig(double runwayBelow, int runwayMonths, double dscrBelow, int dscrMonths,
+                               double overdueMaxLevel, double scoreBelow, double improvementCross,
+                               double improvementBelow, int improvementBelowMonths) {
+    }
+
+    /** When the system "raised its hand" (decision G5). */
+    public record SignalConfig(List<HealthStatus> deteriorationStatuses, double deteriorationMaxTraj,
+                               List<HealthStatus> improvementStatuses, double improvementMinTraj) {
+    }
+
+    /** SPEC §10.4 showcase pairs (phase 6 decision G9). */
+    public record ShowcaseConfig(double maxFinalGap, double upMinTraj, double downMaxTraj, int topN) {
+
+        public ShowcaseFinder.Params toParams() {
+            return new ShowcaseFinder.Params(maxFinalGap, upMinTraj, downMaxTraj, topN);
+        }
     }
 }

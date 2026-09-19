@@ -1,6 +1,7 @@
 package com.xray.config;
 
 import com.xray.domain.model.Category;
+import com.xray.domain.model.HealthStatus;
 import com.xray.domain.model.IndicatorId;
 import com.xray.domain.model.Profile;
 import org.junit.jupiter.api.BeforeAll;
@@ -142,6 +143,20 @@ class ScoringConfigValidationTest {
         assertTrue(ex.getMessage().contains("runway-low"), ex.getMessage());
     }
 
+    @Test
+    void phase6KeysBind() {
+        var lt = base.leadTime();
+        assertEquals(6, lt.minHistoryMonths());
+        assertEquals(12, lt.windowMonths());
+        assertEquals(6, lt.horizonMonths());
+        assertEquals(1.5, lt.events().runwayBelow());
+        assertEquals(65.0, lt.events().improvementCross());
+        assertTrue(lt.signal().deteriorationStatuses().contains(HealthStatus.TURNING));
+        assertEquals(35.0, lt.signal().deteriorationMaxTraj());
+        assertEquals(3.0, base.showcase().maxFinalGap());
+        assertEquals(10, base.showcase().topN());
+    }
+
     private static ScoringConfig copyWith(Map<IndicatorId, IndicatorConfig> ind, Map<Profile, ProfileConfig> prof) {
         return copyWith(ind, prof, base.alerts());
     }
@@ -153,6 +168,7 @@ class ScoringConfigValidationTest {
                 base.defaultFlowClass(), base.otherSignFallback(), ind, prof, base.regimes(), base.bands(),
                 base.limitEngine(), base.insurer(), base.debtDscr(), base.dataRules(),
                 base.levDebtToCf(), base.momentum(), base.concentration(), base.windows(), base.taxRegularity(),
-                base.statuses(), base.confidence(), base.explanation(), base.products(), alerts);
+                base.statuses(), base.confidence(), base.explanation(), base.products(), alerts,
+                base.leadTime(), base.showcase());
     }
 }
