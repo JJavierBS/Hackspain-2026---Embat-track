@@ -35,6 +35,7 @@ import com.xray.pipeline.stages.S70_Dynamics;
 import com.xray.pipeline.stages.S75_Products;
 import com.xray.pipeline.stages.S80_Alerts;
 import com.xray.pipeline.stages.S85_Forecast;
+import com.xray.pipeline.stages.S88_Recommendations;
 import com.xray.pipeline.stages.S90_Analytics;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.bind.Binder;
@@ -108,6 +109,7 @@ class LookAheadTest {
         assertFalse(a.get("profile_scores").isEmpty(), "the synthetic panels produced no scores");
         assertFalse(a.get("lead_time_events").isEmpty(), "the synthetic panels produced no lead-time events");
         assertFalse(a.get("forecast_points").isEmpty(), "the synthetic panels produced no forecast");
+        assertFalse(a.get("recommendations").isEmpty(), "the synthetic panels produced no recommendation");
     }
 
     private static Map<String, List<String>> run(ScoringConfig config, List<EntityPanel> panels) throws Exception {
@@ -127,7 +129,7 @@ class LookAheadTest {
         return List.of(new S40_Normalize(), new S50_Trajectory(), new S60_Score(writer),
                 new S65_Explain(writer, new TemplateNarrativeRenderer()), new S70_Dynamics(writer),
                 new S75_Products(writer), new S80_Alerts(writer, rules(config)), new S85_Forecast(writer),
-                new S90_Analytics(writer));
+                new S88_Recommendations(writer, new TemplateNarrativeRenderer()), new S90_Analytics(writer));
     }
 
     /** The 15 rules of phase 5. Four take no config; the rest take ScoringConfig. */

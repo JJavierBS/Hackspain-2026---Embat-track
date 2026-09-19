@@ -200,6 +200,6 @@ class ScoringConfigValidationTest {
                 base.limitEngine(), base.insurer(), base.debtDscr(), base.dataRules(),
                 base.levDebtToCf(), base.momentum(), base.concentration(), base.windows(), base.taxRegularity(),
                 base.statuses(), base.confidence(), base.explanation(), base.products(), alerts,
-                base.leadTime(), base.showcase(), forecast);
+                base.leadTime(), base.showcase(), forecast, base.recommendations());
     }
 }
