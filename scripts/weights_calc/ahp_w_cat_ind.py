@@ -1,7 +1,8 @@
 """
 Two-level AHP for the scoring weights (phase 7, plan A-2).
 
-  1) Category level: pairwise judgments between the 10 categories, once per profile.
+  1) Category level: pairwise judgments between the 10 categories, once per profile,
+     derived from per-profile importance ratings (docs/WEIGHTS.md).
      Output -> scoring.profiles.<P>.weights (x100, 2 decimals, sums to 100).
   2) Indicator level: pairwise judgments inside each multi-indicator category.
      Profile-independent (decision H6). Output -> scoring.indicators.<ID>.weight.
@@ -42,32 +43,37 @@ CATEGORIES = {
 }
 
 # ---------------------------------------------------------------------------
-# 2) Category level, per profile.
-#    CATEGORY_RANKING: most to least important. CATEGORY_JUDGMENTS: explicit Saaty values
-#    for the pairs (i, j) with i ranked above j; a pair left out falls back to
-#    CATEGORY_RANK_TO_SAATY(rank distance). Value > 1 means i is more important than j.
+# 2) Category level, per profile (docs/WEIGHTS.md §2).
+#    CATEGORY_RATINGS: importance of each category for one kind of user, 1..9. The judgment
+#    for the pair (i, j) is rating_i / rating_j snapped to the nearest Saaty value, so each
+#    profile has its own magnitudes, not a fixed decay vector permuted by a ranking.
+#    CATEGORY_JUDGMENTS: explicit Saaty values that override single pairs (i, j), for the
+#    expert review (decision H17). Value > 1 means i is more important than j.
 # ---------------------------------------------------------------------------
-CATEGORY_RANKING = {
-    "BANK": [
-        "DEBT_SERVICE", "LIQUIDITY", "OPERATING_CASH_FLOW", "LEVERAGE", "DELINQUENCY",
-        "PAYMENT_BEHAVIOUR", "TAX_REGULARITY", "MOMENTUM", "CONCENTRATION", "ACTIVITY_GROWTH",
-    ],
-    "FUND": [
-        "ACTIVITY_GROWTH", "MOMENTUM", "OPERATING_CASH_FLOW", "LIQUIDITY", "CONCENTRATION",
-        "LEVERAGE", "DEBT_SERVICE", "PAYMENT_BEHAVIOUR", "DELINQUENCY", "TAX_REGULARITY",
-    ],
-    "INSURER": [
-        "PAYMENT_BEHAVIOUR", "DELINQUENCY", "LIQUIDITY", "CONCENTRATION", "OPERATING_CASH_FLOW",
-        "LEVERAGE", "DEBT_SERVICE", "TAX_REGULARITY", "MOMENTUM", "ACTIVITY_GROWTH",
-    ],
+CATEGORY_RATINGS = {
+    "BANK": {
+        "DEBT_SERVICE": 9, "OPERATING_CASH_FLOW": 9, "LIQUIDITY": 8, "LEVERAGE": 6, "DELINQUENCY": 4,
+        "PAYMENT_BEHAVIOUR": 4, "TAX_REGULARITY": 3, "MOMENTUM": 3, "CONCENTRATION": 3, "ACTIVITY_GROWTH": 3,
+    },
+    "FUND": {
+        "ACTIVITY_GROWTH": 9, "MOMENTUM": 7, "OPERATING_CASH_FLOW": 6, "LIQUIDITY": 5, "CONCENTRATION": 5,
+        "LEVERAGE": 3, "DEBT_SERVICE": 2, "PAYMENT_BEHAVIOUR": 2, "DELINQUENCY": 2, "TAX_REGULARITY": 1,
+    },
+    "INSURER": {
+        "PAYMENT_BEHAVIOUR": 9, "LIQUIDITY": 6, "DELINQUENCY": 5, "OPERATING_CASH_FLOW": 5, "CONCENTRATION": 4,
+        "LEVERAGE": 4, "DEBT_SERVICE": 3, "TAX_REGULARITY": 3, "MOMENTUM": 2, "ACTIVITY_GROWTH": 2,
+    },
 }
 
-
-def CATEGORY_RANK_TO_SAATY(d):
-    return {1: 2, 2: 3, 3: 4}.get(d, 5)
-
-
 CATEGORY_JUDGMENTS = {"BANK": {}, "FUND": {}, "INSURER": {}}
+
+SAATY_SCALE = [1 / v for v in range(9, 1, -1)] + list(range(1, 10))
+
+
+def snap_to_saaty(ratio):
+    """Nearest Saaty value to a ratio, measured on a log scale (1/3 and 3 are equally far from 1)."""
+    return min(SAATY_SCALE, key=lambda s: abs(np.log(s) - np.log(ratio)))
+
 
 # ---------------------------------------------------------------------------
 # 3) Indicator level: profile-independent (decision H6). Pairs (i, j), value > 1 = i matters more.
@@ -85,7 +91,7 @@ INDICATOR_JUDGMENTS_DEFAULT = {
         ("CF_NOCF_MARGIN", "CF_VOLATILITY"): 3,
     },
     "DEBT_SERVICE": {
-        ("DEBT_DSCR", "DEBT_LINE_UTIL"): 5,
+        ("DEBT_DSCR", "DEBT_LINE_UTIL"): 3,
     },
     "LEVERAGE": {
         ("LEV_DEBT_TO_CF", "LEV_FACTORING_RELIANCE"): 3,
@@ -134,11 +140,12 @@ def build_pairwise_matrix(criteria, judgments):
 
 
 def category_judgments(profile):
-    ranking = CATEGORY_RANKING[profile]
+    ratings = CATEGORY_RATINGS[profile]
+    names = list(ratings)
     judgments = {}
-    for i in range(len(ranking)):
-        for j in range(i + 1, len(ranking)):
-            judgments[(ranking[i], ranking[j])] = CATEGORY_RANK_TO_SAATY(j - i)
+    for i in range(len(names)):
+        for j in range(i + 1, len(names)):
+            judgments[(names[i], names[j])] = snap_to_saaty(ratings[names[i]] / ratings[names[j]])
     judgments.update(CATEGORY_JUDGMENTS.get(profile, {}))
     return judgments
 
@@ -156,10 +163,12 @@ def checked_weights(label, criteria, judgments, report):
 
 
 def category_weights_x100(profile, report):
-    ranking = CATEGORY_RANKING[profile]
-    if sorted(ranking) != sorted(CATEGORIES):
-        fail(f"{profile}: the ranking must hold the {len(CATEGORIES)} categories exactly once")
-    weights = checked_weights(f"categories/{profile}", ranking, category_judgments(profile), report)
+    ratings = CATEGORY_RATINGS[profile]
+    if sorted(ratings) != sorted(CATEGORIES):
+        fail(f"{profile}: the ratings must hold the {len(CATEGORIES)} categories exactly once")
+    if not all(1 <= r <= 9 for r in ratings.values()):
+        fail(f"{profile}: every rating must be in 1..9")
+    weights = checked_weights(f"categories/{profile}", list(ratings), category_judgments(profile), report)
     rounded = {c: round(w * 100, 2) for c, w in weights.items()}
     largest = max(rounded, key=rounded.get)
     rounded[largest] = round(rounded[largest] + 100 - sum(rounded.values()), 2)   # residual -> largest
