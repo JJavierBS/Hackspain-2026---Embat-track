@@ -106,33 +106,33 @@ scoring:
     factoring-debt-types: [factoring, confirming]      # LEV_FACTORING_RELIANCE (SPEC §6)
 
   indicators:
-    LIQ_RUNWAY:             { category: LIQUIDITY, method: anchors, status: closed, source: "runway literature", anchors: [[0,0],[1,20],[3,50],[6,75],[12,100]] }
-    LIQ_BUFFER:             { category: LIQUIDITY, method: anchors, status: closed, source: "coverage literature", anchors: [[0,0],[0.5,30],[1,60],[2,85],[3,100]] }
-    LIQ_MIN_BALANCE:        { category: LIQUIDITY, method: anchors, status: pending, source: "natural zero (overdraft <= 25) + quantiles (provisional)", anchors: [[-1,0],[0,25],[0.5,60],[1,80],[2,100]] }
-    CF_NOCF_MARGIN:         { category: OPERATING_CASH_FLOW, method: anchors, status: pending, source: "natural zero + quantiles (provisional)", anchors: [[-0.2,0],[-0.0001,35],[0,45],[0.1,75],[0.2,100]] }
-    CF_VOLATILITY:          { category: OPERATING_CASH_FLOW, method: anchors, status: pending, source: "quantiles only (provisional)", anchors: [[0.1,100],[0.3,70],[0.6,40],[1.0,15],[2.0,0]] }
-    CF_IN_OUT_RATIO:        { category: OPERATING_CASH_FLOW, method: anchors, status: closed, source: "coverage literature", anchors: [[0.8,10],[1.0,50],[1.2,80],[1.5,100]] }
-    ACT_COLLECTIONS_GROWTH: { category: ACTIVITY_GROWTH, method: anchors, status: pending, source: "natural zero (0% -> 50), symmetric + quantiles (provisional)", anchors: [[-0.3,0],[-0.15,25],[0,50],[0.15,75],[0.3,100]] }
-    DEBT_DSCR:              { category: DEBT_SERVICE, method: anchors, status: closed, source: "bank covenant 1.25x", anchors: [[0.8,0],[1.0,30],[1.25,60],[2.0,85],[3.0,100]] }
-    DEBT_LINE_UTIL:         { category: DEBT_SERVICE, method: anchors, status: closed, source: "credit line practice", anchors: [[0.5,100],[0.8,50],[1.0,0]] }
-    LEV_DEBT_TO_CF:         { category: LEVERAGE, method: anchors, status: closed, source: "Debt/EBITDA practice", anchors: [[0,100],[1,90],[3,65],[5,40],[8,0]] }
-    LEV_FACTORING_RELIANCE: { category: LEVERAGE, method: anchors, status: pending, source: "natural zero (0% -> 100) + quantiles (provisional)", anchors: [[0,100],[0.2,70],[0.4,45],[0.7,15],[1.0,0]] }
-    LEV_FUNDING_COST:       { category: LEVERAGE, method: anchors, status: pending, source: "spread over reference-rate (provisional)", anchors: [[0,100],[0.01,85],[0.025,60],[0.05,30],[0.08,0]] }
-    PAY_DSO:                { category: PAYMENT_BEHAVIOUR, method: anchors, status: closed, source: "DSO practice", anchors: [[30,100],[60,70],[90,40],[150,0]] }
-    PAY_DPO:                { category: PAYMENT_BEHAVIOUR, method: anchors, status: pending, source: "legal 60d (Ley 3/2004) + quantiles (provisional)", anchors: [[60,100],[90,60],[120,30],[180,0]] }
-    PAY_SUPPLIER_LATENESS:  { category: PAYMENT_BEHAVIOUR, method: anchors, status: closed, source: "lateness practice", anchors: [[0,100],[15,70],[30,45],[60,0]] }
-    PAY_OVERDUE_PAYABLES:   { category: PAYMENT_BEHAVIOUR, method: anchors, status: pending, source: "natural zero (0% -> 100) + quantiles (provisional)", anchors: [[0,100],[0.1,75],[0.25,45],[0.5,15],[0.8,0]] }
-    DEL_OVERDUE_RECEIVABLES: { category: DELINQUENCY, method: anchors, status: pending, source: "natural zero (0% -> 100) + quantiles (provisional)", anchors: [[0,100],[0.1,75],[0.25,45],[0.5,15],[0.8,0]] }
-    DEL_AGING_90:           { category: DELINQUENCY, method: anchors, status: closed, source: "aging practice", anchors: [[0,100],[0.1,70],[0.25,40],[0.5,0]] }
-    CON_HHI_CUSTOMERS:      { category: CONCENTRATION, method: anchors, status: closed, source: "DOJ HHI 1000/1800", anchors: [[1000,100],[1800,60],[2500,45],[5000,20],[10000,0]] }
-    CON_HHI_SUPPLIERS:      { category: CONCENTRATION, method: anchors, status: closed, source: "DOJ HHI 1000/1800", anchors: [[1000,100],[1800,60],[2500,45],[5000,20],[10000,0]] }
-    CON_CUSTOMER_CHURN:     { category: CONCENTRATION, method: anchors, status: pending, source: "quantiles only (provisional)", anchors: [[0.0,100],[0.1,75],[0.25,45],[0.5,15],[0.8,0]] }
-    TAX_REGULARITY:         { category: TAX_REGULARITY, method: anchors, status: closed, source: "own cadence", anchors: [[0,0],[0.5,40],[0.8,75],[1.0,100]] }
+    LIQ_RUNWAY:             { category: LIQUIDITY, method: anchors, status: closed, source: "runway literature", anchors: [[0,0],[1,20],[3,50],[6,75],[12,100]], weight: 0.4286 }
+    LIQ_BUFFER:             { category: LIQUIDITY, method: anchors, status: closed, source: "coverage literature", anchors: [[0,0],[0.5,30],[1,60],[2,85],[3,100]], weight: 0.4286 }
+    LIQ_MIN_BALANCE:        { category: LIQUIDITY, method: anchors, status: pending, source: "natural zero (overdraft <= 25) + quantiles (provisional)", anchors: [[-1,0],[0,25],[0.5,60],[1,80],[2,100]], weight: 0.1429 }
+    CF_NOCF_MARGIN:         { category: OPERATING_CASH_FLOW, method: anchors, status: pending, source: "natural zero + quantiles (provisional)", anchors: [[-0.2,0],[-0.0001,35],[0,45],[0.1,75],[0.2,100]], weight: 0.4286 }
+    CF_VOLATILITY:          { category: OPERATING_CASH_FLOW, method: anchors, status: pending, source: "quantiles only (provisional)", anchors: [[0.1,100],[0.3,70],[0.6,40],[1.0,15],[2.0,0]], weight: 0.1429 }
+    CF_IN_OUT_RATIO:        { category: OPERATING_CASH_FLOW, method: anchors, status: closed, source: "coverage literature", anchors: [[0.8,10],[1.0,50],[1.2,80],[1.5,100]], weight: 0.4286 }
+    ACT_COLLECTIONS_GROWTH: { category: ACTIVITY_GROWTH, method: anchors, status: pending, source: "natural zero (0% -> 50), symmetric + quantiles (provisional)", anchors: [[-0.3,0],[-0.15,25],[0,50],[0.15,75],[0.3,100]], weight: 1 }
+    DEBT_DSCR:              { category: DEBT_SERVICE, method: anchors, status: closed, source: "bank covenant 1.25x", anchors: [[0.8,0],[1.0,30],[1.25,60],[2.0,85],[3.0,100]], weight: 0.75 }
+    DEBT_LINE_UTIL:         { category: DEBT_SERVICE, method: anchors, status: closed, source: "credit line practice", anchors: [[0.5,100],[0.8,50],[1.0,0]], weight: 0.25 }
+    LEV_DEBT_TO_CF:         { category: LEVERAGE, method: anchors, status: closed, source: "Debt/EBITDA practice", anchors: [[0,100],[1,90],[3,65],[5,40],[8,0]], weight: 0.6333 }
+    LEV_FACTORING_RELIANCE: { category: LEVERAGE, method: anchors, status: pending, source: "natural zero (0% -> 100) + quantiles (provisional)", anchors: [[0,100],[0.2,70],[0.4,45],[0.7,15],[1.0,0]], weight: 0.2605 }
+    LEV_FUNDING_COST:       { category: LEVERAGE, method: anchors, status: pending, source: "spread over reference-rate (provisional)", anchors: [[0,100],[0.01,85],[0.025,60],[0.05,30],[0.08,0]], weight: 0.1062 }
+    PAY_DSO:                { category: PAYMENT_BEHAVIOUR, method: anchors, status: closed, source: "DSO practice", anchors: [[30,100],[60,70],[90,40],[150,0]], weight: 0.125 }
+    PAY_DPO:                { category: PAYMENT_BEHAVIOUR, method: anchors, status: pending, source: "legal 60d (Ley 3/2004) + quantiles (provisional)", anchors: [[60,100],[90,60],[120,30],[180,0]], weight: 0.125 }
+    PAY_SUPPLIER_LATENESS:  { category: PAYMENT_BEHAVIOUR, method: anchors, status: closed, source: "lateness practice", anchors: [[0,100],[15,70],[30,45],[60,0]], weight: 0.375 }
+    PAY_OVERDUE_PAYABLES:   { category: PAYMENT_BEHAVIOUR, method: anchors, status: pending, source: "natural zero (0% -> 100) + quantiles (provisional)", anchors: [[0,100],[0.1,75],[0.25,45],[0.5,15],[0.8,0]], weight: 0.375 }
+    DEL_OVERDUE_RECEIVABLES: { category: DELINQUENCY, method: anchors, status: pending, source: "natural zero (0% -> 100) + quantiles (provisional)", anchors: [[0,100],[0.1,75],[0.25,45],[0.5,15],[0.8,0]], weight: 0.25 }
+    DEL_AGING_90:           { category: DELINQUENCY, method: anchors, status: closed, source: "aging practice", anchors: [[0,100],[0.1,70],[0.25,40],[0.5,0]], weight: 0.75 }
+    CON_HHI_CUSTOMERS:      { category: CONCENTRATION, method: anchors, status: closed, source: "DOJ HHI 1000/1800", anchors: [[1000,100],[1800,60],[2500,45],[5000,20],[10000,0]], weight: 0.6 }
+    CON_HHI_SUPPLIERS:      { category: CONCENTRATION, method: anchors, status: closed, source: "DOJ HHI 1000/1800", anchors: [[1000,100],[1800,60],[2500,45],[5000,20],[10000,0]], weight: 0.2 }
+    CON_CUSTOMER_CHURN:     { category: CONCENTRATION, method: anchors, status: pending, source: "quantiles only (provisional)", anchors: [[0.0,100],[0.1,75],[0.25,45],[0.5,15],[0.8,0]], weight: 0.2 }
+    TAX_REGULARITY:         { category: TAX_REGULARITY, method: anchors, status: closed, source: "own cadence", anchors: [[0,0],[0.5,40],[0.8,75],[1.0,100]], weight: 1 }
 
   profiles:   # provisional weights, external review pending
-    BANK:    { lambda: 0.70, weights: { DEBT_SERVICE: 25, LIQUIDITY: 20, OPERATING_CASH_FLOW: 20, PAYMENT_BEHAVIOUR: 7.5, DELINQUENCY: 7.5, LEVERAGE: 10, TAX_REGULARITY: 5, CONCENTRATION: 5 } }
-    FUND:    { lambda: 0.50, weights: { ACTIVITY_GROWTH: 30, MOMENTUM: 25, OPERATING_CASH_FLOW: 20, LIQUIDITY: 10, CONCENTRATION: 10, LEVERAGE: 5 } }
-    INSURER: { lambda: 0.70, weights: { PAYMENT_BEHAVIOUR: 30, DELINQUENCY: 20, CONCENTRATION: 20, LIQUIDITY: 15, OPERATING_CASH_FLOW: 10, LEVERAGE: 5 } }
+    BANK:    { lambda: 0.70, weights: { OPERATING_CASH_FLOW: 17.15, DEBT_SERVICE: 17.13, LIQUIDITY: 16.03, LEVERAGE: 11.97, DELINQUENCY: 6.84, PAYMENT_BEHAVIOUR: 6.84, TAX_REGULARITY: 6.01, MOMENTUM: 6.01, CONCENTRATION: 6.01, ACTIVITY_GROWTH: 6.01 } }
+    FUND:    { lambda: 0.50, weights: { ACTIVITY_GROWTH: 22.25, MOMENTUM: 15.89, OPERATING_CASH_FLOW: 13.27, LIQUIDITY: 13.03, CONCENTRATION: 13.03, LEVERAGE: 7.46, DEBT_SERVICE: 4.25, PAYMENT_BEHAVIOUR: 4.25, DELINQUENCY: 4.25, TAX_REGULARITY: 2.32 } }
+    INSURER: { lambda: 0.70, weights: { PAYMENT_BEHAVIOUR: 21.5, LIQUIDITY: 13.7, DELINQUENCY: 11.88, OPERATING_CASH_FLOW: 11.88, CONCENTRATION: 8.97, LEVERAGE: 8.97, DEBT_SERVICE: 7.45, TAX_REGULARITY: 7.45, MOMENTUM: 4.1, ACTIVITY_GROWTH: 4.1 } }
 
   # SPEC §8.1–§8.2. CUSUM runs on final and on the level scores of cusum-indicators (phase 4 decision E3).
   # Baseline = median and MAD x 1.4826 of the previous baseline-months non-null values, sigma >= sigma-floor (points).

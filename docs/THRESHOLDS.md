@@ -33,3 +33,35 @@ Quantiles: run of 2026-09-19 on `main` after PRs #4 and #5, unit `GROUP`, availa
 - **`CON_CUSTOMER_CHURN`:** only 330 available group-months (13.6 % at M23, concentration coverage guard D9). Too few rows to move anything. Keep.
 
 `reference-rate` (limit engine and `LEV_FUNDING_COST`) is a placeholder of 0.035. Set the current market rate by hand.
+
+## Phase 7 A-8 — AHP weights adopted (2026-09-19)
+
+**Change.** `scoring.profiles.<P>.weights` and `scoring.indicators.<ID>.weight` now come from the AHP
+generator (`scripts/weights_calc/ahp_w_cat_ind.py`). All ten categories have a positive weight in all
+three profiles (decisions H4, H5). λ does not change (0.70 / 0.50 / 0.70).
+
+**Source.** `docs/WEIGHTS.md` (plan R1): per-profile importance ratings, Saaty judgments from rating
+ratios, every CR below 0.01 for categories and at most 0.0334 inside a category. The orderings are
+`sourced`. Most magnitudes and all λ are `placeholder`. Embat's experts can change them in config only.
+
+**Measured before / after** (GROUP, M23 = 2026-08, full pipeline run on both configs):
+
+| Profile | mean | sd | p10 … p90 | bands A/B/C/D/E | corr | mean \|Δ\| | band changed |
+|---|---|---|---|---|---|---|---|
+| BANK before | 63.87 | 15.57 | 43.0 / 51.6 / 64.5 / 78.6 / 83.4 | 47 / 74 / 69 / 53 / 5 | | | |
+| BANK after | 61.15 | 15.55 | 41.3 / 48.2 / 61.3 / 73.4 / 82.0 | 37 / 72 / 66 / 63 / 10 | 0.956 | 4.20 | 25.8 % |
+| FUND before | 51.39 | 19.83 | 26.2 / 36.8 / 49.2 / 66.9 / 79.1 | 23 / 45 / 55 / 69 / 56 | | | |
+| FUND after | 54.66 | 16.43 | 34.5 / 42.5 / 53.8 / 65.5 / 78.3 | 22 / 43 / 82 / 73 / 28 | 0.966 | 5.42 | 32.3 % |
+| INSURER before | 68.64 | 13.60 | 51.9 / 62.7 / 70.9 / 77.7 / 83.8 | 48 / 124 / 54 / 15 / 7 | | | |
+| INSURER after | 64.83 | 12.36 | 50.6 / 56.9 / 64.2 / 74.0 / 80.8 | 30 / 87 / 108 / 18 / 5 | 0.803 | 7.08 | 44.4 % |
+
+Limit engine at M23 (BANK): DECLINE 5 → 10 (band E has no spread), MAINTAIN 167 → 163, INCREASE 38 → 37.
+
+**Histogram check (CLAUDE.md).** Histogram of `final` at M23, 10-point bins from 0 to 100:
+
+- BANK `[0, 0, 4, 15, 54, 43, 52, 43, 34, 3]`, IQR 25.2
+- FUND `[0, 3, 12, 35, 51, 62, 39, 24, 19, 3]`, IQR 23.1
+- INSURER `[0, 0, 2, 7, 14, 66, 69, 60, 28, 2]`, IQR 17.1
+
+No profile clusters in a ~15-point band, so the anchors stay. INSURER is the tightest: check it again
+after any change to the `PAY_*` anchors.
