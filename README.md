@@ -30,9 +30,9 @@ Desde la raíz de esta rama:
 node scripts/local.mjs setup
 node scripts/local.mjs start
 ```
-`setup` ejecuta las pruebas Java, compila el frontend y prepara la caché sin consumir tokens. Abre `http://127.0.0.1:5173/entity/GROUP_0039?profile=BANK&month=2026-07` y compara GROUP_0101. Ctrl+C detiene ambos procesos. No modificar pesos ni recalcular la base de demo.
+`setup` ejecuta las pruebas Java, compila el frontend y prepara la caché sin consumir tokens. **S7 usa frontend 5174 y backend 8081** para no mezclarse con la web de desarrollo habitual. Abre `http://127.0.0.1:5174/entity/GROUP_0039?profile=BANK&month=2026-07#sugerencias` y compara GROUP_0101. El arranque comprueba que el backend devuelve el módulo S7 y muestra un enlace al caso configurado. `S7_FRONTEND_PORT`/`S7_BACKEND_PORT` permiten elegir otros puertos. Ctrl+C detiene ambos procesos. No modificar pesos ni recalcular la base de demo.
 
-S7 muestra hasta tres **prioridades de atención**, con evidencia del mes/perfil. El orden usa peso efectivo del indicador y, en empate, peor nivel; no estima puntos recuperables. El catálogo cubre gastos, vencidos, pagos a proveedores y caída de cobros; se abstiene si faltan señales. No incluye comparación de impactos de actuaciones.
+La sección **«Insights y recomendaciones»** aparece al principio de la ficha, antes de la gráfica, incluso sin puntuación. Distingue IA de Helmcode, recomendaciones por reglas y falta de datos. La cartera abre agosto, pero los ejemplos IA predeterminados son de julio: el enlace «Abrir caso configurado» lleva al periodo correcto. Hasta tres prioridades de atención con evidencia, sin puntos recuperables ni comparación de impactos de actuaciones.
 
 **Helmcode preconfigurado:** modelo `glm5.3`, GROUP_0039/GROUP_0101, julio 2026 y tres perfiles. `start` prepara las respuestas IA si encuentra una clave en la variable privada `HELMCODE_API_KEY` o en `.env.local`; reutiliza la caché válida. Sin clave usa plantillas. `node scripts/local.mjs start-offline` no hace llamadas nuevas aunque exista clave.
 

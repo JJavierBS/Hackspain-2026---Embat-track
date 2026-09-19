@@ -1,19 +1,32 @@
+import { Link } from "react-router-dom";
 import type { Suggestions as SuggestionsData } from "../api/types";
 import { Film } from "./Film";
 import { formatIndicatorValue, indicatorLabel, monthShort } from "../lib/format";
 
-export function Suggestions({ data }: { data?: SuggestionsData | null }) {
-  const items = data?.items ?? [];
+function emptyMessage(data: SuggestionsData | null | undefined, hasScore: boolean) {
+  if (!hasScore) return "En este periodo no hay puntuación ni datos suficientes para proponer recomendaciones. Prueba otro mes; no inventamos un diagnóstico.";
+  if (!data) return "El backend no ha enviado sugerencias. Comprueba que frontend y backend estén usando la versión con este módulo.";
+  if (data.state === "CONFIG_MISMATCH") return "La configuración no coincide con los resultados. No mostramos consejos hasta volver a prepararlos con el cálculo correcto.";
+  if (data.state === "NO_EVIDENCE") return "No hay señales suficientes para proponer una actuación del catálogo en este mes. Esto no significa que no existan riesgos.";
+  return "Todavía no hay sugerencias preparadas para esta empresa, mes y perfil. Las explicaciones del cálculo siguen disponibles más abajo.";
+}
+
+export function Suggestions({ data, hasScore = true }: { data?: SuggestionsData | null; hasScore?: boolean }) {
+  const items = hasScore ? data?.items ?? [] : [];
+  const ai = hasScore && data?.source === "helmcode" && items.length > 0;
+  const example = import.meta.env.VITE_S7_EXAMPLE_URL as string | undefined;
+  const meta = !hasScore ? "Sin puntuación en este periodo" : ai ? "IA verificada · Helmcode"
+    : items.length > 0 ? "Reglas verificadas · sin respuesta IA" : "Sin recomendaciones disponibles";
   return (
-    <Film id="sugerencias" title="Qué revisar primero" meta="Prioridades de atención · sin puntos prometidos">
-      {items.length === 0 ? (
-        <p className="text-ink-muted">
-          {data?.state === "CONFIG_MISMATCH"
-            ? "La configuración no coincide con los resultados. No mostramos consejos hasta volver a prepararlos con el cálculo correcto."
-            : data?.state === "NO_EVIDENCE"
-              ? "No hay evidencia suficiente para proponer una actuación del catálogo en este mes. Esto no significa que no existan riesgos."
-              : "Sugerencias todavía no preparadas para este mes y perfil. Puedes consultar las explicaciones del cálculo más abajo."}
+    <Film id="sugerencias" title="Insights y recomendaciones" meta={meta}>
+      <p className="mb-4 text-ink-muted">Qué revisar primero y por qué, con evidencia del periodo seleccionado.</p>
+      {!ai && items.length > 0 && (
+        <p className="mb-4 border-l-2 border-rule pl-3 text-sm text-ink-muted">
+          No hay una respuesta de IA validada para esta empresa, mes y perfil. Se muestra el análisis por reglas, no texto generado por IA.
         </p>
+      )}
+      {items.length === 0 ? (
+        <p className="text-ink-muted">{emptyMessage(data, hasScore)}</p>
       ) : (
         <>
           <ol className="grid gap-5">
@@ -37,11 +50,17 @@ export function Suggestions({ data }: { data?: SuggestionsData | null }) {
           </ol>
           <p className="mt-5 border-t border-rule pt-3 text-sm text-ink-muted">Son señales para investigar, no ganancias garantizadas. Antes de regularizar pagos, comprueba la caja disponible.</p>
           <p className="mt-2 text-sm text-ink-muted" title={data?.model ?? undefined}>
-            {data?.source === "helmcode"
+            {ai
               ? "Formulación verificada con Helmcode. El orden procede del cálculo, no de la IA."
               : "Texto de plantilla verificada. No se ha utilizado una respuesta de IA para estos consejos."}
           </p>
         </>
+      )}
+      {!ai && example?.startsWith("/entity/") && (
+        <p className="mt-4 text-sm">
+          <Link to={example} className="font-semibold underline underline-offset-4">Abrir caso configurado para la prueba de IA</Link>
+          <span className="text-ink-muted"> · la preparación de IA se limita a los casos seleccionados, no a toda la cartera.</span>
+        </p>
       )}
     </Film>
   );

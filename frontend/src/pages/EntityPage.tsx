@@ -72,7 +72,7 @@ export function EntityPage() {
   const { horizon, setHorizon } = useHorizon();
   const { data, error, isPending } = useEntity(id, profile, month, horizon);
   const linkSearch = useLinkSearch();
-  useHashScroll(data !== undefined);
+  useHashScroll(data !== undefined, true);
 
   if (error || isPending) {
     return (
@@ -111,6 +111,7 @@ export function EntityPage() {
             </>
           }
         />
+        <Suggestions data={data.suggestions} hasScore={false} />
         <Film title="Sin puntuación" meta={monthCode(month)}>
           <p className="max-w-[62ch] text-ink-muted">
             Esta entidad no tiene actividad suficiente en {monthCode(month)} para puntuarla. Elige un mes posterior en la tira de
@@ -137,6 +138,8 @@ export function EntityPage() {
           </>
         }
       />
+
+      <Suggestions data={data.suggestions} />
 
       <Film
         title="Radiografía"
@@ -186,8 +189,6 @@ export function EntityPage() {
           </div>
         </div>
       </Film>
-
-      <Suggestions data={data.suggestions} />
 
       <Anticipation events={data.events} />
 

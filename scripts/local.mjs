@@ -6,15 +6,21 @@ import { fileURLToPath } from "node:url";
 import { pipeline } from "node:stream/promises";
 import { createGunzip } from "node:zlib";
 import net from "node:net";
-import { childEnvironment, localSettings, saveLocalKey } from "./local-settings.mjs";
+import { childEnvironment, hasSuggestionsModule, localSettings, saveLocalKey, suggestionExamplePath } from "./local-settings.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const windows = process.platform === "win32";
 const command = process.argv[2] ?? "help";
 const settings = await localSettings(root);
+const examplePath = suggestionExamplePath(settings);
+const backendPort = Number(settings.S7_BACKEND_PORT);
+const frontendPort = Number(settings.S7_FRONTEND_PORT);
+const backendUrl = `http://127.0.0.1:${backendPort}`;
+const frontendUrl = `http://127.0.0.1:${frontendPort}`;
 const env = { ...process.env, ...settings, XRAY_DATA_DIR: join(root, "data"), XRAY_DEMO_MODE: "true", SERVER_ADDRESS: "127.0.0.1",
-  SERVER_PORT: "8080", PORT: "8080", MAVEN_USER_HOME: join(root, ".local-maven"),
-  npm_config_cache: join(root, ".local-npm"), VITE_API_TARGET: "http://127.0.0.1:8080", VITE_MOCKS: "false" };
+  SERVER_PORT: String(backendPort), PORT: String(backendPort), MAVEN_USER_HOME: join(root, ".local-maven"),
+  npm_config_cache: join(root, ".local-npm"), VITE_API_TARGET: backendUrl, VITE_MOCKS: "false",
+  VITE_S7_EXAMPLE_URL: examplePath ?? "" };
 const jar = join(root, "backend", "target", "xray-backend-0.0.1-SNAPSHOT.jar");
 const npm = windows ? join(dirname(process.execPath), "npm.cmd") : "npm";
 const mvn = join(root, "backend", windows ? "mvnw.cmd" : "mvnw");
@@ -73,7 +79,7 @@ async function freePort(port) {
 
 async function prepare(llm = false) {
   if (!existsSync(jar)) throw new Error("Primero ejecuta: node scripts/local.mjs setup");
-  await freePort(8080);
+  await freePort(backendPort);
   await initialize();
   if (llm && !env.HELMCODE_API_KEY) throw new Error("Falta HELMCODE_API_KEY. Usa Preparar-IA.ps1 o una variable de entorno privada.");
   await run(java, ["-Xmx1024m", "-jar", jar, "--spring.main.web-application-type=none", "--xray.suggestions.prepare=true"],
@@ -86,8 +92,8 @@ try {
     console.log("Clave guardada solo en .env.local, excluido de Git. El arranque preparará la IA antes de abrir la web.");
   } else if (command === "setup") {
     await run(process.execPath, ["--test", join(root, "scripts", "local-settings.test.mjs")]);
-    await freePort(8080);
-    await freePort(5173);
+    await freePort(backendPort);
+    await freePort(frontendPort);
     await run(java, ["-version"]);
     await run(mvn, ["-B", `-Dmaven.repo.local=${join(root, ".local-maven", "repository")}`, "package"], join(root, "backend"));
     await run(npm, ["ci", "--no-audit", "--no-fund"], join(root, "frontend"));
@@ -97,7 +103,7 @@ try {
   } else if (command === "prepare" || command === "prepare-ia") {
     await prepare(command === "prepare-ia");
   } else if (command === "start" || command === "start-offline") {
-    await freePort(5173);
+    await freePort(frontendPort);
     const useAI = command === "start" && Boolean(env.HELMCODE_API_KEY);
     console.log(useAI ? "Preparando Helmcode para los casos seleccionados; se reutilizan respuestas válidas en caché."
       : "Arranque sin llamadas a Helmcode. Se muestran sugerencias guardadas o plantillas.");
@@ -116,16 +122,27 @@ try {
     let ready = false;
     for (let attempt = 0; attempt < 120 && !stopping; attempt++) {
       try {
-        const health = await fetch("http://127.0.0.1:8080/actuator/health", { signal: AbortSignal.timeout(1000) });
+        const health = await fetch(`${backendUrl}/actuator/health`, { signal: AbortSignal.timeout(1000) });
         if (health.ok) { ready = true; break; }
       } catch {}
       await new Promise(ok => setTimeout(ok, 250));
     }
     if (!ready) { stop(); throw new Error("El backend no ha arrancado. Revisa el error anterior."); }
+    if (examplePath) {
+      try {
+        const response = await fetch(backendUrl + examplePath.split("#")[0].replace("/entity/", "/api/entities/"),
+          { signal: AbortSignal.timeout(15000) });
+        if (!response.ok || !hasSuggestionsModule(await response.json())) throw new Error();
+      } catch {
+        stop();
+        throw new Error("El backend no devuelve el módulo S7 para el caso configurado. Ejecuta setup y comprueba entidad/mes antes de arrancar.");
+      }
+    }
     frontend = start(process.execPath, [join(root, "frontend", "node_modules", "vite", "bin", "vite.js"),
-      "--host", "127.0.0.1", "--port", "5173", "--strictPort"], join(root, "frontend"), { HELMCODE_ENABLE: "false" });
+      "--host", "127.0.0.1", "--port", String(frontendPort), "--strictPort"], join(root, "frontend"), { HELMCODE_ENABLE: "false" });
     frontend.on("exit", stop);
-    console.log("Abre http://127.0.0.1:5173 · Ctrl+C detiene ambos procesos. No hay llamadas a Helmcode durante la navegación.");
+    console.log(`Web S7 local: ${frontendUrl} · Ctrl+C detiene ambos procesos. No hay llamadas a Helmcode durante la navegación.`);
+    if (examplePath) console.log(`Caso configurado para IA: ${frontendUrl}${examplePath}`);
   } else {
     console.log("Uso: node scripts/local.mjs setup | start | start-offline | configure-ia | prepare | prepare-ia\nJava 21 y Node.js 24. setup no consume tokens. start prepara IA si hay clave local; start-offline nunca llama al proveedor. configure-ia guarda HELMCODE_API_KEY en .env.local sin sobrescribir archivos.");
   }

@@ -84,7 +84,7 @@ Swagger UI: `http://localhost:8080/swagger-ui.html`.
 
 ## S7: verificación local de la rama de pruebas
 
-`node scripts/local.mjs setup` ejecuta tests Java, build y preparación de plantillas con la base congelada; `node scripts/local.mjs start` inicia ambos servidores en loopback. `node scripts/smoke.mjs` verifica doce fichas API y, con `CHROME_PATH`, dos fichas en Chrome aislado. Lint: `cd frontend` y `npm run lint`.
+`node scripts/local.mjs setup` ejecuta tests Java/Node, build y preparación de plantillas con la base congelada; `node scripts/local.mjs start` inicia S7 en loopback (backend 8081, frontend 5174), comprueba el contrato de sugerencias y muestra la URL del ejemplo configurado. No detener ni reutilizar otros servidores en 8080/5173. `S7_BACKEND_PORT`/`S7_FRONTEND_PORT` permiten aislar más instancias. `node scripts/smoke.mjs` verifica doce casos API y, con `CHROME_PATH`, entrada desde cartera, visibilidad, fichas sin puntuación/señales, plantillas, enlace al ejemplo IA y móvil. Lint: `cd frontend` y `npm run lint`.
 
 S7 solo implementa prioridades de atención, no impactos de actuaciones. La inferencia ocurre en el proceso previo de `prepare-ia` o de `start` cuando se ha configurado una clave privada, nunca al navegar. `start-offline` no hace llamadas nuevas. Las peticiones web leen resultados guardados. No cambiar pesos ni incluir claves/datos locales en Git. README contiene los comandos y límites. No fusionar ni publicar esta rama sin autorización de Luis.
 

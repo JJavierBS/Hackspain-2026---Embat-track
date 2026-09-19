@@ -3,9 +3,10 @@ import { spawn } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { localSettings } from "./local-settings.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const base = "http://127.0.0.1:5173";
+const base = `http://127.0.0.1:${(await localSettings(root)).S7_FRONTEND_PORT}`;
 const pause = ms => new Promise(ok => setTimeout(ok, ms));
 async function until(fn) {
   const end = Date.now() + 60000;
@@ -89,6 +90,42 @@ if (process.env.CHROME_PATH) {
     });
     const evaluate = async expression => (await call("Runtime.evaluate", { expression, returnByValue: true })).result.value;
     await call("Runtime.enable"); await call("Network.enable"); await call("Page.enable");
+    await call("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+    await call("Page.navigate", { url: base });
+    await until(async () => await evaluate("Array.from(document.querySelectorAll('a[href^=\"/entity/\"]')).some(a => a.getClientRects().length > 0)"));
+    await evaluate("(() => { const link = Array.from(document.querySelectorAll('a[href^=\"/entity/\"]')).find(a => a.getClientRects().length > 0); link.scrollIntoView({block: 'center'}); link.click(); })()");
+    await until(async () => await evaluate("location.pathname.startsWith('/entity/') && document.querySelector('#indicadores') !== null"));
+    await evaluate("Array.from(document.querySelectorAll('a')).find(a => new URL(a.href).origin === location.origin && new URL(a.href).pathname === '/').click()");
+    await until(async () => await evaluate("location.pathname === '/' && document.querySelector('#sugerencias') === null && document.querySelector('main h1')?.textContent === 'Cartera' && Array.from(document.querySelectorAll('a[href^=\"/entity/\"]')).some(a => a.getClientRects().length > 0)"));
+    await evaluate("(() => { const link = Array.from(document.querySelectorAll('a[href^=\"/entity/\"]')).find(a => a.getClientRects().length > 0); link.scrollIntoView({block: 'center'}); link.click(); })()");
+    await until(async () => await evaluate("location.pathname.startsWith('/entity/') && document.querySelector('#indicadores') !== null"));
+    const entry = await evaluate("({url: location.pathname + location.search, title: document.querySelector('#sugerencias h2')?.textContent, top: document.querySelector('#sugerencias')?.getBoundingClientRect().top, viewport: innerHeight, sectionOrder: Array.from(document.querySelectorAll('main section h2')).map(h => h.textContent)})");
+    console.log("Entrada desde cartera:", JSON.stringify(entry));
+    const noScore = await get("/api/entities/GROUP_0039?profile=BANK&month=2024-09");
+    assert.equal(noScore.row, null);
+    await call("Page.navigate", { url: `${base}/entity/GROUP_0039?profile=BANK&month=2024-09` });
+    await until(async () => await evaluate("document.querySelector('main')?.innerText.includes('Sin puntuación')"));
+    const noScorePanel = await evaluate("document.querySelector('#sugerencias')?.innerText ?? null");
+    console.log("Ficha sin puntuación, panel presente:", noScorePanel !== null);
+    assert.notEqual(noScorePanel, null, "La ficha sin puntuación debe conservar la sección de insights y explicar su ausencia de datos");
+    assert.match(noScorePanel, /no hay puntuación/i);
+    assert.equal(entry.title, "Insights y recomendaciones");
+    assert.ok(entry.url.includes("month=2026-08"), "La navegación de prueba debe conservar el mes predeterminado de cartera");
+    assert.ok(entry.top >= 0 && entry.top < entry.viewport, "Los insights deben ser visibles al entrar, sin heredar el scroll de cartera ni quedar detrás de la gráfica");
+    assert.ok(entry.sectionOrder.indexOf("Insights y recomendaciones") < entry.sectionOrder.indexOf("Radiografía"));
+    const noEvidence = await get("/api/entities/GROUP_0101?profile=BANK&month=2024-09");
+    assert.equal(noEvidence.suggestions.state, "NO_EVIDENCE");
+    await call("Page.navigate", { url: `${base}/entity/GROUP_0101?profile=BANK&month=2024-09` });
+    await until(async () => await evaluate("document.querySelector('#indicadores') !== null"));
+    assert.match(await evaluate("document.querySelector('#sugerencias').innerText"), /No hay señales suficientes/);
+    assert.equal(await evaluate("document.querySelectorAll('#sugerencias li').length"), 0);
+    await call("Page.navigate", { url: `${base}/entity/GROUP_0039?profile=BANK&month=2026-08` });
+    await until(async () => await evaluate("document.querySelector('#sugerencias')?.innerText.includes('Texto de plantilla verificada')"));
+    assert.match(await evaluate("document.querySelector('#sugerencias').innerText"), /No hay una respuesta de IA validada/);
+    const example = await evaluate("document.querySelector('#sugerencias a[href^=\"/entity/\"]')?.getAttribute('href')");
+    assert.equal(example, "/entity/GROUP_0039?profile=BANK&month=2026-07#sugerencias");
+    await evaluate("document.querySelector('#sugerencias a[href^=\"/entity/\"]').click()");
+    await until(async () => await evaluate("location.search.includes('month=2026-07') && document.querySelector('#sugerencias') !== null"));
     for (const id of ["GROUP_0039", "GROUP_0101"]) {
       await call("Page.navigate", { url: `${base}/entity/${id}?profile=BANK&month=2026-07` });
       await until(async () => await evaluate("document.querySelectorAll('#sugerencias li').length > 0"));
@@ -106,7 +143,7 @@ if (process.env.CHROME_PATH) {
     await writeFile(join(root, "data", "s7-mobile.png"), Buffer.from(image.data, "base64"));
     assert.deepEqual(errors, []);
     assert.equal(network.some(url => url.includes("helmcode")), false);
-    console.log("Navegador: dos fichas, evidencia desplegable, móvil sin desbordamiento, cero excepciones y cero llamadas a Helmcode.");
+    console.log("Navegador: entrada desde cartera, insights visibles, ficha sin puntuación, ausencia de señales, plantillas, enlace al caso IA, evidencia/móvil y cero llamadas a Helmcode al navegar.");
   } finally {
     socket?.close();
     chrome.kill();
