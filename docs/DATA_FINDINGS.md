@@ -321,3 +321,47 @@ outstanding means nothing is owed. `granted_eur = ABS(granted)`,
 the backward balance rebuild would put its cash at −4 bn before that day.
 **Decision:** Drop them in staging.
 **Config change:** `data-rules.tx-excluded-abs-amounts: [999999999]`.
+
+## Block 2 run (2026-09-19)
+Clean run on the real CSVs: `rm -f data/xray.duckdb*`, then boot. State `DONE`.
+With an empty `data/raw/`, the three stages skip and the run also ends `DONE`.
+
+| stage | ms |
+|---|---:|
+| S00_INGEST | 230 |
+| S10_STAGING | 5,899 |
+| S20_MONTHLY | 318 |
+| total | 6,447 |
+
+**V1** (`scripts/validate_block2.sql`): the rebuilt balance at the snapshot
+equals `balances.csv` for all 4,890 cash and semi-liquid products
+(0 mismatches). **V2:** the products with a snapshot and no rebuild are only
+card (794), wallet (32), risk (25) and lineofcomex (19).
+
+**V3** row counts (company rows):
+
+| table | rows |
+|---|---:|
+| daily_cash | 924,910 (1,267 companies × 730 days) |
+| monthly_flows | 90,638 (1,282 companies, 24 months) |
+| monthly_cash | 30,408 |
+| monthly_invoices | 31,257 |
+| monthly_counterparty | 139,749 |
+| debt_snapshot | 655 |
+
+Staging: 2,556,432 transactions (5 sentinels dropped), 2,520,014 booked,
+136,471 intragroup, 213,004 `INTERNAL`, 0 without an EUR amount.
+761,114 invoices kept. Amount-weighted days-to-pay: ISSUED 27.9,
+RECEIVED 26.1. Share of overdue that is 90+ days: ISSUED 41 %, RECEIVED 36 %.
+
+**V4** spot check:
+- COMP_0804: cash flat at 1,540 EUR until 2025-12, then 5–10 k EUR. First transaction 2026-01-05, so NOCF is null before 2026-01.
+- COMP_1090: cash 4.1–4.5 M EUR, no negative day, monthly NOCF between −394 k and +267 k EUR.
+- COMP_1200: cash about 29 k EUR, flat until 2026-02, then 28–45 k EUR. NOCF −118 k EUR in 2026-08.
+
+**Open questions for Block 3:**
+1. Months before a company's first transaction have a flat rebuilt cash and no flows. Treat them as unavailable, not as stable (Q7: 377 companies have < 12 months).
+2. `DEBT_LINE_UTIL`: monthly for the 312 credit lines with transactions, static for the others (Q6). The drawn balance needs a backward rebuild like cash.
+3. COMP_1185 has 48 bn EUR of operating flows from own-account sweeps without exact mirrors (Q5d). Check its indicators.
+4. A high share of overdue invoices is 90+ days. Unpaid invoices stay open up to the snapshot (Q10). Check `DEL_AGING_90` quantiles before the anchors close.
+5. `FINANCING_IN` is empty: no category marks a disbursement (Q1).
