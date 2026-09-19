@@ -30,7 +30,7 @@ Done when (SPEC §13 M8, §14):
 
 ## State at the start of phase 6 (checked 2026-09-19)
 
-- Phase 5 is **not merged yet**: `feat/phase5-backend` (A, done, 13 stages) and `origin/feat/phase5-frontend` (B, done) wait for the phase 5 run procedure steps 5–8. **Merge phase 5 first** (run procedure step 0 below). Both plans assume `main` = phase 5 merged.
+- Phase 5 is **merged** (`main` = the plans commit on top of PRs #8 and #9). The branches `feat/phase6-backend` and `feat/phase6-frontend` already exist locally and on the remote, cut from that commit.
 - Pipeline after phase 5: 13 stages up to `S80_ALERTS` and `S95_QUANTILES`. Panels carry scores, dynamics (`DynamicsPoint`), signals and limits in memory.
 - `S20`..`S30` and `S95` are the only stages that call `ctx.sql()`. `S40`..`S80` read and write panels and use `ResultWriter` only. This is what lets `LookAheadTest` run the Java stages on an in-memory DuckDB with no CSVs.
 - `ComparePage.tsx` already overlays two entities and picks a pair **client-side** from the portfolio (`showcasePair`, gap ≤ 3). Phase 6 moves the pick to the backend (SPEC §10.4) and keeps the client pick only as a fallback when the API has no pair.
@@ -203,7 +203,7 @@ merges copies them into `docs/DATA_FINDINGS.md` (run procedure step 5).
 
 ## Run procedure
 
-0. **Merge phase 5** (its run procedure steps 5–8), push `main`. Check `./mvnw -q test` (5 tests) and 13 stages.
+0. On `main`, check the phase 5 merge is healthy: `cd backend && ./mvnw -q test` (5 tests) and a clean pipeline run (13 stages). Phase 5's run procedure steps 6–8 (smoke test, findings, deploy) still apply if nobody did them.
 1. On `main`: narrow `.gitignore` (G13). Replace the line `data/` with:
    ```gitignore
    # Data: small CSVs are versioned; files over GitHub's 100 MB limit and generated data are not.
@@ -214,10 +214,10 @@ merges copies them into `docs/DATA_FINDINGS.md` (run procedure step 5).
    data/holdout/
    ```
    `git add .gitignore data/raw/*.csv` (only the six small files get staged; check with `git status`). Commit the three phase 6 plan files with it and push. Worktrees see only committed files.
-2. Create one worktree for each branch:
+2. Create one worktree for each branch (the branches already exist; if `.gitignore` changed in step 1, rebase them on `main` first with `git branch -f <branch> main`):
    ```bash
-   git worktree add -b feat/phase6-backend  ../xray-phase6-a main
-   git worktree add -b feat/phase6-frontend ../xray-phase6-b main
+   git worktree add ../xray-phase6-a feat/phase6-backend
+   git worktree add ../xray-phase6-b feat/phase6-frontend
    ```
 3. Link the two big CSVs into A's worktree (the small ones are already there from git). B needs no data.
    ```bash
