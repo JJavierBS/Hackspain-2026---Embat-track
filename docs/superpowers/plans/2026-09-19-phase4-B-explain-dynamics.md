@@ -2,7 +2,7 @@
 
 > **For agentic workers:** Claude Code: use superpowers:executing-plans (or superpowers:subagent-driven-development) to run this plan task by task. Antigravity or other agents: do the checkboxes in order. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Score the company panels next to the groups, write the exact additive explanation (`contributions`, S65) with template narratives, and write CUSUM changepoints, regimes, statuses and confidence (S70) into `profile_scores` and `changepoints`.
+**Goal:** Add weights inside a category (decision E11), score the company panels next to the groups, write the exact additive explanation (`contributions`, S65) with template narratives, and write CUSUM changepoints, regimes, statuses and confidence (S70) into `profile_scores` and `changepoints`.
 
 **Architecture:** Pure `domain/service` classes (`ExplanationService`, `CusumDetector`, `RegimeClassifier`, `StatusResolver`, `ConfidenceResolver`) do the math on arrays, with no Spring and no SQL. Two thin `@Component` stages map `ScoringConfig` to domain parameters, walk `ctx.panels()` in parallel, keep the results on `EntityPanel` and write the tables with `ResultWriter`. S60 also writes `profile_weights`, so the UI always shows the weights that produced the scores.
 
@@ -16,7 +16,7 @@
 - Java 21 target. The machine's JDK 21 has no `javac`. The default `java` (JDK 25) compiles with `--release 21`, so run plain `./mvnw ...`.
 - No JPA, no Lombok, no new Maven dependency.
 - `domain/` imports nothing from `org.springframework`, `java.sql` or `com.xray.config`. Stages convert config records to domain records.
-- Never hardcode a weight, λ, threshold or anchor (CLAUDE.md rule 5). **Never read or edit `scoring.profiles`** in `scoring-config.yml`: Almudena owns it (overview decision E1). New keys go at the end of the file, or inside the `regimes` line that already exists.
+- Never hardcode a weight, λ, threshold or anchor (CLAUDE.md rule 5). **Never edit `scoring.profiles` or add `weight` keys to `scoring.indicators`** in `scoring-config.yml`: Almudena owns them (overview decisions E1, E11). New keys go at the end of the file, or inside the `regimes` line that already exists.
 - Causality: a value for month m reads only indices `0..m`. Use `CausalWindow`. `LookAheadTest` (Block 8) checks this.
 - Tests: add only `ExplanationSumTest` (package `com.xray.domain.service`). You may extend `ScoringConfigValidationTest`. A scratch test is allowed locally and is deleted before the commit.
 - Commits: Conventional Commits, English, lowercase subject. Commit after each task.
@@ -29,6 +29,8 @@ backend/src/main/resources/
   scoring-config.yml                          regimes line extended; + statuses, confidence, explanation (end of file)
 backend/src/main/java/com/xray/
   config/ScoringConfig.java                   RegimeConfig extended; + StatusConfig, ConfidenceConfig, ExplanationConfig
+  config/IndicatorConfig.java                 + optional weight inside the category (E11)
+  config/ScoringConfigValidator.java          weight > 0 when present
   domain/model/
     Contribution.java                         one driver's share of final − 50
     HealthStatus.java  Regime.java  Confidence.java  ChangeDirection.java
@@ -36,6 +38,7 @@ backend/src/main/java/com/xray/
     DynamicsPoint.java                        status, regime, seasonal, confidence of one month
     EntityPanel.java                          + contributions, dynamics, changepoints
   domain/service/
+    CategoryAggregator.java                   + weighted means inside a category (E11)
     ExplanationService.java                   exact additive decomposition (SPEC §7.5)
     CusumDetector.java                        two-sided CUSUM on a robust baseline (SPEC §8.1)
     RegimeClassifier.java                     dip vs structural change (SPEC §8.2)
@@ -45,7 +48,7 @@ backend/src/main/java/com/xray/
     NarrativeRenderer.java                    extension point #3 (decision E7)
     TemplateNarrativeRenderer.java            Spanish templates
   pipeline/stages/
-    CategoryMembers.java                      category -> indicators, from config (shared by S60, S65, S70)
+    CategoryMembers.java                      category -> indicators and indicator weights, from config (S60, S65, S70)
     ProfileScoreTable.java                    profile_scores DDL and rows (shared by S60, S70)
     S30_RawIndicators.java                    + COMPANY panels when unit = GROUP (decision E2)
     S60_Score.java                            uses the two helpers; + profile_weights
@@ -82,6 +85,7 @@ backend/src/test/java/com/xray/
    - `driver_id` = an `IndicatorId` name, or `MOMENTUM`.
    - `SUM(contrib) = final − 50` for each entity-month-profile (± 0.05).
    - `SUM(eff_weight)` over the rows of one category = the effective weight `w'_c` of that category.
+   - `eff_weight` of an indicator = `w'_c · w_i / Σ w_j` over the available indicators of its category. `w_i` = `scoring.indicators.<ID>.weight`, 1 when the key is missing (decision E11).
    - `deltaK = contrib(m) − contrib(m−K)`. A driver with no row at m−K counts as 0 there. `deltaK` is NULL when `final(m−K)` is NULL or m < K.
    - `narrative_1m` is not NULL for the top `narrative-top-n` rows by `|delta1|` (only rows with `|delta1| ≥ 0.05`). `narrative_3m` is the same for `delta3`. Other rows have NULL.
 5. **`changepoints`** (S70):
@@ -135,15 +139,15 @@ Then query with `duckdb -readonly /tmp/xray-b.duckdb "<sql>"`. If the DuckDB CLI
 
 ---
 
-### Task 1: Config keys for regimes, statuses, confidence and explanation
+### Task 1: Config keys for indicator weights, regimes, statuses, confidence and explanation
 
 **Files:**
 - Modify: `backend/src/main/resources/scoring-config.yml` (the `regimes:` line, and the end of the file)
-- Modify: `backend/src/main/java/com/xray/config/ScoringConfig.java`
+- Modify: `backend/src/main/java/com/xray/config/ScoringConfig.java`, `IndicatorConfig.java`, `ScoringConfigValidator.java`
 - Modify: `backend/src/test/java/com/xray/config/ScoringConfigValidationTest.java`
 
 **Interfaces:**
-- Produces: `ScoringConfig.RegimeConfig(double cusumK, double cusumH, double cusumZCap, int persistenceMonths, double slopeThreshold, double dipZ, int dipMaxMonths, int baselineMonths, int baselineMinPoints, double sigmaFloor, int dipRecoveryMonths, int slopeMonths, int slopeMinPoints, List<IndicatorId> cusumIndicators)`, `ScoringConfig.StatusConfig`, `ScoringConfig.ConfidenceConfig`, `ScoringConfig.ExplanationConfig`, accessors `statuses()`, `confidence()`, `explanation()`.
+- Produces: `ScoringConfig.RegimeConfig(double cusumK, double cusumH, double cusumZCap, int persistenceMonths, double slopeThreshold, double dipZ, int dipMaxMonths, int baselineMonths, int baselineMinPoints, double sigmaFloor, int dipRecoveryMonths, int slopeMonths, int slopeMinPoints, List<IndicatorId> cusumIndicators)`, `ScoringConfig.StatusConfig`, `ScoringConfig.ConfidenceConfig`, `ScoringConfig.ExplanationConfig`, accessors `statuses()`, `confidence()`, `explanation()`. `IndicatorConfig(Category category, String method, AnchorStatus status, String source, List<List<Double>> anchors, Double weight)` with `double weightOrDefault()` (1 when `weight` is null).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -159,14 +163,26 @@ Add this method to `ScoringConfigValidationTest` (before `copyWith`):
         assertTrue(base.statuses().criticalBelow() < base.statuses().healthyMinFinal());
         assertTrue(base.confidence().lowHistoryMonths() < base.confidence().mediumHistoryMonths());
         assertTrue(base.explanation().narrativeTopN() > 0);
+        assertTrue(base.indicators().values().stream().allMatch(ic -> ic.weightOrDefault() > 0));
+    }
+
+    @Test
+    void nonPositiveIndicatorWeightFails() {
+        var ind = new EnumMap<>(base.indicators());
+        var ds = ind.get(IndicatorId.PAY_DSO);
+        ind.put(IndicatorId.PAY_DSO,
+                new IndicatorConfig(ds.category(), ds.method(), ds.status(), ds.source(), ds.anchors(), 0.0));
+        var ex = assertThrows(IllegalStateException.class, () -> copyWith(ind, base.profiles()));
+        assertTrue(ex.getMessage().contains("PAY_DSO"), ex.getMessage());
     }
 ```
+In `emptyAnchorsFail` and `nonMonotonicAnchorsFail`, add the sixth argument to `new IndicatorConfig(...)`: `, cf.weight()` and `, lr.weight()`.
 Append `, base.statuses(), base.confidence(), base.explanation()` to the argument list of the `new ScoringConfig(...)` call in `copyWith`, after `base.taxRegularity()`.
 
 - [ ] **Step 2: Run it to make sure it fails**
 
 Run: `cd backend && ./mvnw -q test -Dtest=ScoringConfigValidationTest`
-Expected: compilation error, `cannot find symbol ... baselineMonths()` / `statuses()`.
+Expected: compilation error, `cannot find symbol ... baselineMonths()` / `statuses()` / `weightOrDefault()`.
 
 - [ ] **Step 3: Extend the config**
 
@@ -237,6 +253,41 @@ In `ScoringConfig.java`:
     }
 ```
 
+4. Replace `IndicatorConfig.java` with:
+```java
+package com.xray.config;
+
+import com.xray.domain.model.AnchorStatus;
+import com.xray.domain.model.Category;
+
+import java.util.List;
+
+/**
+ * One indicator of SPEC §6. anchors = sorted [x, score] pairs, score in [0,100].
+ * weight = the indicator's weight inside its category (phase 4 decision E11). Optional, > 0.
+ */
+public record IndicatorConfig(
+        Category category,
+        String method,
+        AnchorStatus status,
+        String source,
+        List<List<Double>> anchors,
+        Double weight) {
+
+    /** A missing weight is 1, so equal weights give the plain category mean of SPEC §7.3. */
+    public double weightOrDefault() {
+        return weight == null ? 1.0 : weight;
+    }
+}
+```
+5. In `ScoringConfigValidator.validate`, after the `category` check, add:
+```java
+            if (ic.weight() != null && !(ic.weight() > 0)) {
+                throw fail(key + ".weight " + ic.weight() + " must be > 0");
+            }
+```
+Do not add a `weight` key to any line of `scoring.indicators`. Almudena owns those values.
+
 - [ ] **Step 4: Run the tests**
 
 Run: `cd backend && ./mvnw -q test`
@@ -245,22 +296,23 @@ Expected: exit code 0.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add backend/src/main/resources/scoring-config.yml backend/src/main/java/com/xray/config/ScoringConfig.java backend/src/test/java/com/xray/config/ScoringConfigValidationTest.java
-git commit -m "feat(config): add regime, status, confidence and explanation keys"
+git add backend/src/main/resources/scoring-config.yml backend/src/main/java/com/xray/config backend/src/test/java/com/xray/config/ScoringConfigValidationTest.java
+git commit -m "feat(config): add indicator weights and regime, status, confidence keys"
 ```
 
 ---
 
-### Task 2: Company panels, shared stage helpers and `profile_weights`
+### Task 2: Weighted category means, company panels, shared stage helpers and `profile_weights`
 
 **Files:**
 - Create: `backend/src/main/java/com/xray/domain/model/HealthStatus.java`, `Regime.java`, `Confidence.java`, `ChangeDirection.java`, `Changepoint.java`, `Contribution.java`, `DynamicsPoint.java`
 - Modify: `backend/src/main/java/com/xray/domain/model/EntityPanel.java`
+- Modify: `backend/src/main/java/com/xray/domain/service/CategoryAggregator.java`
 - Create: `backend/src/main/java/com/xray/pipeline/stages/CategoryMembers.java`, `ProfileScoreTable.java`
 - Modify: `backend/src/main/java/com/xray/pipeline/stages/S60_Score.java`, `S30_RawIndicators.java`
 
 **Interfaces:**
-- Produces: the model types below; `EntityPanel.contributions(Profile)`, `setContributions(Profile, List<List<Contribution>>)`, `dynamics(Profile)`, `setDynamics(Profile, DynamicsPoint[])`, `changepoints()`, `addChangepoint(Changepoint)`; `CategoryMembers.of(ScoringConfig)`; `ProfileScoreTable.NAME`, `ProfileScoreTable.DDL`, `ProfileScoreTable.rows(EntityPanel)`.
+- Produces: the model types below; `EntityPanel.contributions(Profile)`, `setContributions(Profile, List<List<Contribution>>)`, `dynamics(Profile)`, `setDynamics(Profile, DynamicsPoint[])`, `changepoints()`, `addChangepoint(Changepoint)`; `CategoryMembers.of(ScoringConfig)`, `CategoryMembers.weights(ScoringConfig) → Map<IndicatorId, Double>`; `CategoryAggregator.aggregate(List<SubScore[]> members, double[] weights, int months)`; `ProfileScoreTable.NAME`, `ProfileScoreTable.DDL`, `ProfileScoreTable.rows(EntityPanel)`.
 
 - [ ] **Step 1: Add the model types**
 
@@ -389,6 +441,15 @@ final class CategoryMembers {
     private CategoryMembers() {
     }
 
+    /** Indicator -> its weight inside its category (decision E11), 1 when the config has no weight. */
+    static Map<IndicatorId, Double> weights(ScoringConfig config) {
+        Map<IndicatorId, Double> out = new EnumMap<>(IndicatorId.class);
+        for (IndicatorId id : IndicatorId.values()) {
+            out.put(id, config.indicators().get(id).weightOrDefault());
+        }
+        return out;
+    }
+
     static Map<Category, List<IndicatorId>> of(ScoringConfig config) {
         Map<Category, List<IndicatorId>> members = new EnumMap<>(Category.class);
         for (Category c : Category.values()) {
@@ -400,6 +461,51 @@ final class CategoryMembers {
             members.get(config.indicators().get(id).category()).add(id);
         }
         return members;
+    }
+}
+```
+
+- [ ] **Step 3b: Make the category means weighted**
+
+Replace the body of `CategoryAggregator` (keep the package and the imports, add `java.util.Arrays`) with:
+```java
+/**
+ * C_level / C_traj = weighted means of the available indicators of one category (SPEC §7.3, phase 4 decision E11).
+ * With equal weights this is the plain mean of the SPEC.
+ */
+public final class CategoryAggregator {
+
+    private CategoryAggregator() {
+    }
+
+    /** Equal weights: the plain mean. */
+    public static CategoryScore[] aggregate(List<SubScore[]> members, int months) {
+        double[] w = new double[members.size()];
+        Arrays.fill(w, 1.0);
+        return aggregate(members, w, months);
+    }
+
+    /** weights[i] > 0 belongs to members.get(i). A trajectory mean uses only the members with a trajectory. */
+    public static CategoryScore[] aggregate(List<SubScore[]> members, double[] weights, int months) {
+        CategoryScore[] out = new CategoryScore[months];
+        for (int m = 0; m < months; m++) {
+            double ls = 0, lw = 0, ts = 0, tw = 0;
+            int n = 0;
+            for (int i = 0; i < members.size(); i++) {
+                SubScore x = members.get(i)[m];
+                if (!x.available()) continue;
+                double w = weights[i];
+                ls += w * x.level();
+                lw += w;
+                n++;
+                if (x.trajectory() != null) {
+                    ts += w * x.trajectory();
+                    tw += w;
+                }
+            }
+            out[m] = n == 0 ? CategoryScore.missing() : new CategoryScore(ls / lw, tw == 0 ? null : ts / tw, n);
+        }
+        return out;
     }
 }
 ```
@@ -458,6 +564,12 @@ In `S60_Score.java`:
 2. Replace the block that builds `members` (from `Map<Category, List<IndicatorId>> members = new EnumMap<>(Category.class);` to `config.indicators().forEach(...)`) with:
 ```java
         Map<Category, List<IndicatorId>> members = CategoryMembers.of(config);
+        Map<IndicatorId, Double> indicatorWeights = CategoryMembers.weights(config);
+```
+Pass `indicatorWeights` to `score(...)`: the call becomes `score(panel, members, indicatorWeights, params)`, and the method signature gets the parameter `Map<IndicatorId, Double> indicatorWeights`. Inside `score`, replace the `CategoryAggregator.aggregate(...)` call with:
+```java
+            CategoryScore[] s = CategoryAggregator.aggregate(ids.stream().map(panel::subScores).toList(),
+                    ids.stream().mapToDouble(indicatorWeights::get).toArray(), panel.size());
 ```
 3. Add a DDL constant:
 ```java
@@ -520,7 +632,7 @@ SELECT COUNT(*) FROM profile_scores WHERE status IS NOT NULL OR seasonal IS NOT 
 
 ```bash
 git add backend/src/main/java/com/xray/domain/model backend/src/main/java/com/xray/pipeline/stages
-git commit -m "feat(pipeline): score company panels and write the run's profile weights"
+git commit -m "feat(pipeline): weight indicators inside a category and score company panels"
 ```
 
 ---
@@ -533,12 +645,13 @@ git commit -m "feat(pipeline): score company panels and write the run's profile 
 
 **Interfaces:**
 - Consumes: `ProfileScore` (with `effectiveWeights`, `momentum`), `SubScore`, `CategoryAggregator.aggregate`, `ProfileScorer.score`, `Contribution`.
-- Produces: `ExplanationService.MOMENTUM` (`"MOMENTUM"`), `static List<Contribution> explain(ProfileScore ps, Map<Category, List<IndicatorId>> members, Function<IndicatorId, SubScore> subScoreAt, double lambda)`.
+- Produces: `ExplanationService.MOMENTUM` (`"MOMENTUM"`), `static List<Contribution> explain(ProfileScore ps, Map<Category, List<IndicatorId>> members, Map<IndicatorId, Double> indicatorWeights, Function<IndicatorId, SubScore> subScoreAt, double lambda)`.
 
-The math. For a category c with effective weight `w'_c`, available indicators A (n of them) and the subset T with a trajectory (nt):
-- nt > 0: `contrib_i = w'_c · [ λ·(level_i − 50)/n + (1−λ)·(traj_i − 50)/nt·[i ∈ T] ]`
-- nt = 0: `contrib_i = w'_c · (level_i − 50)/n` (phase 3 decision D5: the category blends as its level)
+The math. For a category c with effective weight `w'_c`, indicator weights `w_i` (decision E11), available indicators A with `W_A = Σ_{A} w_i`, and the subset T with a trajectory, `W_T = Σ_{T} w_i`:
+- W_T > 0: `contrib_i = w'_c · [ λ·w_i·(level_i − 50)/W_A + (1−λ)·w_i·(traj_i − 50)/W_T·[i ∈ T] ]`
+- W_T = 0: `contrib_i = w'_c · w_i·(level_i − 50)/W_A` (phase 3 decision D5: the category blends as its level)
 - MOMENTUM: `contrib = w'_MOM · (momentum − 50)`
+- `effWeight_i = w'_c · w_i / W_A`. With equal weights this is `w'_c / n` (SPEC §7.5).
 
 Summed over i, a category gives `w'_c · (blended_c − 50)`. The `w'` sum to 1, so the total is `final − 50` exactly.
 
@@ -580,11 +693,12 @@ class ExplanationSumTest {
         int checked = 0;
         for (int trial = 0; trial < 300; trial++) {
             Map<IndicatorId, SubScore[]> subs = randomSubScores(rnd);
+            Map<IndicatorId, Double> iw = randomIndicatorWeights(rnd);
             double lambda = rnd.nextDouble();
-            ProfileScore[] scores = score(members, subs, lambda, randomWeights(rnd));
+            ProfileScore[] scores = score(members, iw, subs, lambda, randomWeights(rnd));
             for (int m = 0; m < MONTHS; m++) {
                 int mm = m;
-                List<Contribution> cs = ExplanationService.explain(scores[m], members, id -> subs.get(id)[mm], lambda);
+                List<Contribution> cs = ExplanationService.explain(scores[m], members, iw, id -> subs.get(id)[mm], lambda);
                 if (scores[m].finalScore() == null) {
                     assertTrue(cs.isEmpty(), "trial " + trial + " month " + m);
                     continue;
@@ -603,10 +717,11 @@ class ExplanationSumTest {
         Map<Category, List<IndicatorId>> members = members();
         for (int trial = 0; trial < 50; trial++) {
             Map<IndicatorId, SubScore[]> subs = randomSubScores(rnd);
-            ProfileScore[] scores = score(members, subs, 0.6, randomWeights(rnd));
+            Map<IndicatorId, Double> iw = randomIndicatorWeights(rnd);
+            ProfileScore[] scores = score(members, iw, subs, 0.6, randomWeights(rnd));
             for (int m = 0; m < MONTHS; m++) {
                 int mm = m;
-                Map<Category, Double> byCat = ExplanationService.explain(scores[m], members, id -> subs.get(id)[mm], 0.6)
+                Map<Category, Double> byCat = ExplanationService.explain(scores[m], members, iw, id -> subs.get(id)[mm], 0.6)
                         .stream().collect(Collectors.groupingBy(Contribution::category,
                                 Collectors.summingDouble(Contribution::effWeight)));
                 ProfileScore ps = scores[m];
@@ -616,11 +731,22 @@ class ExplanationSumTest {
         }
     }
 
-    private static ProfileScore[] score(Map<Category, List<IndicatorId>> members, Map<IndicatorId, SubScore[]> subs,
-                                        double lambda, Map<Category, Double> weights) {
+    private static ProfileScore[] score(Map<Category, List<IndicatorId>> members, Map<IndicatorId, Double> iw,
+                                        Map<IndicatorId, SubScore[]> subs, double lambda, Map<Category, Double> weights) {
         Map<Category, CategoryScore[]> cats = new EnumMap<>(Category.class);
-        members.forEach((c, ids) -> cats.put(c, CategoryAggregator.aggregate(ids.stream().map(subs::get).toList(), MONTHS)));
+        members.forEach((c, ids) -> cats.put(c, CategoryAggregator.aggregate(ids.stream().map(subs::get).toList(),
+                ids.stream().mapToDouble(iw::get).toArray(), MONTHS)));
         return ProfileScorer.score(cats, MONTHS, new ProfileScorer.Params(lambda, weights, 2, 10, BANDS));
+    }
+
+    /** Weights inside a category (E11): half of the trials use equal weights, the other half random ones. */
+    private static Map<IndicatorId, Double> randomIndicatorWeights(Random rnd) {
+        boolean equal = rnd.nextBoolean();
+        Map<IndicatorId, Double> out = new EnumMap<>(IndicatorId.class);
+        for (IndicatorId id : IndicatorId.values()) {
+            out.put(id, equal ? 1.0 : 0.5 + 3 * rnd.nextDouble());
+        }
+        return out;
     }
 
     /** Some months have nothing available, most have a random subset; 30 % of the available ones have no trajectory. */
@@ -710,7 +836,8 @@ import java.util.function.Function;
 
 /**
  * Exact additive decomposition of Final − 50 (SPEC §7.5). It reads the effective weights that ProfileScorer
- * kept, so it never sees a config weight. Σ contrib = final − 50 up to floating point.
+ * kept, and the indicator weights inside each category (decision E11) that CategoryAggregator used.
+ * Σ contrib = final − 50 up to floating point.
  */
 public final class ExplanationService {
 
@@ -720,6 +847,7 @@ public final class ExplanationService {
     }
 
     public static List<Contribution> explain(ProfileScore ps, Map<Category, List<IndicatorId>> members,
+                                             Map<IndicatorId, Double> indicatorWeights,
                                              Function<IndicatorId, SubScore> subScoreAt, double lambda) {
         if (ps.finalScore() == null) {
             return List.of();
@@ -733,21 +861,23 @@ public final class ExplanationService {
                 continue;
             }
             List<IndicatorId> avail = members.get(c).stream().filter(id -> subScoreAt.apply(id).available()).toList();
-            int n = avail.size();
-            long nt = avail.stream().filter(id -> subScoreAt.apply(id).trajectory() != null).count();
+            double wa = avail.stream().mapToDouble(indicatorWeights::get).sum();
+            double wt = avail.stream().filter(id -> subScoreAt.apply(id).trajectory() != null)
+                    .mapToDouble(indicatorWeights::get).sum();
             for (IndicatorId id : avail) {
                 SubScore s = subScoreAt.apply(id);
+                double wi = indicatorWeights.get(id);
                 double part;
                 double blended;
-                if (nt == 0) {
-                    part = (s.level() - 50) / n;
+                if (wt == 0) {
+                    part = wi * (s.level() - 50) / wa;
                     blended = s.level();
                 } else {
-                    part = lambda * (s.level() - 50) / n
-                            + (s.trajectory() == null ? 0 : (1 - lambda) * (s.trajectory() - 50) / nt);
+                    part = lambda * wi * (s.level() - 50) / wa
+                            + (s.trajectory() == null ? 0 : (1 - lambda) * wi * (s.trajectory() - 50) / wt);
                     blended = s.trajectory() == null ? s.level() : lambda * s.level() + (1 - lambda) * s.trajectory();
                 }
-                out.add(new Contribution(id.name(), c, wc / n, blended, wc * part));
+                out.add(new Contribution(id.name(), c, wc * wi / wa, blended, wc * part));
             }
         }
         return out;
@@ -758,7 +888,7 @@ public final class ExplanationService {
 - [ ] **Step 4: Run the tests**
 
 Run: `cd backend && ./mvnw -q test`
-Expected: exit code 0. `ExplanationSumTest` runs 2 tests.
+Expected: exit code 0. `ExplanationSumTest` runs 2 tests. `ProfileRenormalizationTest` still passes (equal weights give the old means).
 
 - [ ] **Step 5: Commit**
 
@@ -970,12 +1100,13 @@ public class S65_Explain implements PipelineStage {
         }
         ScoringConfig config = ctx.config();
         Map<Category, List<IndicatorId>> members = CategoryMembers.of(config);
+        Map<IndicatorId, Double> indicatorWeights = CategoryMembers.weights(config);
         Map<Profile, Double> lambdas = new EnumMap<>(Profile.class);
         config.profiles().forEach((p, pc) -> lambdas.put(p, pc.lambda()));
         int topN = config.explanation().narrativeTopN();
         double minDelta = config.explanation().minNarratedDelta();
 
-        ctx.panels().parallelStream().forEach(panel -> explain(panel, members, lambdas));
+        ctx.panels().parallelStream().forEach(panel -> explain(panel, members, indicatorWeights, lambdas));
         ctx.report(id(), 67, "writing contributions");
         List<Object[]> rows = ctx.panels().parallelStream()
                 .flatMap(panel -> rows(panel, topN, minDelta).stream()).toList();
@@ -983,13 +1114,15 @@ public class S65_Explain implements PipelineStage {
         ctx.report(id(), 69, n + " contribution rows");
     }
 
-    private static void explain(EntityPanel panel, Map<Category, List<IndicatorId>> members, Map<Profile, Double> lambdas) {
+    private static void explain(EntityPanel panel, Map<Category, List<IndicatorId>> members,
+                                Map<IndicatorId, Double> indicatorWeights, Map<Profile, Double> lambdas) {
         for (Profile p : Profile.values()) {
             ProfileScore[] s = panel.profileScores(p);
             List<List<Contribution>> series = new ArrayList<>(panel.size());
             for (int m = 0; m < panel.size(); m++) {
                 int mm = m;
-                series.add(ExplanationService.explain(s[m], members, id -> panel.subScores(id)[mm], lambdas.get(p)));
+                series.add(ExplanationService.explain(s[m], members, indicatorWeights, id -> panel.subScores(id)[mm],
+                        lambdas.get(p)));
             }
             panel.setContributions(p, series);
         }
@@ -1669,7 +1802,7 @@ Expected: 5 test classes pass. Status `DONE`.
 - [ ] **Step 2: Check the paths you changed**
 
 Run: `git diff --stat main...HEAD`
-Expected: only paths that the overview gives to plan B. `scoring.profiles` in `scoring-config.yml` is unchanged: `git diff main...HEAD -- backend/src/main/resources/scoring-config.yml | grep -c "profiles"` prints `0`.
+Expected: only paths that the overview gives to plan B. `scoring.profiles` and the indicator lines in `scoring-config.yml` are unchanged: `git diff main...HEAD -- backend/src/main/resources/scoring-config.yml | grep -cE "profiles|anchors"` prints `0`.
 
 - [ ] **Step 3: Write the final report**
 

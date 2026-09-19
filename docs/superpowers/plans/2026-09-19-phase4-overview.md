@@ -12,7 +12,7 @@ the profile weights and the category weighting. Nothing in phase 4 waits for her
 | B — Explanation (S65), dynamics (S70), company panels | `feat/phase4-explain-dynamics` | Claude Code or Antigravity | `2026-09-19-phase4-B-explain-dynamics.md` |
 
 Estimate: A about 5–6 h of agent time (the frontend is the slow part). B about
-4–5 h. Merge and smoke test: 30 min.
+5 h (the weights inside a category add about 30 min). Merge and smoke test: 30 min.
 
 Done when (SPEC §13 M3 without the submission upload, M4, and M5):
 - `GET /api/meta`, `/api/profiles`, `/api/portfolio`, `/api/entities/{id}`, `/api/entities/{id}/timeline`, `/api/analytics/distribution` and `/api/export/submission` answer from the results tables in < 1 s.
@@ -44,6 +44,7 @@ Done when (SPEC §13 M3 without the submission upload, M4, and M5):
 | E7 | `NarrativeRenderer` signature | `String render(String driverId, RawIndicator before, RawIndicator after, double deltaPoints)`. ARCHITECTURE §8.3 has `render(Contribution, RawIndicator, RawIndicator)`, which cannot tell a 1-month delta from a 3-month delta. `summarize` is not built (no caller). |
 | E8 | Products | `limit`, `premium` and `momentum` stay `null` in the entity DTO. Block 7 fills them. The UI shows the product panel as pending. |
 | E9 | Alerts | `activeAlerts` = 0 in phase 4. Block 6 fills it. |
+| E11 | Weights inside a category (Almudena, confirmed 2026-09-19) | `scoring.indicators.<ID>.weight` (optional, > 0, default 1). `C_level` and `C_traj` become weighted means over the available indicators of the category. With every weight at 1 the result is the plain mean of SPEC §7.3. Plan B builds it in `CategoryAggregator`, `ExplanationService` and `ExplanationSumTest`. |
 | E10 | Submission | `SubmissionExporter` has two formats: `entity` (`entity_id,score` at the last month) and `entity-month` (`entity_id,month,score`). Default profile BANK. Adapt on Sunday when the hidden test shows its IDs. |
 
 ## Weights landing (Almudena)
@@ -55,10 +56,13 @@ config, not the code.
 2. Run `cd backend && ./mvnw test`. `ScoringConfigValidationTest` rejects a table that does not sum to 100.
 3. Run the pipeline (`POST /api/pipeline/run`). S60 writes the new `profile_weights`, and every score, contribution and status is rebuilt.
 4. Record the M23 histogram in `docs/DATA_FINDINGS.md`. If it clusters in a ~15-point band, widen anchors. Never change weights for this reason.
-5. **Weights inside a category** (an indicator weighs more than another of the same category). This is a code change, not a config change. Today `C_level` and `C_traj` are plain means (SPEC §7.3). Stop and plan it as a separate task: `CategoryAggregator`, `ExplanationService`, a new key in `IndicatorConfig`, and `ExplanationSumTest`.
+5. **Weights inside a category** (decision E11). Add `weight: <n>` to the indicator's line in `scoring.indicators`, for example `PAY_DSO: { category: PAYMENT_BEHAVIOUR, ..., anchors: [...], weight: 2 }`. Only the ratio inside a category counts: weights 2 and 1 give the same result as 4 and 2. A missing key is 1. After plan B merges, this is a config change, like step 1.
 
-The plans never read or edit the `scoring.profiles` block. Plan B adds its new
-keys at the end of `scoring-config.yml`, so a merge with her edit has no conflict.
+The plans never edit the `scoring.profiles` block or the `weight` keys in
+`scoring.indicators`. Plan B adds its new keys at the end of `scoring-config.yml`
+(and extends the `regimes` line), so a merge with her edit has no conflict.
+If she delivers before plan B merges, put her indicator weights on `main` after
+the merge: `main` does not bind `weight` yet.
 
 ## Why these two plans do not conflict
 
@@ -74,7 +78,7 @@ Paths are relative to `backend/src/main/` unless they start with `backend/`,
 | `java/com/xray/narrative/**` | B |
 | `java/com/xray/pipeline/stages/S30_*`, `S60_*`, `S65_*`, `S70_*`, `CategoryMembers.java`, `ProfileScoreTable.java` | B |
 | `java/com/xray/config/**`, `resources/scoring-config.yml` (except `scoring.profiles`), `backend/src/test/**` | B |
-| `scoring.profiles` in `resources/scoring-config.yml` | Almudena, on `main` only |
+| `scoring.profiles` and the `weight` keys of `scoring.indicators` in `resources/scoring-config.yml` | Almudena, on `main` only |
 | `resources/sql/**`, `PanelLoader.java`, `ResultWriter.java`, `PipelineRunner.java`, `docs/**`, `CLAUDE.md` | nobody in phase 4 |
 
 B never edits `docs/DATA_FINDINGS.md`. B puts its findings in its final report,
@@ -106,6 +110,7 @@ and the person who merges copies them in (run procedure step 7).
    - `driver_id` = an `IndicatorId` name, or `MOMENTUM`.
    - `SUM(contrib) = final − 50` for each entity-month-profile (± 0.05).
    - `SUM(eff_weight)` over the rows of one category = the effective weight `w'_c` of that category.
+   - `eff_weight` of an indicator = `w'_c · w_i / Σ w_j` over the available indicators of its category. `w_i` = `scoring.indicators.<ID>.weight`, 1 when the key is missing (decision E11).
    - `deltaK = contrib(m) − contrib(m−K)`. A driver with no row at m−K counts as 0 there. `deltaK` is NULL when `final(m−K)` is NULL or m < K.
    - `narrative_1m` is not NULL for the top `narrative-top-n` rows by `|delta1|` (only rows with `|delta1| ≥ 0.05`). `narrative_3m` is the same for `delta3`. Other rows have NULL.
 5. **`changepoints`** (S70):

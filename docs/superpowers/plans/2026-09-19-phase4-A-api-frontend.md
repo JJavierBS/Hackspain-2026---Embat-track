@@ -85,6 +85,7 @@ frontend/
    - `driver_id` = an `IndicatorId` name, or `MOMENTUM`.
    - `SUM(contrib) = final − 50` for each entity-month-profile (± 0.05).
    - `SUM(eff_weight)` over the rows of one category = the effective weight `w'_c` of that category.
+   - `eff_weight` of an indicator = `w'_c · w_i / Σ w_j` over the available indicators of its category. `w_i` = `scoring.indicators.<ID>.weight`, 1 when the key is missing (decision E11).
    - `deltaK = contrib(m) − contrib(m−K)`. A driver with no row at m−K counts as 0 there. `deltaK` is NULL when `final(m−K)` is NULL or m < K.
    - `narrative_1m` is not NULL for the top `narrative-top-n` rows by `|delta1|` (only rows with `|delta1| ≥ 0.05`). `narrative_3m` is the same for `delta3`. Other rows have NULL.
 5. **`changepoints`** (S70):
