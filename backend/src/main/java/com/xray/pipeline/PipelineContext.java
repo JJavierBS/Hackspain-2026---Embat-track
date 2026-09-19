@@ -1,10 +1,13 @@
 package com.xray.pipeline;
 
 import com.xray.config.ScoringConfig;
+import com.xray.domain.model.EntityPanel;
 import com.xray.domain.model.EntityType;
 import com.xray.infrastructure.duckdb.SqlRunner;
 
-/** State shared by the stages of one run. Block 2 adds the in-memory panels (ARCHITECTURE §4.2). */
+import java.util.List;
+
+/** State shared by the stages of one run. */
 public class PipelineContext {
 
     private final SqlRunner sql;
@@ -12,6 +15,7 @@ public class PipelineContext {
     private final String runId;
     private final EntityType unit;
     private final ProgressSink progress;
+    private List<EntityPanel> panels = List.of();
 
     public PipelineContext(SqlRunner sql, ScoringConfig config, String runId, EntityType unit, ProgressSink progress) {
         this.sql = sql;
@@ -28,6 +32,11 @@ public class PipelineContext {
     public String runId() { return runId; }
 
     public EntityType unit() { return unit; }
+
+    /** Populated by S30, enriched in place by S40..S90 (ARCHITECTURE §4.2). */
+    public List<EntityPanel> panels() { return panels; }
+
+    public void setPanels(List<EntityPanel> panels) { this.panels = List.copyOf(panels); }
 
     public void report(String stageId, int pct, String message) {
         progress.report(stageId, pct, message);
