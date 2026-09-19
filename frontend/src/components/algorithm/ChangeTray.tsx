@@ -122,7 +122,7 @@ export function ChangeTray({ changes, invalid, phase, onUndo, onDiscard, onApply
                       type="button"
                       disabled={!consent || invalid > 0}
                       onClick={onApply}
-                      className="inline-flex items-center gap-2 bg-viewer-ink px-4 py-1.5 text-[15px] font-semibold text-viewer hover:bg-white disabled:cursor-not-allowed disabled:bg-viewer-rule disabled:text-viewer-muted"
+                      className="inline-flex items-center gap-2 bg-scan px-4 py-1.5 text-[15px] font-semibold text-white hover:bg-scan-dark disabled:cursor-not-allowed disabled:bg-viewer-rule disabled:text-viewer-muted"
                     >
                       <IconRestart width={15} height={15} />
                       Aplicar y recalcular
@@ -184,7 +184,7 @@ function Lamp({ label, busy = false, progress }: { label: string; busy?: boolean
         <span
           aria-hidden
           className={`h-2 w-2 rounded-full ${
-            busy ? "animate-pulse bg-amber-400 shadow-[0_0_10px_2px_rgb(251_191_36/0.55)]" : "bg-scan shadow-[0_0_10px_2px_rgb(15_163_194/0.6)]"
+            busy ? "animate-pulse bg-amber-400 shadow-[0_0_10px_2px_rgb(251_191_36/0.55)]" : "bg-scan shadow-[0_0_10px_2px_rgb(56_120_246/0.6)]"
           }`}
         />
         <span className="font-medium">{label}</span>

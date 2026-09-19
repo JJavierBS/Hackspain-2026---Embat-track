@@ -47,7 +47,7 @@ export function MonthStrip({ value, onChange }: MonthStripProps) {
             <span
               className={`block w-[3px] transition-none ${
                 selected
-                  ? "h-8 w-[5px] bg-scan shadow-[0_0_10px_1px_rgb(15_163_194/0.7)]"
+                  ? "h-8 w-[5px] bg-scan shadow-[0_0_10px_1px_rgb(56_120_246/0.7)]"
                   : i < current
                     ? "h-4 bg-viewer-muted/70 group-hover:h-6 group-hover:bg-viewer-ink"
                     : "h-3 bg-viewer-rule group-hover:h-6 group-hover:bg-viewer-ink"

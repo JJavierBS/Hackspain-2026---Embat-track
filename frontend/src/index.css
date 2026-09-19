@@ -1,46 +1,62 @@
-@import "@fontsource-variable/archivo/wdth.css";
+@import "@fontsource-variable/hanken-grotesk";
 @import "tailwindcss";
 
 /*
- * Radiology Lightbox. A dark viewer frame holds a cool backlit panel.
- * Content sits on "films": flat panels with hairline rules and corner marks.
+ * Radiology Lightbox, dressed in the Embat identity.
+ * A Midnight Ink frame holds a light panel. Content sits on white films with
+ * soft level-1 shadows and 8px corners. Action Blue marks "now", focus and actions.
  * Band colors (A–E) name health. Green and red name direction only.
+ * Brand face: HafferSQXH (licensed, not shipped). Hanken Grotesk is the free stand-in.
  */
 @theme {
-  --font-sans: "Archivo Variable", "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "HafferSQXH", "Hanken Grotesk Variable", Arial, Verdana, sans-serif;
 
-  --color-viewer: #0d1b26;
-  --color-viewer-raised: #16293a;
-  --color-viewer-rule: #2a4052;
-  --color-viewer-ink: #e4edf3;
-  --color-viewer-muted: #8fa6b8;
+  /* Embat Midnight Ink frame. */
+  --color-viewer: #050b2c;
+  --color-viewer-raised: #232845;
+  --color-viewer-rule: #373c56;
+  --color-viewer-ink: #ffffff;
+  --color-viewer-muted: #a5a9bd;
 
-  --color-panel: #eef3f7;
-  --color-panel-grid: #dde6ed;
-  --color-film: #fbfcfd;
-  --color-rule: #cfdae3;
-  --color-ink: #0d1b26;
-  --color-ink-muted: #4a5d6d;
+  /* Embat light surfaces. */
+  --color-panel: #f3f4f6;
+  --color-panel-grid: #e8e8ed;
+  --color-film: #ffffff;
+  --color-rule: #d2d2db;
+  --color-ink: #050b2c;
+  --color-ink-muted: #53576b;
 
-  --color-scan: #0fa3c2;
-  --color-scan-soft: #d3eff5;
+  /* Embat Action Blue: now, focus and the primary action. Cloud Blue is its wash. */
+  --color-scan: #3878f6;
+  --color-scan-dark: #2a63d6;
+  --color-scan-soft: #e7efff;
 
-  --color-band-a: #1f5fd1;
+  /* Embat coral: warmth for non-semantic markers (the demo-data flag). */
+  --color-coral: #f7b2a8;
+
+  /* Band A moves to indigo so it never reads as Action Blue. */
+  --color-band-a: #4338ca;
   --color-band-b: #0b7a88;
   --color-band-c: #9a6b00;
   --color-band-d: #c2500a;
   --color-band-e: #8e1b8f;
 
-  /* Chart series: neutral hues kept off cyan, the band colors and green/red. */
+  /* Chart series: neutral hues kept off Action Blue, the band colors and green/red. */
   --color-series-level: #7a6a55;
-  --color-series-trajectory: #4f6a8f;
+  --color-series-trajectory: #696d80;
 
   --color-up: #15803d;
   --color-down: #c62828;
 
-  /* Kept for the template Button until block 4 restyles it. */
-  --color-brand: #1f5fd1;
-  --color-brand-dark: #184ca8;
+  --color-brand: #3878f6;
+  --color-brand-dark: #2a63d6;
+
+  /* Embat elevation and corners. */
+  --shadow-level-1: 0 1px 4px rgb(0 0 0 / 0.09);
+  --shadow-level-2: 0 3px 12px rgb(0 0 0 / 0.09);
+  --shadow-level-3: 0 8px 16px rgb(0 0 0 / 0.09);
+  --radius-control: 4px;
+  --radius-film: 8px;
 }
 
 :root {
@@ -58,6 +74,35 @@ body {
   color: var(--color-ink);
   background: var(--color-panel);
   -webkit-font-smoothing: antialiased;
+}
+
+/* Embat controls: 4px corners and a 0.3s state change. Joined groups round the frame, not the segments. */
+@layer base {
+  button,
+  select,
+  input,
+  textarea {
+    border-radius: var(--radius-control);
+    transition-duration: 0.3s;
+  }
+
+  .segmented {
+    border-radius: var(--radius-control);
+    overflow: hidden;
+  }
+
+  .segmented > * {
+    border-radius: 0;
+  }
+}
+
+::placeholder {
+  color: var(--color-ink-muted);
+}
+
+input,
+textarea {
+  caret-color: var(--color-scan);
 }
 
 ::selection {
@@ -96,20 +141,12 @@ body {
   /* Lets wide content (the ranking table) scroll inside the film, not stretch the page. */
   min-width: 0;
   background: var(--color-film);
-  border: 1px solid var(--color-rule);
+  border: 1px solid var(--color-panel-grid);
+  border-radius: var(--radius-film);
+  box-shadow: var(--shadow-level-1);
 }
 
-.film::after {
-  content: "";
-  position: absolute;
-  right: -1px;
-  bottom: -1px;
-  width: 10px;
-  height: 10px;
-  border: solid var(--color-ink);
-  border-width: 0 2px 2px 0;
-  pointer-events: none;
-}
+/* The ink corner mark does not survive Embat's rounded films: the soft shadow carries the edge. */
 
 .film-tab {
   position: absolute;
@@ -120,9 +157,10 @@ body {
   padding: 4px 12px;
   background: var(--color-ink);
   color: var(--color-film);
+  border-radius: var(--radius-control);
   font-size: 1.125rem;
   line-height: 1.5rem;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: -0.01em;
 }
 
@@ -133,8 +171,9 @@ body {
   width: 16px;
   height: 8px;
   background: var(--color-panel);
-  border: 1px solid var(--color-rule);
+  border: 1px solid var(--color-panel-grid);
   border-top: 0;
+  border-radius: 0 0 2px 2px;
 }
 
 /* The measurement readout printed on the top rule, opposite the tab. */
@@ -157,7 +196,7 @@ body {
   top: 0;
   height: 2px;
   background: var(--color-scan);
-  box-shadow: 0 6px 24px 4px rgb(15 163 194 / 0.28);
+  box-shadow: 0 6px 24px 4px rgb(56 120 246 / 0.28);
   opacity: 0;
   pointer-events: none;
   animation: scan 1100ms cubic-bezier(0.16, 1, 0.3, 1) 80ms 1 both;
