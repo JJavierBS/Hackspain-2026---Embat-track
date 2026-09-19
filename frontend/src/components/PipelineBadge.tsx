@@ -3,7 +3,7 @@ import { usePipelineStatus } from "../api/usePipelineStatus";
 type BadgeState = "DONE" | "RUNNING" | "FAILED" | "IDLE" | "OFFLINE";
 
 const LAMPS: Record<BadgeState, { label: string; lamp: string }> = {
-  DONE: { label: "Listo", lamp: "bg-scan shadow-[0_0_10px_2px_rgb(15_163_194/0.6)]" },
+  DONE: { label: "Listo", lamp: "bg-scan shadow-[0_0_10px_2px_rgb(56_120_246/0.6)]" },
   RUNNING: { label: "Calculando", lamp: "bg-amber-400 shadow-[0_0_10px_2px_rgb(251_191_36/0.55)] animate-pulse" },
   FAILED: { label: "Error", lamp: "bg-red-500 shadow-[0_0_10px_2px_rgb(239_68_68/0.5)]" },
   IDLE: { label: "En espera", lamp: "bg-viewer-muted" },

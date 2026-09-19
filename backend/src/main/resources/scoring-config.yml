@@ -205,6 +205,10 @@ scoring:
     low-history-months: 6
     medium-history-months: 12
     low-available-share: 0.5
+    # Coverage gate: confidence INSUFFICIENT when the available categories hold less than this share of the
+    # profile weight (MOMENTUM excluded). The UI shows the score with a "Sin historial" badge and keeps it out
+    # of bands, filters and rank. Stops one static indicator from ranking a new entity at 100 (DATA_FINDINGS).
+    min-trusted-weight-share: 0.4
 
   # SPEC §7.5: narratives for the top movers of each entity-month-profile (phase 4 decision E6).
   explanation:

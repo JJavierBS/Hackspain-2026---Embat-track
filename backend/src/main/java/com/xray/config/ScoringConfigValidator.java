@@ -218,6 +218,17 @@ final class ScoringConfigValidator {
         }
     }
 
+    /** Coverage gate: a share of the profile weight, in [0, 1]. */
+    static void validateConfidence(ScoringConfig.ConfidenceConfig confidence) {
+        if (confidence == null) {
+            throw fail("scoring.confidence is missing");
+        }
+        double s = confidence.minTrustedWeightShare();
+        if (!(s >= 0 && s <= 1)) {
+            throw fail("scoring.confidence.min-trusted-weight-share " + s + " must be in [0, 1]");
+        }
+    }
+
     private static void positive(String key, int value) {
         if (value < 1) {
             throw fail(key + " " + value + " must be >= 1");

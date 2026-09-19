@@ -367,10 +367,13 @@ const PARAMS: Omit<Methodology, "alertRules"> = {
 };
 
 /** The backend's projection (ForecastCalculator) on the synthetic series: AR(1) toward the median up to m. */
-function mockForecast(finals: number[], origin: string, horizonRaw?: number): Forecast {
+function mockForecast(finals: number[], origin: string, horizonRaw?: number, later: number[] = []): Forecast {
   const f = PARAMS.forecast!;
   const horizon = Math.max(1, Math.min(f.maxHorizonMonths, horizonRaw ?? f.maxHorizonMonths));
-  const empty: Forecast = { origin, reliability: null, history: null, median: null, horizon, maxHorizon: f.maxHorizonMonths, points: [] };
+  const empty: Forecast = {
+    origin, reliability: null, history: null, median: null, horizon, maxHorizon: f.maxHorizonMonths, points: [],
+    meanAbsError: null, bias: null,
+  };
   if (finals.length < f.minPoints) return empty;
   const sorted = [...finals].sort((a, b) => a - b);
   const k = Math.floor(sorted.length / 2);
@@ -381,9 +384,15 @@ function mockForecast(finals: number[], origin: string, horizonRaw?: number): Fo
   const points = Array.from({ length: horizon }, (_, i) => {
     v = Math.max(0, Math.min(100, median + f.meanReversion * (v - median)));
     const month = new Date(Date.UTC(y, mo - 1 + i + 1, 1)).toISOString().slice(0, 7);
-    return { month, horizon: i + 1, value: Math.round(v * 10) / 10 };
+    return { month, horizon: i + 1, value: Math.round(v * 10) / 10, actual: later[i] ?? null };
   });
-  return { ...empty, reliability, history: finals.length, median: Math.round(median * 10) / 10, points };
+  const errors = points.filter((p) => p.actual !== null).map((p) => p.value - (p.actual as number));
+  const round = (x: number) => Math.round(x * 10) / 10;
+  return {
+    ...empty, reliability, history: finals.length, median: Math.round(median * 10) / 10, points,
+    meanAbsError: errors.length ? round(errors.reduce((s, e) => s + Math.abs(e), 0) / errors.length) : null,
+    bias: errors.length ? round(errors.reduce((s, e) => s + e, 0) / errors.length) : null,
+  };
 }
 
 const L = PARAMS.limitEngine;
@@ -814,6 +823,7 @@ export function mockEntity(id: string, profile: Profile, month: string, horizon?
       series.months.slice(0, m + 1).map((p) => p.final),
       month,
       horizon,
+      series.months.slice(m + 1).map((p) => p.final),
     ),
   };
 }

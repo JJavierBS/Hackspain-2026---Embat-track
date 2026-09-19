@@ -38,12 +38,18 @@ interface TrendChartProps {
 export interface ProjectionPoint {
   month: string;
   value: number;
+  /** The score measured later at this month, on a past origin. Drawn solid, next to the projection. */
+  actual?: number | null;
 }
 
-/** A row of the plot: the measured series, or the projection (null on measured months, except the join). */
-type ChartRow = TrendPoint & { projected: number | null };
+/**
+ * A row of the plot: the measured series, or the projection and the later actual score (null on measured months,
+ * except the join).
+ */
+type ChartRow = TrendPoint & { projected: number | null; actual: number | null };
 
 const PROJECTION = { name: "Proyección", color: "var(--color-ink)", width: 2.5, dash: "1 6" } as const;
+const ACTUAL = { name: "Real después", color: "var(--color-scan)", width: 2.5 } as const;
 
 export interface TrendEvent {
   month: string;
@@ -145,10 +151,17 @@ export function TrendChart({ data, activeMonth, height = 260, markers = [], even
   const last = data[data.length - 1];
   // The projection starts at the last measured final, so the dotted line leaves from the measured point.
   const projecting = projection.length > 0 && last !== undefined && last.final !== null;
+  // On a past month the score measured later sits next to the projection, from the same starting point.
+  const comparing = projecting && projection.some((p) => p.actual != null);
   const rows: ChartRow[] = [
-    ...data.map((p, i) => ({ ...p, projected: projecting && i === data.length - 1 ? p.final : null })),
+    ...data.map((p, i) => {
+      const join = projecting && i === data.length - 1;
+      return { ...p, projected: join ? p.final : null, actual: join && comparing ? p.final : null };
+    }),
     ...(projecting
-      ? projection.map((p) => ({ month: p.month, final: null, level: null, trajectory: null, projected: p.value }))
+      ? projection.map((p) => ({
+          month: p.month, final: null, level: null, trajectory: null, projected: p.value, actual: p.actual ?? null,
+        }))
       : []),
   ];
   const projectionEnd = projecting ? projection[projection.length - 1] : undefined;
@@ -172,6 +185,15 @@ export function TrendChart({ data, activeMonth, height = 260, markers = [], even
                 strokeDasharray={PROJECTION.dash} strokeLinecap="round" />
             </svg>
             Proyección (no es un dato medido)
+          </li>
+        )}
+        {comparing && (
+          <li className="flex items-center gap-2">
+            <svg width="22" height="8" aria-hidden>
+              <line x1="0" y1="4" x2="22" y2="4" stroke={ACTUAL.color} strokeWidth={ACTUAL.width} />
+              <circle cx="11" cy="4" r="3" fill={ACTUAL.color} />
+            </svg>
+            Real después del mes (la proyección no lo vio)
           </li>
         )}
         <li className="flex items-center gap-2">
@@ -220,7 +242,12 @@ export function TrendChart({ data, activeMonth, height = 260, markers = [], even
                 fill="var(--color-ink)"
                 fillOpacity={0.05}
                 stroke="none"
-                label={{ value: "Proyección", position: "insideTopRight", fill: "var(--color-ink-muted)", fontSize: 13 }}
+                label={{
+                  value: comparing ? "Proyección y real" : "Proyección",
+                  position: "insideTopRight",
+                  fill: "var(--color-ink-muted)",
+                  fontSize: 13,
+                }}
               />
             )}
             {projecting && <ReferenceLine x={last.month} stroke="var(--color-ink-muted)" strokeWidth={1} strokeDasharray="3 3" />}
@@ -249,7 +276,11 @@ export function TrendChart({ data, activeMonth, height = 260, markers = [], even
                 return `${monthShort(String(m))} · ${monthCode(String(m))}${notes ? ` — ${notes}` : ""}`;
               }}
               formatter={(v, name) =>
-                name === PROJECTION.name ? `${formatScore(Number(v))} (proyectado)` : formatScore(Number(v))
+                name === PROJECTION.name
+                  ? `${formatScore(Number(v))} (proyectado)`
+                  : name === ACTUAL.name
+                    ? `${formatScore(Number(v))} (real)`
+                    : formatScore(Number(v))
               }
               contentStyle={{
                 border: "1px solid var(--color-rule)",
@@ -319,6 +350,18 @@ export function TrendChart({ data, activeMonth, height = 260, markers = [], even
                 strokeDasharray={PROJECTION.dash}
                 strokeLinecap="round"
                 dot={{ r: 3.5, fill: "var(--color-film)", stroke: PROJECTION.color, strokeWidth: 1.5 }}
+                activeDot={{ r: 4.5 }}
+                isAnimationActive={false}
+                connectNulls={false}
+              />
+            )}
+            {comparing && (
+              <Line
+                dataKey="actual"
+                name={ACTUAL.name}
+                stroke={ACTUAL.color}
+                strokeWidth={ACTUAL.width}
+                dot={{ r: 3.5, fill: ACTUAL.color, stroke: ACTUAL.color }}
                 activeDot={{ r: 4.5 }}
                 isAnimationActive={false}
                 connectNulls={false}

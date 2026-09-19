@@ -2,70 +2,71 @@
 name: X-Ray
 description: Financial health scans of SMEs, read on a radiology lightbox.
 colors:
-  viewer: "#0d1b26"
-  viewer-raised: "#16293a"
-  viewer-rule: "#2a4052"
-  viewer-ink: "#e4edf3"
-  viewer-muted: "#8fa6b8"
-  panel: "#eef3f7"
-  panel-grid: "#dde6ed"
-  film: "#fbfcfd"
-  rule: "#cfdae3"
-  ink: "#0d1b26"
-  ink-muted: "#4a5d6d"
-  scan: "#0fa3c2"
-  scan-soft: "#d3eff5"
-  band-a: "#1f5fd1"
+  viewer: "#050b2c"
+  viewer-raised: "#232845"
+  viewer-rule: "#373c56"
+  viewer-ink: "#ffffff"
+  viewer-muted: "#a5a9bd"
+  panel: "#f3f4f6"
+  panel-grid: "#e8e8ed"
+  film: "#ffffff"
+  rule: "#d2d2db"
+  ink: "#050b2c"
+  ink-muted: "#53576b"
+  scan: "#3878f6"
+  scan-soft: "#e7efff"
+  band-a: "#4338ca"
   band-b: "#0b7a88"
   band-c: "#9a6b00"
   band-d: "#c2500a"
   band-e: "#8e1b8f"
   series-level: "#7a6a55"
-  series-trajectory: "#4f6a8f"
+  series-trajectory: "#696d80"
+  coral: "#f7b2a8"
   up: "#15803d"
   down: "#c62828"
 typography:
   display:
-    fontFamily: "Archivo Variable, Archivo, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "HafferSQXH, Hanken Grotesk Variable, Arial, Verdana, sans-serif"
     fontSize: "6rem"
     fontWeight: 600
     lineHeight: 1
     fontVariation: "'wdth' 80"
     fontFeature: "'tnum'"
   figure:
-    fontFamily: "Archivo Variable, Archivo, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "HafferSQXH, Hanken Grotesk Variable, Arial, Verdana, sans-serif"
     fontSize: "1.5rem"
     fontWeight: 600
     lineHeight: 2rem
     fontVariation: "'wdth' 85"
     fontFeature: "'tnum'"
   headline:
-    fontFamily: "Archivo Variable, Archivo, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "HafferSQXH, Hanken Grotesk Variable, Arial, Verdana, sans-serif"
     fontSize: "3rem"
     fontWeight: 600
     lineHeight: 1
     letterSpacing: "-0.025em"
     fontVariation: "'wdth' 88"
   title:
-    fontFamily: "Archivo Variable, Archivo, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "HafferSQXH, Hanken Grotesk Variable, Arial, Verdana, sans-serif"
     fontSize: "1.125rem"
     fontWeight: 600
     lineHeight: 1.5rem
     letterSpacing: "-0.01em"
   body:
-    fontFamily: "Archivo Variable, Archivo, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "HafferSQXH, Hanken Grotesk Variable, Arial, Verdana, sans-serif"
     fontSize: "1rem"
     fontWeight: 400
     lineHeight: 1.5
     fontFeature: "'tnum'"
   label:
-    fontFamily: "Archivo Variable, Archivo, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "HafferSQXH, Hanken Grotesk Variable, Arial, Verdana, sans-serif"
     fontSize: "0.9375rem"
     fontWeight: 400
     lineHeight: 1.4
     fontFeature: "'tnum'"
   caption:
-    fontFamily: "Archivo Variable, Archivo, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "HafferSQXH, Hanken Grotesk Variable, Arial, Verdana, sans-serif"
     fontSize: "0.875rem"
     fontWeight: 400
     lineHeight: 1.25rem
@@ -160,6 +161,16 @@ components:
 ---
 
 # Design System: X-Ray
+
+## Embat identity layer (2026-09-19)
+
+The Radiology Lightbox keeps its layout, films, tabs, ladder and scan line. Its tokens now follow the Embat brand (extracted with tastelabs from embat.io). These rules override the older text below where they conflict:
+
+- **Palette.** Frame and ink are Embat Midnight Ink `#050B2C` (raised `#232845`, rule `#373C56`). Panel is `#F3F4F6`, films are white. "Scan" is Embat Action Blue `#3878F6`, and its wash is Cloud Blue `#E7EFFF`. Action Blue now also fills the primary action (Reproducir, Aplicar y recalcular). Coral `#F7B2A8` marks the demo-data flag, the one non-semantic marker.
+- **Band A** moves from cobalt to indigo `#4338CA`, so a health value never reads as Action Blue (The Three Voices Rule).
+- **Type.** The brand face is HafferSQXH. It is licensed and not shipped, so the stack loads it if installed and falls back to Hanken Grotesk. Hanken has no width axis: `font-stretch` values stay in the code but have no effect.
+- **Shape and depth.** Films have 8px corners, a `#E8E8ED` border and the Embat level-1 shadow `0 1px 4px rgb(0 0 0 / 0.09)`. Tabs and controls have 4px corners. Joined groups (`.segmented`) round the frame, not the segments. The ink corner mark is removed. This replaces The Backlight Rule and the square-only rule for films and controls. Chips, cells and bars stay square.
+- **Motion.** Controls change state over 0.3s, as on embat.io.
 
 ## Overview
 
