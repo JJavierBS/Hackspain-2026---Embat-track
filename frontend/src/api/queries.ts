@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { Profile } from "../hooks/useGlobalParams";
 import { apiGet } from "./client";
-import type { EntityDetail, MonitorData, Portfolio } from "./types";
+import type { EntityDetail, Meta, MonitorData, Portfolio, Profiles } from "./types";
 
 /** true when the app runs on synthetic demo data (VITE_MOCKS=true). */
 export const USE_MOCKS = import.meta.env.VITE_MOCKS === "true";
@@ -41,5 +41,22 @@ export function useMonitor(profile: Profile, month: string) {
         ? (await mocks()).mockMonitor(profile, month)
         : apiGet<MonitorData>(`/monitor/alerts?profile=${profile}&month=${month}`),
     placeholderData: (previous) => previous,
+  });
+}
+
+export function useMeta() {
+  return useQuery({
+    queryKey: ["meta"],
+    queryFn: async () => (USE_MOCKS ? (await mocks()).mockMeta() : apiGet<Meta>("/meta")),
+    staleTime: 60_000,
+  });
+}
+
+/** The weights that produced the scores on screen (profile_weights of the last run). */
+export function useProfiles() {
+  return useQuery({
+    queryKey: ["profiles"],
+    queryFn: async () => (USE_MOCKS ? (await mocks()).mockProfiles() : apiGet<Profiles>("/profiles")),
+    staleTime: 60_000,
   });
 }

@@ -10,7 +10,7 @@ export interface PipelineStatus {
   stageTimingsMs: Record<string, number>;
 }
 
-// Draft DTOs for SPEC §12.5. Block 4 aligns them with the backend records.
+// Read DTOs of SPEC §12.5 (backend infrastructure/web/dto).
 
 export type Status =
   | "CRITICAL"
@@ -38,47 +38,94 @@ export type Category =
   | "TAX_REGULARITY"
   | "MOMENTUM";
 
+export type EntityType = "GROUP" | "COMPANY";
+
 export interface PortfolioRow {
   id: string;
   name: string;
-  entityType: "GROUP" | "COMPANY";
+  entityType: EntityType;
   final: number;
   level: number;
-  traj: number;
+  /** null when no category has a trajectory yet (short history). */
+  traj: number | null;
   band: BandLetter;
-  status: Status;
-  regime: Regime;
-  delta3m: number;
-  /** Final score of the last 12 months up to the selected month, oldest first. */
+  /** null until the dynamics stage has run (phase 4 plan B). */
+  status: Status | null;
+  regime: Regime | null;
+  /** null when the entity had no score 3 months before. */
+  delta3m: number | null;
+  /** Final score of up to 12 months up to the selected month, oldest first. */
   sparkline: number[];
   activeAlerts: number;
-  confidence: Confidence;
+  confidence: Confidence | null;
 }
 
 export interface Portfolio {
   profile: string;
   month: string;
+  /** Entities of the unit with no score this month (not active yet). */
+  unscored: number;
   rows: PortfolioRow[];
 }
 
 export interface CategoryScore {
   category: Category;
-  level: number;
-  traj: number;
+  level: number | null;
+  traj: number | null;
+  /** Profile weight, 0–100. */
   weight: number;
+  /** Renormalized share this month, 0–1 (0 when the category has no data). */
+  effectiveWeight: number;
   /** Points this category adds to (or takes from) Final − 50. */
   contribution: number;
-  /** Change of the contribution vs 3 months before. */
-  contributionDelta3m: number;
+  /** Change of the contribution vs 3 months before. null when there was no score then. */
+  contributionDelta3m: number | null;
+  nAvailable: number;
+}
+
+export interface Driver {
+  driverId: string;
+  category: Category;
+  contrib: number;
+  blended: number;
+  effWeight: number;
+}
+
+export interface Change {
+  driverId: string;
+  category: Category;
+  delta: number;
+  narrative: string;
+}
+
+export interface IndicatorRow {
+  indicatorId: string;
+  category: Category;
+  value: number | null;
+  level: number | null;
+  traj: number | null;
+  available: boolean;
+  isStatic: boolean;
+  fallback: boolean;
+  /** CLOSED or PENDING (the API sends the enum name). */
+  anchorStatus: string;
 }
 
 export interface TimelinePoint {
   month: string;
-  final: number;
-  level: number;
-  traj: number;
-  status: Status;
-  regime: Regime;
+  final: number | null;
+  level: number | null;
+  traj: number | null;
+  band: BandLetter | null;
+  status: Status | null;
+  regime: Regime | null;
+}
+
+export interface Changepoint {
+  series: string;
+  month: string;
+  alarmMonth: string;
+  direction: "UP" | "DOWN";
 }
 
 export interface LimitDecision {
@@ -105,14 +152,50 @@ export interface MomentumView {
 export interface EntityDetail {
   id: string;
   name: string;
-  entityType: "GROUP" | "COMPANY";
-  row: PortfolioRow;
+  entityType: EntityType;
+  groupId: string | null;
+  profile: string;
+  month: string;
+  /** null when the entity has no score at this month. */
+  row: PortfolioRow | null;
   categories: CategoryScore[];
+  drivers: Driver[];
+  changes1m: Change[];
+  changes3m: Change[];
+  indicators: IndicatorRow[];
   /** Up to the selected month (causal). */
   timeline: TimelinePoint[];
-  limit: LimitDecision;
-  premium: PremiumQuote;
-  momentum: MomentumView;
+  changepoints: Changepoint[];
+  /** Member companies, scored standalone (groups only). */
+  companies: PortfolioRow[];
+  /** null until Block 7. */
+  limit: LimitDecision | null;
+  premium: PremiumQuote | null;
+  momentum: MomentumView | null;
+}
+
+export interface Meta {
+  unit: EntityType;
+  months: string[];
+  profiles: string[];
+  entityCounts: Record<string, number>;
+  runId: string | null;
+  finishedAt: string | null;
+  demoMode: boolean;
+  explanationsReady: boolean;
+  dynamicsReady: boolean;
+  caveats: string[];
+}
+
+export interface ProfileWeights {
+  profile: string;
+  lambda: number;
+  weights: Partial<Record<Category, number>>;
+}
+
+export interface Profiles {
+  source: "run" | "config";
+  profiles: ProfileWeights[];
 }
 
 export type Severity = "WARN" | "CRITICAL" | "INFO";

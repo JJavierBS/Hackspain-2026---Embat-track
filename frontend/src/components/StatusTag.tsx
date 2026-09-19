@@ -5,7 +5,8 @@ import { IconDown, IconFlat, IconUp } from "./Icons";
 const NEGATIVE: Status[] = ["STRUCTURAL_DECLINE", "TURNING", "DIP"];
 
 /** The health status of SPEC §8.3. "Crítica" uses the same red fill as a critical alert. */
-export function StatusTag({ status }: { status: Status }) {
+export function StatusTag({ status }: { status: Status | null }) {
+  if (status === null) return <span className="text-ink-muted">—</span>;
   const up = status === "IMPROVING";
   const down = NEGATIVE.includes(status);
   const tone =
@@ -24,7 +25,14 @@ export function StatusTag({ status }: { status: Status }) {
 }
 
 /** Direction read from the trajectory with the same 50 mark as the meter (±5 dead zone). */
-export function TrendTag({ traj }: { traj: number }) {
+export function TrendTag({ traj }: { traj: number | null }) {
+  if (traj === null) {
+    return (
+      <span className="inline-flex items-center gap-1 border border-rule px-2 py-0.5 text-sm font-medium whitespace-nowrap text-ink-muted">
+        Sin tendencia todavía
+      </span>
+    );
+  }
   const dir = traj >= 55 ? "up" : traj <= 45 ? "down" : "flat";
   const label = dir === "up" ? "Tendencia al alza" : dir === "down" ? "Tendencia a la baja" : "Tendencia plana";
   const Icon = dir === "up" ? IconUp : dir === "down" ? IconDown : IconFlat;
