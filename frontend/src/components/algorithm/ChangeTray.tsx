@@ -7,6 +7,9 @@ interface Props {
   changes: Change[];
   invalid: number;
   phase: ApplyPhase;
+  /** False on a server that serves precomputed data: the review stays, the apply is off with its reason. */
+  canApply: boolean;
+  onPreview: () => void;
   onUndo: (change: Change) => void;
   onDiscard: () => void;
   onApply: () => void;
@@ -37,7 +40,7 @@ const STAGE_LABELS: Record<string, string> = {
  * The control strip for unsaved edits. It is part of the viewer frame (dark material), because the frame
  * carries every control. Review opens in place: the list of changes, a consent box, then Apply.
  */
-export function ChangeTray({ changes, invalid, phase, onUndo, onDiscard, onApply, onClear }: Props) {
+export function ChangeTray({ changes, invalid, phase, canApply, onPreview, onUndo, onDiscard, onApply, onClear }: Props) {
   const [review, setReview] = useState(false);
   const [consent, setConsent] = useState(false);
   const sections = SECTIONS.filter((s) => changes.some((c) => s.keys.includes(String(c.path[0])))).length;
@@ -78,6 +81,12 @@ export function ChangeTray({ changes, invalid, phase, onUndo, onDiscard, onApply
                 </li>
               ))}
             </ol>
+            {!canApply ? (
+              <p id="tray-no-apply" className="max-w-[80ch] text-[15px] text-viewer-muted">
+                <span className="font-semibold text-viewer-ink">Aplicar y recalcular está desactivado.</span> Esta instancia sirve datos
+                precalculados, así que el borrador no llega al servidor. Pruébalo en una entidad con la vista previa.
+              </p>
+            ) : (
             <label className="flex max-w-[80ch] cursor-pointer items-start gap-3 text-[15px]">
               <input
                 type="checkbox"
@@ -90,6 +99,7 @@ export function ChangeTray({ changes, invalid, phase, onUndo, onDiscard, onApply
                 anticipación medida cambian en todas las páginas y para todos los que usan este servidor.
               </span>
             </label>
+            )}
           </div>
         )}
 
@@ -106,6 +116,14 @@ export function ChangeTray({ changes, invalid, phase, onUndo, onDiscard, onApply
                 <button type="button" onClick={onDiscard} className="px-3 py-1.5 text-[15px] text-viewer-muted hover:bg-viewer-raised hover:text-viewer-ink">
                   Descartar
                 </button>
+                <button
+                  type="button"
+                  disabled={invalid > 0}
+                  onClick={onPreview}
+                  className="px-3 py-1.5 text-[15px] text-viewer-ink underline decoration-viewer-muted underline-offset-4 hover:bg-viewer-raised disabled:cursor-not-allowed disabled:text-viewer-muted"
+                >
+                  Probar en una entidad
+                </button>
                 {!review ? (
                   <button
                     type="button"
@@ -113,7 +131,7 @@ export function ChangeTray({ changes, invalid, phase, onUndo, onDiscard, onApply
                     onClick={() => setReview(true)}
                     className="border border-viewer-ink px-4 py-1.5 text-[15px] font-semibold hover:bg-viewer-ink hover:text-viewer disabled:cursor-not-allowed disabled:border-viewer-rule disabled:text-viewer-muted disabled:hover:bg-transparent"
                   >
-                    Revisar y aplicar
+                    {canApply ? "Revisar y aplicar" : "Revisar cambios"}
                   </button>
                 ) : (
                   <>
@@ -122,7 +140,9 @@ export function ChangeTray({ changes, invalid, phase, onUndo, onDiscard, onApply
                     </button>
                     <button
                       type="button"
-                      disabled={!consent || invalid > 0}
+                      disabled={!canApply || !consent || invalid > 0}
+                      aria-describedby={canApply ? undefined : "tray-no-apply"}
+                      title={canApply ? undefined : "Desactivado: esta instancia sirve datos precalculados"}
                       onClick={onApply}
                       className="inline-flex items-center gap-2 bg-scan px-4 py-1.5 text-[15px] font-semibold text-white hover:bg-scan-dark disabled:cursor-not-allowed disabled:bg-viewer-rule disabled:text-viewer-muted"
                     >

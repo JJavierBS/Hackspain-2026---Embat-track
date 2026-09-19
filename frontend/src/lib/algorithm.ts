@@ -1,3 +1,4 @@
+import type { PresetChange } from "../api/useAlgorithmConfig";
 import type { Category, Status } from "../api/types";
 import { PROFILES } from "../hooks/useGlobalParams";
 import { CATEGORY_LABELS, INDICATOR_LABELS, PROFILE_LABELS, STATUS_LABELS } from "./format";
@@ -110,6 +111,7 @@ export const round = (v: number, digits = 4) => Math.round(v * 10 ** digits) / 1
 /** Sections of the page, in reading order. Each owns one or more config keys. */
 export const SECTIONS: { id: string; title: string; keys: string[] }[] = [
   { id: "presets", title: "Presets por cliente", keys: [] },
+  { id: "vista-previa", title: "Vista previa en una entidad", keys: [] },
   { id: "pesos", title: "Pesos por perfil", keys: ["profiles"] },
   { id: "indicadores", title: "Indicadores y anclas", keys: ["indicators"] },
   { id: "reglas", title: "Reglas de indicadores", keys: ["runwayCapMonths", "debtDscr", "levDebtToCf", "concentration", "windows", "taxRegularity"] },
@@ -307,3 +309,10 @@ export function describe(path: Path): string {
 export function sectionOf(key: string): string {
   return SECTIONS.find((s) => s.keys.includes(key))?.id ?? key;
 }
+
+/** Evidence status of a preset or sector value (presets.yml, sectors.yml). */
+export const PRESET_STATUS: Record<PresetChange["status"], { label: string; hint: string }> = {
+  sourced: { label: "Con fuente", hint: "Una fuente que leímos da el valor." },
+  derived: { label: "Derivado", hint: "Una fuente da los extremos; una regla nuestra da el resto." },
+  placeholder: { label: "Sin fuente", hint: "Criterio nuestro, sin fuente para la cifra." },
+};
