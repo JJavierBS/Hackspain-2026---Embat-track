@@ -90,12 +90,18 @@ A risk expert edits every scoring parameter on one page and recalculates all dat
 
 The user chose this scope on 2026-09-19 ("all scoring parameters").
 
-### D7. Demo mode is read-only. A running pipeline blocks a save
+### D7. Demo mode: edit and preview, never recalculate. A running pipeline blocks a save
 
-- **Choice.** With `xray.demo-mode=true`, `GET /api/config` returns `editable: false`, the page locks
-  every input, and `PUT` / `DELETE` return HTTP 409. A save while the pipeline runs also returns 409.
-- **Why.** The demo serves a frozen database without raw CSVs, so a run cannot happen, and a jury member
-  must not change what the pitch shows. A second run during a run would race on the same tables.
+- **Choice (changed on 2026-09-19, branch `feat/sector-tuning`).** With `xray.demo-mode=true`, `GET /api/config`
+  returns `editable: true` and `canApply: false`. The expert edits the draft and loads presets as usual.
+  "Aplicar y recalcular" and "Recalcular ahora" stay disabled, and a visible line gives the reason.
+  `PUT` / `DELETE` return HTTP 409. A save while the pipeline runs also returns 409.
+- **Preview.** The "Vista previa en una entidad" film sends the changed sections of the draft to
+  `POST /api/entities/{id}/tuning`. The backend scores that one entity with the draft and writes nothing
+  (`SECTOR_PRESETS.md` S3). This is the only way to see a draft on a server that serves precomputed data.
+- **Why.** The deployed app serves precomputed data (render.yaml sets `XRAY_DEMO_MODE=true`). A jury member must not
+  change what the pitch shows, but an expert can still test a value. A second run during a run would race on the
+  same tables.
 
 ### D8. A consent gate before apply, and no modal
 
@@ -149,7 +155,7 @@ and runs the D5 checks, so a bad preset stops the boot.
 | **No authentication on `PUT` / `DELETE /api/config`** | Outside demo mode, anyone who can reach the API can change the config for every user. | Keep the deployed demo in demo mode. Before a real deployment, put the endpoints behind authentication. |
 | Last write wins | Two experts who save at the same time: the second save replaces the first. | Acceptable for a demo with one expert. A real deployment needs a version check on save. |
 | Restart window | For about 0.5 s the API does not answer. The page waits for a new `bootId`. Other pages retry their queries. | None for the demo. |
-| Frozen demo database | It stores the old hash format, so the page shows "Pendientes de recalcular" in demo mode. | Export the demo database again from a run on this branch before the demo. |
+| Frozen demo database | It stores the old hash format. In demo mode the page shows "Precalculados" and does not compare the hash. | Export the demo database again before a deploy with `XRAY_DEMO_MODE=false`. |
 | Band cut-offs fixed in the UI | Bands cannot change from the page (D6). | Make `BANDS` come from `/api/meta` before bands become editable. |
 
 ## 4. Test evidence (2026-09-19)

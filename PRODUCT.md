@@ -48,7 +48,7 @@ Incumbents (Informa D&B, Axesor) score on annual filed accounts. X-Ray scores mo
 ## Operating Context
 - Main viewing context: a projector during the pitch, plus a laptop, plus a jury member on another device. Numbers must read at a distance.
 - Global `profile` (BANK | FUND | INSURER) and `month` (2024-09 … 2026-08) live in the URL. Every view is linkable.
-- Pages: Portfolio, Entity, Monitor (alert replay), Compare, Methodology, Algorithm (expert configuration with client presets, read-only in demo mode; `docs/ALGORITHM_PAGE.md`).
+- Pages: Portfolio, Entity, Monitor (alert replay), Compare, Methodology, Algorithm (expert configuration with client presets. In demo mode the expert edits a draft and previews it on one entity, but cannot recalculate; `docs/ALGORITHM_PAGE.md`). The Entity page tunes one entity by sector (four sourced sector presets, anchors only, what-if, nothing stored; `docs/SECTOR_PRESETS.md`).
 - UI copy in Spanish. Code in English.
 
 ## Capabilities and Constraints
