@@ -1,6 +1,7 @@
 param(
     [ValidateSet('glm5.3', 'deepseek-v4-flash')]
-    [string]$Modelo = 'glm5.3'
+    [string]$Modelo = 'glm5.3',
+    [switch]$GuardarLocal
 )
 $ErrorActionPreference = 'Stop'
 Write-Host 'Detén primero la aplicación local. Se enviarán solo indicadores agregados y textos del catálogo a Helmcode.'
@@ -14,8 +15,12 @@ $puntero = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secreto)
 try {
     $env:HELMCODE_API_KEY = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($puntero)
     $env:HELMCODE_MODEL = $Modelo
+    if ($GuardarLocal) {
+        & node (Join-Path $PSScriptRoot 'scripts/local.mjs') configure-ia
+        if ($LASTEXITCODE -ne 0) { throw 'No se pudo crear la configuración privada. No se han sobrescrito archivos.' }
+    }
     & node (Join-Path $PSScriptRoot 'scripts/local.mjs') prepare-ia
-    if ($LASTEXITCODE -ne 0) { throw 'La preparación no terminó correctamente. No se ha guardado la clave en archivos.' }
+    if ($LASTEXITCODE -ne 0) { throw 'La preparación no terminó correctamente. Revisa el estado del proveedor; no compartas la clave.' }
 } finally {
     [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($puntero)
     $secreto.Dispose()

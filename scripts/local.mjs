@@ -6,11 +6,13 @@ import { fileURLToPath } from "node:url";
 import { pipeline } from "node:stream/promises";
 import { createGunzip } from "node:zlib";
 import net from "node:net";
+import { childEnvironment, localSettings, saveLocalKey } from "./local-settings.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const windows = process.platform === "win32";
 const command = process.argv[2] ?? "help";
-const env = { ...process.env, XRAY_DATA_DIR: join(root, "data"), XRAY_DEMO_MODE: "true", SERVER_ADDRESS: "127.0.0.1",
+const settings = await localSettings(root);
+const env = { ...process.env, ...settings, XRAY_DATA_DIR: join(root, "data"), XRAY_DEMO_MODE: "true", SERVER_ADDRESS: "127.0.0.1",
   SERVER_PORT: "8080", PORT: "8080", MAVEN_USER_HOME: join(root, ".local-maven"),
   npm_config_cache: join(root, ".local-npm"), VITE_API_TARGET: "http://127.0.0.1:8080", VITE_MOCKS: "false" };
 const jar = join(root, "backend", "target", "xray-backend-0.0.1-SNAPSHOT.jar");
@@ -27,8 +29,7 @@ if (!env.JAVA_HOME && windows) {
 const java = env.JAVA_HOME ? join(env.JAVA_HOME, "bin", windows ? "java.exe" : "java") : "java";
 
 function start(executable, args, cwd, extraEnv = {}, withKey = false) {
-  const childEnv = { ...env, ...extraEnv };
-  if (!withKey) delete childEnv.HELMCODE_API_KEY;
+  const childEnv = childEnvironment(env, extraEnv, withKey);
   const isBatch = windows && /\.(cmd|bat)$/i.test(executable);
   const child = isBatch
     ? spawn(process.env.ComSpec ?? "cmd.exe", ["/d", "/s", "/c", `"${[executable, ...args].map(a => `"${a}"`).join(" ")}"`],
@@ -80,7 +81,11 @@ async function prepare(llm = false) {
 }
 
 try {
-  if (command === "setup") {
+  if (command === "configure-ia") {
+    await saveLocalKey(root, env.HELMCODE_API_KEY, env.HELMCODE_MODEL);
+    console.log("Clave guardada solo en .env.local, excluido de Git. El arranque preparará la IA antes de abrir la web.");
+  } else if (command === "setup") {
+    await run(process.execPath, ["--test", join(root, "scripts", "local-settings.test.mjs")]);
     await freePort(8080);
     await freePort(5173);
     await run(java, ["-version"]);
@@ -91,9 +96,12 @@ try {
     console.log("Preparado sin consumir tokens. Ejecuta: node scripts/local.mjs start");
   } else if (command === "prepare" || command === "prepare-ia") {
     await prepare(command === "prepare-ia");
-  } else if (command === "start") {
+  } else if (command === "start" || command === "start-offline") {
     await freePort(5173);
-    await prepare();
+    const useAI = command === "start" && Boolean(env.HELMCODE_API_KEY);
+    console.log(useAI ? "Preparando Helmcode para los casos seleccionados; se reutilizan respuestas válidas en caché."
+      : "Arranque sin llamadas a Helmcode. Se muestran sugerencias guardadas o plantillas.");
+    await prepare(useAI);
     const backend = start(java, ["-Xmx1024m", "-jar", jar], root, { HELMCODE_ENABLE: "false" });
     let frontend;
     let stopping = false;
@@ -119,7 +127,7 @@ try {
     frontend.on("exit", stop);
     console.log("Abre http://127.0.0.1:5173 · Ctrl+C detiene ambos procesos. No hay llamadas a Helmcode durante la navegación.");
   } else {
-    console.log("Uso: node scripts/local.mjs setup | start | prepare | prepare-ia\nJava 21 y Node.js 24. setup ejecuta pruebas, prepara la base y no consume tokens. prepare-ia es opcional y requiere consentimiento y clave.");
+    console.log("Uso: node scripts/local.mjs setup | start | start-offline | configure-ia | prepare | prepare-ia\nJava 21 y Node.js 24. setup no consume tokens. start prepara IA si hay clave local; start-offline nunca llama al proveedor. configure-ia guarda HELMCODE_API_KEY en .env.local sin sobrescribir archivos.");
   }
 } catch (error) {
   console.error(error.message);

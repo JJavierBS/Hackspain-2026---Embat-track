@@ -29,7 +29,12 @@ for (const id of ["GROUP_0039", "GROUP_0101"]) {
       const detail = await get(path);
       const s = detail.suggestions;
       assert.equal(s.mode, "atencion");
-      assert.ok(["READY", "NO_EVIDENCE"].includes(s.state));
+      assert.ok(["READY", "NO_EVIDENCE", "PROVIDER_UNAVAILABLE", "INVALID_RESPONSE", "MISSING_KEY", "INVALID_MODEL"].includes(s.state));
+      assert.ok(["template", "helmcode"].includes(s.source));
+      if (process.env.S7_EXPECT_HELMCODE === "true" && month === "2026-07") {
+        assert.equal(s.source, "helmcode", `Falta respuesta real aceptada: ${id}/${profile}/${month}`);
+        assert.equal(s.state, "READY");
+      }
       assert.ok(s.items.length <= 3);
       assert.equal(new Set(s.items.map(i => i.id)).size, s.items.length);
       for (const item of s.items) {
@@ -42,7 +47,7 @@ for (const id of ["GROUP_0039", "GROUP_0101"]) {
         assert.deepEqual(item.refs, [item.evidence.ref]);
       }
       assert.deepEqual((await get(path)).suggestions, s);
-      checked.push({ id, profile, month, score: detail.row.final, suggestions: s.items.map(i => i.id),
+      checked.push({ id, profile, month, score: detail.row.final, source: s.source, suggestions: s.items.map(i => i.id),
         milliseconds: Math.round(performance.now() - start) });
     }
   }
@@ -86,8 +91,10 @@ if (process.env.CHROME_PATH) {
     await call("Runtime.enable"); await call("Network.enable"); await call("Page.enable");
     for (const id of ["GROUP_0039", "GROUP_0101"]) {
       await call("Page.navigate", { url: `${base}/entity/${id}?profile=BANK&month=2026-07` });
-      await until(async () => (await evaluate("document.querySelector('#sugerencias')?.innerText || ''")).includes("Revisa"));
-      assert.match(await evaluate("document.querySelector('#sugerencias').innerText"), /Texto de plantilla verificada/);
+      await until(async () => await evaluate("document.querySelectorAll('#sugerencias li').length > 0"));
+      const source = checked.find(row => row.id === id && row.profile === "BANK" && row.month === "2026-07").source;
+      assert.match(await evaluate("document.querySelector('#sugerencias').innerText"),
+        source === "helmcode" ? /Formulación verificada con Helmcode/ : /Texto de plantilla verificada/);
       await evaluate("document.querySelector('#sugerencias summary').click()");
       assert.equal(await evaluate("document.querySelector('#sugerencias details').open"), true);
       assert.equal(await evaluate("document.querySelector('#indicadores') !== null"), true);
