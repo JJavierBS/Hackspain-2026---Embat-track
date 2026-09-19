@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://hackspain-2026-embat-track.onrender.com/api/:path*"
+    }
+  ]
+}

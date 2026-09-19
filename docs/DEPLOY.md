@@ -55,6 +55,29 @@ curl https://<service>.onrender.com/api/pipeline/status       # IDLE
 curl -X POST https://<service>.onrender.com/api/pipeline/run  # 409, demo mode refuses it
 ```
 
+## Vercel (frontend)
+
+`frontend/vercel.json` rewrites `/api/*` to the Render service. The client builds every URL
+same-origin — `src/api/client.ts` and the `EventSource` in `src/api/useReplay.ts` — so `/api` has to
+resolve on the Vercel domain. Proxying it keeps the app same-origin, which is why **the backend
+needs no CORS configuration**. Changing the backend URL means editing this file and redeploying,
+because there is no `VITE_API_BASE`.
+
+Check after a deploy:
+
+- `VITE_MOCKS` must be unset in the Vercel environment. Set to `true` the app serves synthetic data
+  against a perfectly healthy backend, which looks like a data bug and is not one.
+- Open `/monitor` and start the replay. It is an SSE stream held open for ~22 s at the default speed
+  (18 months x 1200 ms), and it is the one call that a proxy can buffer. Months must arrive one at a
+  time, not all at once at the end. If they do not, the fallback is a `VITE_API_BASE` build-time
+  variable plus CORS on the backend, so the stream goes straight to Render.
+- If a deep link such as `/monitor` 404s on reload, add an SPA fallback rewrite after the `/api` one.
+  Vercel's Vite preset normally handles this.
+
+The first request after an idle period takes ~12 s: that is Render's free plan spinning the service
+back up, not the app being slow. `render.yaml` asks for `plan: starter`, which stays warm; a service
+created from the dashboard keeps whatever plan it was created with.
+
 ## Full stack with Docker Compose
 
 `docker compose up --build`, then open `http://localhost`. Compose bind-mounts `./data`, so the
