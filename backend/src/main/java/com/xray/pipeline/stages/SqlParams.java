@@ -54,6 +54,16 @@ final class SqlParams {
         m.put("tx_excluded_abs_amounts", r.txExcludedAbsAmounts() == null || r.txExcludedAbsAmounts().isEmpty()
                 ? "-1" : r.txExcludedAbsAmounts().stream().map(String::valueOf).collect(Collectors.joining(", ")));
         m.put("con_min_coverage", String.valueOf(c.concentration().minCounterpartyCoverage()));
+        m.put("interest_categories", listOrNone(r.interestCategories()));
+        m.put("credit_line_types", listOrNone(r.creditLineDebtTypes()));
+        m.put("factoring_types", listOrNone(r.factoringDebtTypes()));
+        m.put("annualize_min_months", String.valueOf(c.windows().annualizeMinMonths()));
+        var t = c.taxRegularity();
+        m.put("tax_window_months", String.valueOf(t.windowMonths()));
+        m.put("tax_monthly_max_median_gap", String.valueOf(t.monthlyMaxMedianGap()));
+        m.put("tax_monthly_cadence", String.valueOf(t.monthlyCadenceMonths()));
+        m.put("tax_quarterly_cadence", String.valueOf(t.quarterlyCadenceMonths()));
+        m.put("tax_min_months", String.valueOf(t.minTaxMonths()));
         c.indicators().forEach((id, ic) -> {
             m.put("best_x_" + id.name(), String.valueOf(xAtScore(ic, true)));
             m.put("worst_x_" + id.name(), String.valueOf(xAtScore(ic, false)));

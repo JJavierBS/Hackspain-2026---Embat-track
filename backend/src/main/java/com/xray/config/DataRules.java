@@ -16,7 +16,10 @@ public record DataRules(
         IntragroupRule intragroupRule,
         int intragroupMaxLagDays,
         int ownAccountMaxLagDays,
-        List<Double> txExcludedAbsAmounts) {
+        List<Double> txExcludedAbsAmounts,
+        List<String> interestCategories,
+        List<String> creditLineDebtTypes,
+        List<String> factoringDebtTypes) {
 
     /** How exchange_rate applies to amount. NONE = ignore exchange_rate; fx-to-eur converts the native amount. */
     public enum FxConvention { MULTIPLY, DIVIDE, NONE }
