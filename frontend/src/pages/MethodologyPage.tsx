@@ -1,10 +1,12 @@
 import type { ReactNode } from "react";
-import type { BandLetter, Category, Methodology } from "../api/types";
+import { Link } from "react-router-dom";
+import type { BandLetter, Category, LeadTime, LeadTimeBlock, Methodology } from "../api/types";
 import { ApiError } from "../api/client";
-import { useMeta, useMethodology, useProfiles } from "../api/queries";
+import { useLeadTime, useMeta, useMethodology, useProfiles } from "../api/queries";
 import { BandLadder } from "../components/BandLadder";
 import { Film } from "../components/Film";
 import { IconDown, IconUp } from "../components/Icons";
+import { LeadTimeHistogram } from "../components/LeadTimeHistogram";
 import { LoadState } from "../components/LoadState";
 import { PageHeader } from "../components/PageHeader";
 import { PendingFilm } from "../components/PendingFilm";
@@ -12,18 +14,24 @@ import { RateLadder } from "../components/RateLadder";
 import { ScoreReadout } from "../components/ScoreReadout";
 import { TrendChart } from "../components/TrendChart";
 import { MONTHS, type Profile, useGlobalParams } from "../hooks/useGlobalParams";
+import { useLinkSearch } from "../hooks/useLinkSearch";
 import {
   ALERT_LABELS,
   CATEGORY_LABELS,
+  EVENT_TYPE_LABELS,
   PROFILE_LABELS,
+  TRIGGER_LABELS,
   bandOf,
   formatDscr,
   formatEur,
+  formatLead,
   formatNumber,
   formatRate,
   formatScore,
+  formatShare,
   formatWeight,
   monthCode,
+  monthShort,
 } from "../lib/format";
 
 /**
@@ -87,10 +95,10 @@ export function MethodologyPage() {
       </Film>
 
       <Weights />
+      <Anticipation />
       <MethodologyFilms />
+      <Export />
       <Caveats />
-
-      <PendingFilm title="Anticipación" block="bloque 8" items={["Anticipación medida (lead time)", "Tasa de falsas alarmas"]} />
     </div>
   );
 }
@@ -357,6 +365,279 @@ function ProductParameters({ data }: { data: Methodology }) {
           </section>
         </div>
       </div>
+    </Film>
+  );
+}
+
+/** SPEC §8.4 measured anticipation of the active profile, against proxy events. Every number comes from the API. */
+function Anticipation() {
+  const { profile } = useGlobalParams();
+  const { data: meta } = useMeta();
+  const { data, error, isPending } = useLeadTime(profile);
+  const pending = (
+    <PendingFilm
+      title="Anticipación"
+      block="bloque 8"
+      items={["Anticipación medida (lead time)", "Tasa de falsas alarmas", "Recorte del límite antes del evento", "Casos con más antelación"]}
+    />
+  );
+  if ((meta && !meta.analyticsReady) || (error instanceof ApiError && error.status === 404)) return pending;
+  if (error || isPending) return <LoadState error={error} title="Anticipación" />;
+  return <AnticipationFilm data={data} />;
+}
+
+function AnticipationFilm({ data }: { data: LeadTime }) {
+  const { profile } = useGlobalParams();
+  const name = PROFILE_LABELS[profile].name;
+  return (
+    <Film id="anticipacion" title="Anticipación" meta={`Perfil ${name} · eventos proxy · ventana de ${data.windowMonths} meses`}>
+      <p className="max-w-[70ch] text-[15px] text-ink-muted">
+        Cuántos meses antes de un evento la nota ya avisaba. Medido contra <span className="font-semibold text-ink">eventos proxy</span>:
+        los datos no traen etiquetas de impago. Las cifras son del perfil {name} y cambian con el perfil.
+      </p>
+
+      <LeadBlock block={data.deterioration} horizon={data.horizonMonths} className="mt-8" />
+
+      {data.limit && (
+        <p className="mt-6 flex flex-wrap items-baseline gap-x-2 border-t border-rule pt-4 text-[15px]">
+          <IconDown width={15} height={15} className="shrink-0 translate-y-0.5 text-down" />
+          <span>
+            <span className="font-semibold">
+              El límite se recortó antes del evento en {data.limit.cutAhead} de {data.limit.events} casos
+            </span>
+            {data.limit.meanLead !== null && <>, {formatLead(data.limit.meanLead)} de media</>}.{" "}
+            <span className="text-ink-muted">Recorte = primera reducción o congelación del límite en la ventana.</span>
+          </span>
+        </p>
+      )}
+
+      <LeadBlock block={data.improvement} horizon={data.horizonMonths} className="mt-12 border-t border-ink/20 pt-8" />
+
+      <div className="mt-12 grid gap-x-12 gap-y-10 border-t border-ink/20 pt-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+        <Examples examples={data.examples} />
+        <Definitions data={data} />
+      </div>
+    </Film>
+  );
+}
+
+/** One direction: headline figures on a hairline grid, the lead histogram and the split by trigger. */
+function LeadBlock({ block, horizon, className = "" }: { block: LeadTimeBlock; horizon: number; className?: string }) {
+  const down = block.eventType === "DETERIORATION";
+  const Icon = down ? IconDown : IconUp;
+  const months = (v: number | null) =>
+    v === null ? (
+      "—"
+    ) : (
+      <>
+        {formatNumber(v)} <span className="text-base font-normal text-ink-muted">{v === 1 ? "mes" : "meses"}</span>
+      </>
+    );
+  return (
+    <section className={className}>
+      <h3 className="flex items-center gap-2 text-lg font-semibold">
+        <Icon width={18} height={18} className={down ? "text-down" : "text-up"} />
+        {EVENT_TYPE_LABELS[block.eventType]}
+      </h3>
+      <dl className="mt-4 grid gap-px border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-5">
+        <Figure label="Eventos" title="Entidades con un evento proxy de este tipo" value={block.events} />
+        <Figure
+          label="Detectados con antelación"
+          title="Eventos con una señal al menos un mes antes, sobre el total de eventos"
+          value={block.aheadRate === null ? "—" : formatShare(block.aheadRate)}
+          sub={`${block.detectedAhead} de ${block.events} · ${block.detected} con señal en la ventana`}
+          lead
+        />
+        <Figure label="Antelación media" title="Media de meses entre la señal y el evento, sobre los detectados" value={months(block.meanLead)} />
+        <Figure label="Mediana" title="Mediana de meses entre la señal y el evento, sobre los detectados" value={months(block.medianLead)} />
+        <Figure
+          label="Tasa de falsas alarmas"
+          title={`Señales sin evento en los ${horizon} meses siguientes, sobre las señales evaluables`}
+          value={block.falseAlarmRate === null ? "—" : formatShare(block.falseAlarmRate)}
+          sub={`${block.evaluable} de ${block.signals} señales evaluables`}
+        />
+      </dl>
+      <p className="mt-2 text-sm text-ink-muted">
+        Falsa alarma: señal sin evento en los {horizon} meses siguientes; solo se cuentan las evaluables (con {horizon} meses de datos
+        después, o ya seguidas de un evento).
+      </p>
+
+      <div className="mt-8 grid gap-x-12 gap-y-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+        <section className="min-w-0">
+          <h4 className="mb-3 text-[15px] font-semibold">Meses de antelación</h4>
+          <LeadTimeHistogram histogram={block.histogram} median={block.medianLead} />
+        </section>
+        <section className="min-w-0">
+          <h4 className="mb-3 text-[15px] font-semibold">Por disparador</h4>
+          <table className="w-full border-collapse text-left text-[15px]">
+            <thead>
+              <tr className="border-b border-ink/20 text-sm text-ink-muted">
+                <th className="py-2 pr-2 font-medium">Disparador</th>
+                <th className="px-2 py-2 text-right font-medium">Eventos</th>
+                <th className="py-2 pl-2 text-right font-medium" title="Con una señal al menos un mes antes del evento">
+                  Con antelación
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {block.byTrigger.map((t) => (
+                <tr key={t.trigger} className="border-b border-rule last:border-b-0">
+                  <td className="py-2 pr-2">
+                    <span className="flex flex-wrap items-baseline gap-2">
+                      {TRIGGER_LABELS[t.trigger]}
+                      {t.trigger === "OVERDUE" && (
+                        <span className={PROVISIONAL_TAG} title="Depende de dos umbrales pendientes de revisión">
+                          umbral provisional
+                        </span>
+                      )}
+                    </span>
+                  </td>
+                  <td className="px-2 py-2 text-right">{t.events}</td>
+                  <td className="py-2 pl-2 text-right font-semibold">
+                    {t.detectedAhead}
+                    {t.events > 0 && <span className="ml-2 font-normal text-ink-muted">{formatShare(t.detectedAhead / t.events)}</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      </div>
+    </section>
+  );
+}
+
+/** A headline figure cell. `lead` marks the headline number of the block (detected ahead). */
+function Figure({ label, value, sub, title, lead = false }: { label: string; value: ReactNode; sub?: string; title: string; lead?: boolean }) {
+  return (
+    <div className="bg-film px-4 py-3" title={title}>
+      <dt className="text-sm text-ink-muted">{label}</dt>
+      <dd className={`mt-1 font-semibold [font-stretch:85%] ${lead ? "text-5xl leading-none" : "text-3xl leading-9"}`}>{value}</dd>
+      {sub && <dd className="mt-1 text-sm text-ink-muted">{sub}</dd>}
+    </div>
+  );
+}
+
+function Examples({ examples }: { examples: LeadTime["examples"] }) {
+  const linkSearch = useLinkSearch();
+  return (
+    <section className="min-w-0">
+      <h3 className="text-lg font-semibold">Casos con más antelación</h3>
+      {examples.length === 0 ? (
+        <p className="mt-3 text-ink-muted">Ningún evento detectado con antelación.</p>
+      ) : (
+        <ul className="-mx-5 mt-3">
+          {examples.map((e) => {
+            const down = e.eventType === "DETERIORATION";
+            const Icon = down ? IconDown : IconUp;
+            return (
+              <li key={`${e.entityId}-${e.eventType}`} className="group border-b border-rule last:border-b-0 hover:bg-scan-soft/40">
+                <Link to={`/entity/${e.entityId}${linkSearch}#anticipacion`} className="flex items-center justify-between gap-4 px-5 py-3">
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold underline-offset-4 group-hover:underline">{e.entityName}</span>
+                    <span className="flex items-center gap-1.5 text-sm text-ink-muted">
+                      <Icon width={13} height={13} className={down ? "text-down" : "text-up"} />
+                      {e.entityId} · {TRIGGER_LABELS[e.trigger]} · evento en {monthShort(e.eventMonth)}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-right">
+                    <span className="block text-2xl leading-7 font-semibold [font-stretch:85%]">{formatLead(e.leadMonths)}</span>
+                    <span className="text-sm text-ink-muted">
+                      {e.limitLeadMonths === null ? "antes" : `límite: ${formatLead(e.limitLeadMonths)}`}
+                    </span>
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/** Plain-language definitions with the window, horizon and history that the API sent. No threshold is written here. */
+function Definitions({ data }: { data: LeadTime }) {
+  const items: { term: string; text: ReactNode }[] = [
+    {
+      term: "Evento proxy",
+      text: (
+        <>
+          No hay etiqueta de impago, así que un evento es la primera vez que una entidad entra en una situación de riesgo que se ve en
+          los datos: <span className="text-ink">caja</span> para muy pocos meses de forma sostenida, <span className="text-ink">DSCR</span>{" "}
+          insuficiente para cubrir la deuda de forma sostenida, <span className="text-ink">impagos</span> altos a la vez en cobros y
+          pagos, o una <span className="text-ink">nota</span> muy baja. Una mejora es un <span className="text-ink">cruce de nivel</span>{" "}
+          hacia una zona sana tras un periodo débil. Los umbrales están en la configuración.
+        </>
+      ),
+    },
+    {
+      term: "Señal",
+      text: "La nota avisa: estado «empieza a torcerse» o «deterioro», o trayectoria muy baja (en mejora: estado «mejorando», mejora estructural o trayectoria muy alta).",
+    },
+    {
+      term: "Antelación",
+      text: `Meses entre la primera señal de los ${data.windowMonths} meses anteriores al evento y el evento. Detectado con antelación = al menos un mes antes.`,
+    },
+    {
+      term: "Historia mínima",
+      text: `Solo cuentan eventos con ${data.minHistoryMonths} meses puntuados antes. Una entidad que ya empieza en riesgo no tiene evento.`,
+    },
+    {
+      term: "Impagos",
+      text: "Este disparador depende de dos umbrales todavía pendientes de revisión: trátalo como provisional.",
+    },
+  ];
+  return (
+    <section className="min-w-0">
+      <h3 className="text-lg font-semibold">Cómo se mide</h3>
+      <dl className="mt-3 grid gap-3 text-[15px]">
+        {items.map((i) => (
+          <div key={i.term} className="border-t border-dashed border-rule pt-2 first:border-t-0 first:pt-0">
+            <dt className="font-semibold">{i.term}</dt>
+            <dd className="max-w-[70ch] text-ink-muted">{i.text}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+/** SPEC §12.7 item 5: the submission file, straight from the backend. */
+function Export() {
+  const { profile, month } = useGlobalParams();
+  const { data: meta } = useMeta();
+  const last = meta?.months.at(-1) ?? MONTHS[MONTHS.length - 1];
+  const files = [
+    {
+      format: "entity",
+      label: "Por entidad",
+      text: `Una fila por entidad con la nota de ${monthShort(last)} (${monthCode(last)}).`,
+    },
+    { format: "entity-month", label: "Por entidad y mes", text: "Una fila por entidad y mes, con toda la serie." },
+  ];
+  return (
+    <Film title="Exportar" meta={`Perfil ${PROFILE_LABELS[profile].name} · CSV`}>
+      <ul className="-mx-5">
+        {files.map((f) => (
+          <li key={f.format} className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-rule px-5 py-3 last:border-b-0">
+            <span>
+              <span className="block font-semibold">{f.label}</span>
+              <span className="text-[15px] text-ink-muted">{f.text}</span>
+            </span>
+            <a
+              href={`/api/export/submission?profile=${profile}&format=${f.format}`}
+              download
+              className="border border-ink px-3 py-2 text-[15px] font-semibold transition-colors hover:bg-ink hover:text-film"
+            >
+              Descargar CSV
+            </a>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-4 text-sm text-ink-muted">
+        El formato definitivo del test oculto se confirma el domingo. El mes de la vista ({monthCode(month)}) no cambia el archivo.
+      </p>
     </Film>
   );
 }
