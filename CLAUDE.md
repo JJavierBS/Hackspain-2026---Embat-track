@@ -1,22 +1,24 @@
 # CLAUDE.md — X-Ray (HackSpain 2026 · Embat challenge)
 
-Financial health scoring engine (0–100, Level + Trajectory) over SME treasury data, with explanations, dip-vs-decline detection, measured anticipation, an alert monitor, and a sellable product on top: a self-recalculating working-capital limit engine for banks, plus insurer (dynamic premium) and fund (momentum) views selected by a global `?profile=BANK|FUND|INSURER` parameter.
+Financial health scoring engine (0–100, Level + Trajectory) over SME treasury data, with explanations, dip-vs-decline detection, measured anticipation, an alert monitor, and a sellable product on top: a self-recalculating working-capital limit engine (the SME pays first, the lender second — decision P1), plus insurer (dynamic premium) and fund (momentum) views selected by a global `?profile=BANK|FUND|INSURER` parameter.
 
 Hackathon context: two developers, ~20 effective hours, demo on Sunday 11:00. **A working, deployed demo beats elegant code.** Never leave `main` broken.
 
 ## Read first
-1. `docs/SPEC.md` — **what** to compute: data, indicators, anchors, weights, scoring formulas, regimes, alerts, products, API, UI.
-2. `docs/ARCHITECTURE.md` — **how** to build it: packages, contracts, pipeline stages, SQL files, extension points, tests, build order.
-3. `docs/DATA_FINDINGS.md` — answers to data profiling (SPEC §4). Check it before implementing anything marked `⚠ UNKNOWN`.
-4. `docs/THRESHOLDS.md` — status of the 10 `⏳ PENDING` anchors (SPEC §6.1).
-5. `docs/ALGORITHM_PAGE.md` and `docs/PRESETS.md` — the expert configuration page, the runtime overrides and the sourced client presets.
-6. `docs/SECTOR_PRESETS.md` — the per-entity tuning by sector (`sectors.yml`) and the draft preview.
+1. `docs/DECISIONS.md` — **every decision, with its reason and its evidence.** Read it before you change anything it covers, and add a row when you close something.
+2. `docs/SPEC.md` — **what** to compute: data, indicators, anchors, scoring formulas, regimes, alerts, products. Its status header lists the parts that are superseded.
+3. `docs/ARCHITECTURE.md` — **how** to build it: packages, contracts, pipeline stages, SQL files, extension points, tests, build order.
+4. `docs/DATA_FINDINGS.md` — answers to data profiling (SPEC §4). Check it before implementing anything marked `⚠ UNKNOWN`.
+5. `docs/THRESHOLDS.md` — status of the 10 `⏳ PENDING` anchors (SPEC §6.1).
+6. `docs/ALGORITHM_PAGE.md`, `docs/PRESETS.md`, `docs/SECTOR_PRESETS.md` — the expert configuration page, the runtime overrides, the client presets and the per-entity sector tuning.
 
-Precedence: SPEC wins on *what*, ARCHITECTURE wins on *how*. `ARCHITECTURE.md §0 Locked decisions` overrides older SPEC text. Resolved conflicts between the two are listed at the end of this file — apply them.
+`README.md` maps every other file.
+
+Precedence: **DECISIONS wins over everything.** Then SPEC on *what*, ARCHITECTURE on *how*.
 
 ## Stack
 - Backend: Java 21, Spring Boot 3.x, Maven, **DuckDB embedded via JDBC** (single file `data/xray.duckdb`), `JdbcTemplate`, plain SQL in `backend/src/main/resources/sql/`, springdoc-openapi, JUnit 5. No JPA, no MySQL/Postgres, no Smile.
-- Frontend: React 18 + TypeScript + Vite, React Router, TanStack Query, Recharts, Tailwind.
+- Frontend: React 19 + TypeScript + Vite, React Router, TanStack Query, Recharts, Tailwind 4.
 - Deploy: docker-compose (backend :8080, frontend nginx :80 proxying `/api`), public URL, `xray.demo-mode=true` serving a frozen `xray.duckdb` (render.yaml and docker-compose set it). The pipeline never runs in prod.
 
 ## Commands
@@ -65,20 +67,14 @@ Swagger UI: `http://localhost:8080/swagger-ui.html`.
 ## Required tests (only these)
 `AnchorInterpolatorTest`, `ExplanationSumTest`, `LookAheadTest`, `ProfileRenormalizationTest`, `RollupTest`, `ScoringConfigValidationTest` — see ARCHITECTURE §9.
 
-## Resolved conflicts between SPEC and ARCHITECTURE (apply these)
-1. **Supervised calibration** (SPEC §7.7, M9, `/api/labels`, `/api/model/*`, `CALIBRATED` export profile): **out of scope** per ARCHITECTURE §0. Only the `ScoreCalibrator` interface exists. Do not add Smile or those endpoints.
-2. **Hidden test timing and format:** the hidden test, scoring script and leaderboard are **not available before Sunday** (confirmed 2026-09-19, despite the track text saying Friday). The one thing known: the hidden test comes in **exactly the same format as the CSVs we already have** (`data/raw/*.csv`). So the pipeline must be able to run unchanged on a second set of raw CSVs. Until Sunday, `SubmissionExporter` defaults to `entity_id,score` at M23. On Sunday, check the scoring unit from the test IDs, adapt the exporter and submit once.
-3. **Stage order:** the `LIMIT_ACTION` alert needs limit decisions, but ARCHITECTURE runs `S80_Alerts` before `S85_Products`. Run products first: rename to `S75_Products` (limit engine and premium depend only on scores, regimes and indicators, never on alerts), keep `S80_Alerts` after it.
-4. **Provisional anchors:** SPEC §9 shows `CF_VOLATILITY` with `anchors: []`, which fails boot validation (ARCHITECTURE §4.3). Ship these provisional placeholders (`status: pending`) until THRESHOLDS.md closes them:
-   - `CF_VOLATILITY` (lower is better): `[[0.1,100],[0.3,70],[0.6,40],[1.0,15],[2.0,0]]`
-   - `CON_CUSTOMER_CHURN` (lower is better): `[[0.0,100],[0.1,75],[0.25,45],[0.5,15],[0.8,0]]`
-   - Any other pending indicator without a full anchor list gets a placeholder of the same shape, respecting the fixed part in SPEC §6.1.
-5. **Package structure and API:** ARCHITECTURE §3 supersedes SPEC §12.3. SPEC §12.5 endpoints apply except the supervised ones (item 1).
-6. **Threshold quantiles:** computed per `entity_type` for the active unit (ARCHITECTURE §5), via `sql/90_threshold_quantiles.sql` (SPEC §6.1's filename is outdated).
-7. **`DEBT_DSCR` with no debt:** level 100 by default, exposed as `debtDscr.noDebtLevel` in config (add the key to `scoring-config.yml`).
+## Decisions and open items
+Both live in `docs/DECISIONS.md`. Do not restate a decision here, in SPEC or in a code comment:
+add the row there and point at it. Four that catch agents out:
 
-## Open items (don't guess — check or ask)
-- Scoring unit, labels and submission format → Embat (hidden test, Sunday). Input format = same CSVs as `data/raw/`.
-- 10 `⏳ PENDING` anchors → Fran / José Javier after block 3 quantiles.
-- Profile weights → **closed 2026-09-19** (Embat CTO). Keep them. `docs/WEIGHTS_JUSTIFICATION.md` gives the reasons and the only cases that justify a change.
-- `limit-engine.reference-rate` in `scoring-config.yml` (0.035) is an **example value**, not agreed with the experts yet. It feeds the limit engine, the simulator and `LEV_FUNDING_COST`. Any agent may change it when the user's instructions say otherwise; record the new value and its source in `docs/THRESHOLDS.md`.
+- **Supervised calibration is out of scope** (M10). Only the `ScoreCalibrator` interface exists. Do not add Smile, `/api/labels` or `/api/model/*`.
+- **Profile weights are closed** (W1–W3). Only three events reopen one, and they are listed in the register.
+- **Products run before alerts**: `S75_Products`, then `S80_Alerts` (P3). `LIMIT_ACTION` reads a limit decision.
+- **`limit-engine.reference-rate` is an example value** (W6). Change it when the user's instructions say so, and record the new value and its source in `docs/THRESHOLDS.md`.
+
+Still open: the hidden test unit and submission format, the ten pending anchors, and the reference
+rate. `DECISIONS.md` §5 has the owner and the trigger for each one.

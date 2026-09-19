@@ -50,7 +50,10 @@ The applied value lives in `data/scoring-overrides.yml`, not in the shipped file
 A preset does not close a pending anchor. Close it here only when the team adopts the proposal as the
 shipped default.
 
-## Phase 7 A-8 — AHP weights adopted (2026-09-19)
+## Phase 7 A-8 — AHP weights adopted (2026-09-19) · decisions W1–W3
+
+The decision and its reason are in `DECISIONS.md`. What follows is the evidence: the source, the
+measured before and after, and the histogram check.
 
 **Change.** `scoring.profiles.<P>.weights` and `scoring.indicators.<ID>.weight` now come from the AHP
 generator (`scripts/weights_calc/ahp_w_cat_ind.py`). All ten categories have a positive weight in all
@@ -82,7 +85,7 @@ Limit engine at M23 (BANK): DECLINE 5 → 10 (band E has no spread), MAINTAIN 16
 No profile clusters in a ~15-point band, so the anchors stay. INSURER is the tightest: check it again
 after any change to the `PAY_*` anchors.
 
-## Band S — top tier above A (2026-09-19)
+## Band S — top tier above A (2026-09-19) · decision W5
 
 **Change.** `scoring.bands` gains `s: 90`: S ≥ 90, A 80–89.9, the rest unchanged. `Band` is now
 `S, A, B, C, D, E` (ordinal = best to worst, so band-step alerts count S → A as one step).

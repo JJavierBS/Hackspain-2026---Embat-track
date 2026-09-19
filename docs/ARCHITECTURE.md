@@ -9,7 +9,8 @@
 
 ## 0. Locked decisions
 
-These were open during design. They are now closed. Do not reopen without updating this table.
+Implementation shorthand. The **reason** for each row, and every decision taken after this file was
+written, are in [`DECISIONS.md`](DECISIONS.md). Do not reopen a row without adding one there.
 
 | Decision | Value | Note |
 |---|---|---|
@@ -60,13 +61,13 @@ So: heavy set-based work in SQL over 2.5M transactions, then **everything else i
     scoring-config.yml                        (SPEC §9 — the only place thresholds live)
     sql/                                      (§5)
   src/test/java/com/xray/...                  (§9)
-/frontend                                     React 18 + TS + Vite (SPEC §12.6)
+/frontend                                     React 19 + TS + Vite (SPEC §12.6)
 /data/raw/*.csv                               gitignored
 /data/xray.duckdb                             gitignored; keep a frozen copy for the demo
-/docs
-  SPEC.md  ARCHITECTURE.md  DATA_FINDINGS.md  THRESHOLDS.md  PITCH.md
+/docs                                         DECISIONS.md first; README.md maps the rest
 docker-compose.yml
-CLAUDE.md                                     "Read docs/SPEC.md then docs/ARCHITECTURE.md"
+README.md                                     the front door: story, product, how to run it
+CLAUDE.md                                     working rules for coding agents
 ```
 
 ---
@@ -108,6 +109,9 @@ com.xray
 │       ├── CusumDetector.java
 │       ├── RegimeClassifier.java
 │       ├── StatusResolver.java
+│       ├── ConfidenceResolver.java   HIGH | MEDIUM | LOW | INSUFFICIENT (decision M8)
+│       ├── ForecastCalculator.java   AR(1) mean reversion (decision P4)
+│       ├── RecommendationEngine.java template actions from the contributions (decision P5)
 │       ├── AlertEngine.java          runs the AlertRule beans, handles transitions
 │       ├── LimitEngine.java
 │       ├── PremiumEngine.java
@@ -124,14 +128,17 @@ com.xray
 │       ├── S00_Ingest.java           runs sql/00_*
 │       ├── S10_Staging.java          sql/10_*
 │       ├── S20_MonthlyAggregates.java sql/20_*
+│       ├── S25_EntityRollup.java     sql/25_* — company → group
 │       ├── S30_RawIndicators.java    sql/30_* → indicator_values_raw
 │       ├── S40_Normalize.java        anchors → level_score   (Java)
 │       ├── S50_Trajectory.java       → traj_score            (Java)
 │       ├── S60_Score.java            categories → profiles    (Java)
 │       ├── S65_Explain.java          contributions            (Java)
 │       ├── S70_Dynamics.java         CUSUM, regimes, statuses (Java)
+│       ├── S75_Products.java         limits, premiums, momentum (Java) — before alerts, decision P3
 │       ├── S80_Alerts.java           alert rules              (Java)
-│       ├── S85_Products.java         limits, premiums         (Java)
+│       ├── S85_Forecast.java         score projection         (Java)
+│       ├── S88_Recommendations.java  "qué hacer ahora"        (Java)
 │       ├── S90_Analytics.java        lead time, showcase      (Java)
 │       └── S95_Quantiles.java        threshold_quantiles — reference only
 │
@@ -293,6 +300,8 @@ resources/sql/
   23_monthly_counterparty.sql
   24_debt_snapshot.sql
   25_entity_rollup.sql        ← company → group: SUM components, then recompute
+  28_entity_months.sql        the month grid per entity
+  29_indicator_values_raw.sql the long table the 3x files insert into
   30_ind_liquidity.sql        ┐
   31_ind_cashflow.sql         │ each INSERTs long rows into indicator_values_raw
   32_ind_activity.sql         │ (entity_type, entity_id, month, indicator_id,
@@ -302,6 +311,7 @@ resources/sql/
   36_ind_delinquency.sql      │   one file each, no merge conflicts
   37_ind_concentration.sql    │
   38_ind_tax.sql              ┘
+  39_signal_inputs.sql        the series the alerts and the regimes read
   90_threshold_quantiles.sql  reference only (§0)
 ```
 
@@ -376,7 +386,7 @@ Exactly as SPEC §12.4, with these implementation notes:
 Four seams. All follow the same pattern: an interface, beans implementing it, Spring injecting the ordered list. **Do not add a fifth kind of plugin mechanism.**
 
 ### 8.1 `PipelineStage` — adding a computation step
-Add a class under `pipeline/stages/`, annotate `@Component @Order(n)`. It is picked up automatically. Use the existing number gaps (S45, S75…) to insert without renumbering.
+Add a class under `pipeline/stages/`, annotate `@Component @Order(n)`. It is picked up automatically. Use the free number gaps (S35, S45, S55…) to insert without renumbering. S75 to S95 are taken.
 
 ### 8.2 `AlertRule` — adding an early-warning indicator
 
@@ -476,6 +486,9 @@ Do **not** cut: the monitor replay, the limit history chart, the explanation pan
 ---
 
 ## 12. Open items
+
+Now tracked in [`DECISIONS.md`](DECISIONS.md) §5, which is the only list. Kept here for the
+acceptance note in each row.
 
 | Item | Owner | When |
 |---|---|---|
