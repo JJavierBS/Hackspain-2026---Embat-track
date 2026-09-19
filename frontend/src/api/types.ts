@@ -25,7 +25,7 @@ export type Status =
 export type Regime = "STABLE" | "DIP" | "DIP_RECOVERED" | "STRUCTURAL_DECLINE" | "STRUCTURAL_IMPROVEMENT";
 /** INSUFFICIENT: the available data holds too little of the profile weight to rank or trust the score. */
 export type Confidence = "HIGH" | "MEDIUM" | "LOW" | "INSUFFICIENT";
-export type BandLetter = "A" | "B" | "C" | "D" | "E";
+export type BandLetter = "S" | "A" | "B" | "C" | "D" | "E";
 
 export type Category =
   | "LIQUIDITY"

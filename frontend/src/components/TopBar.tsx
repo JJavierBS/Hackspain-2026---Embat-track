@@ -1,9 +1,9 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { MONTHS, PROFILES, useGlobalParams } from "../hooks/useGlobalParams";
+import { PROFILES, useGlobalParams } from "../hooks/useGlobalParams";
 import { USE_MOCKS } from "../api/queries";
 import { PROFILE_LABELS } from "../lib/format";
 import { XRayMark } from "./Icons";
-import { MonthStrip } from "./MonthStrip";
+import { MonthStepper, MonthStrip } from "./MonthStrip";
 import { PipelineBadge } from "./PipelineBadge";
 
 const NAV = [
@@ -14,7 +14,7 @@ const NAV = [
   { to: "/algorithm", label: "Algoritmo" },
 ];
 
-/** The viewer frame: navigation, the profile cord, the month strip and the pipeline lamp. */
+/** The viewer frame: navigation, the profile cord, the month stepper and strip, and the pipeline lamp. */
 export function TopBar() {
   const { profile, month, setProfile, setMonth } = useGlobalParams();
   const { search } = useLocation();
@@ -82,25 +82,11 @@ export function TopBar() {
           })}
         </div>
 
-        <div className="order-last w-full pt-4 lg:order-none lg:w-auto">
+        <MonthStepper value={month} onChange={setMonth} />
+
+        <div className="order-last w-full lg:order-none lg:w-auto">
           <MonthStrip value={month} onChange={setMonth} />
         </div>
-
-        <label className="flex items-center gap-2 text-sm text-viewer-muted">
-          Mes
-          <select
-            aria-label="Mes"
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-            className="border border-viewer-rule bg-viewer-raised px-2 py-1.5 text-[15px] font-medium text-viewer-ink"
-          >
-            {MONTHS.map((m, i) => (
-              <option key={m} value={m}>
-                {m} (M{String(i).padStart(2, "0")})
-              </option>
-            ))}
-          </select>
-        </label>
       </div>
     </header>
   );

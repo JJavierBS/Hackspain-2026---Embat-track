@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** ARCHITECTURE §9: with a category missing, the remaining weights still sum to 1 and the score stays in [0,100]. */
 class ProfileRenormalizationTest {
 
-    private static final BandThresholds BANDS = new BandThresholds(80, 65, 50, 35);
+    private static final BandThresholds BANDS = new BandThresholds(90, 80, 65, 50, 35);
     private static final Map<Category, Double> BANK_LIKE = Map.of(
             Category.DEBT_SERVICE, 25.0, Category.LIQUIDITY, 20.0, Category.OPERATING_CASH_FLOW, 20.0,
             Category.PAYMENT_BEHAVIOUR, 7.5, Category.DELINQUENCY, 7.5, Category.LEVERAGE, 10.0,

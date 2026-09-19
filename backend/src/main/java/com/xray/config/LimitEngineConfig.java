@@ -22,7 +22,7 @@ public record LimitEngineConfig(
         double actionThreshold,
         double roundingEur) {
 
-    /** Domain parameters. Band keys of spreadBpsByBand are A..E strings in the YAML. */
+    /** Domain parameters. Band keys of spreadBpsByBand are S..E strings in the YAML. */
     public LimitEngine.Params toParams() {
         Map<Band, Integer> spreads = new EnumMap<>(Band.class);
         spreadBpsByBand.forEach((k, v) -> {

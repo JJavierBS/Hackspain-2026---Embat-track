@@ -62,6 +62,7 @@ public record ScoringConfig(
         ScoringConfigValidator.validatePhase7(forecast);
         ScoringConfigValidator.validateRecommendations(recommendations);
         ScoringConfigValidator.validateConfidence(confidence);
+        ScoringConfigValidator.validateBands(bands);
     }
 
     public record MonthRange(String start, String end) {
@@ -116,14 +117,14 @@ public record ScoringConfig(
                                     double debtCapacityMinDscr, double debtCapacityMaxDebtToCf) {
     }
 
-    /** Lower bounds of bands A..D. Below d is band E. */
-    public record BandConfig(double a, double b, double c, double d) {
+    /** Lower bounds of bands S..D. Below d is band E. */
+    public record BandConfig(double s, double a, double b, double c, double d) {
     }
 
     /** A band missing from multiplierByBand means not insurable. */
     public record InsurerConfig(double basePremiumRate, Map<String, Double> multiplierByBand) {
 
-        /** Domain parameters. Band keys are A..E strings in the YAML. */
+        /** Domain parameters. Band keys are S..E strings in the YAML. */
         public PremiumEngine.Params toParams() {
             Map<Band, Double> multipliers = new EnumMap<>(Band.class);
             multiplierByBand.forEach((k, v) -> {

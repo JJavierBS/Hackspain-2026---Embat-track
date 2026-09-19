@@ -184,7 +184,7 @@ Density is operational, not decorative. Numbers are large, tabular and seated in
 - Dark viewer frame over a cool lit panel; two materials, never a third.
 - Films, not cards: flat, square, hairline-edged, titled by a tab on the top rule.
 - One cyan scan color marks the present moment everywhere.
-- Band A–E colors carry 0–100 health values; green/red carry direction; nothing else borrows them.
+- Band S–E colors carry 0–100 health values; green/red carry direction; nothing else borrows them.
 - Tabular figures everywhere; the score sits in fixed numeral slots.
 - One authored motion: a single scan line passes down the panel per view or profile change.
 
@@ -197,7 +197,7 @@ A cold clinical palette of blue-black and backlit white, with one cyan signal an
 - **Scan Wash** (`scan-soft`): text selection, and the ranking row under the pointer (at 40%).
 
 ### Secondary (semantic: health bands)
-- **Cobalt A** (`band-a`), **Teal B** (`band-b`), **Ochre C** (`band-c`), **Amber-Orange D** (`band-d`), **Plum E** (`band-e`): one hue per score band. Used only where a 0–100 health value is shown: the band letter, the 4px top stripe of each ladder rung, the lit rung's fill, the score numerals and their slot underlines, the square band chip (32px in the readout, 24px in rows), faint band zones behind trend charts (7%), the sparkline stroke (band of its last value), the Nivel meter fill, and each category's level figure and bar. A category with weight 0 keeps its band hue at 55% opacity.
+- **Violet S** (`band-s`, `#5b21b6`, the top tier ≥ 90: darker and more violet than A), **Indigo A** (`band-a`), **Teal B** (`band-b`), **Ochre C** (`band-c`), **Amber-Orange D** (`band-d`), **Plum E** (`band-e`): one hue per score band. Used only where a 0–100 health value is shown: the band letter, the 4px top stripe of each ladder rung, the lit rung's fill, the score numerals and their slot underlines, the square band chip (32px in the readout, 24px in rows), faint band zones behind trend charts (7%), the sparkline stroke (band of its last value), the Nivel meter fill, and each category's level figure and bar. A category with weight 0 keeps its band hue at 55% opacity.
 
 ### Tertiary (semantic: direction and chart series)
 - **Direction Green** (`up`) / **Direction Red** (`down`): every signed change and every reading of where a company is heading. The delta and its drawn arrow (caliper, Δ 3m column, "what changed"), the Trayectoria meter (grown from the 50 mark), the arrow inside status and trend tags, driver bars (at 80%), positive/negative alert marks, the monthly alert summary bars (at 80%), the limit action and its change, the red-outlined count of negative alerts. A solid Direction Red fill with white text is reserved for critical severity: the "Crítica" status and a critical alert. Never used for a 0–100 health value.
@@ -218,7 +218,7 @@ A cold clinical palette of blue-black and backlit white, with one cyan signal an
 
 **The Health-Only Band Rule.** Band hues belong to 0–100 health values (Final, Nivel, category levels). Trajectory and change are direction and read in green/red, even though trajectory is also on a 0–100 scale; a status label, a link or a mode indicator never takes a band hue.
 
-**The Full Ladder Rule.** All five bands appear together whenever bands are shown. The current band is lit (filled, white text); the others stay at rest with only their stripe and letter colored.
+**The Full Ladder Rule.** All six bands appear together whenever bands are shown. The current band is lit (filled, white text); the others stay at rest with only their stripe and letter colored.
 
 ## Typography
 
@@ -301,7 +301,7 @@ Square hairline-bordered tags, Caption size, medium weight, 2px 8px. The status 
 112×32px, 12 months of the final score: a 2px round-joined line in the band color of its last value, a 2.75px dot at the end, and a dashed hairline at 50. Fewer than two points shows an em dash.
 
 ### Question Filters
-The six portfolio questions as square toggle buttons (Label size, 8px 12px): Film fill with a 25% ink border at rest, full ink border on hover, inverted to Ink fill with Film text when pressed. Each carries a count in a small Lit Panel cell (inverted when pressed). A question with no matches is disabled at 45% opacity. The Monitor direction switch uses the same ink inversion as a joined segmented group.
+The status filters sit inside the Ranking film, as a bar above the table header ruled off by a 20% ink line: a muted "Filtrar" label, a "Todas" chip that clears every filter, one chip per status question (with the Estado column's green/red arrow where the status has a direction), and on FUND the rising-star chip. Below `sm` the bar scrolls sideways instead of wrapping. Chips are toggle buttons (Label size, 6px 12px): Film fill with a 25% ink border at rest, full ink border on hover, inverted to Ink fill with Film text when pressed. Each carries a count in a small Lit Panel cell (inverted when pressed). A question with no matches is disabled at 45% opacity. The Monitor direction switch uses the same ink inversion as a joined segmented group.
 
 ### Ranking Table
 Hairline-ruled rows, muted Caption headers over a 20% ink rule, sortable headers in muted text that turn ink and semibold when active with a 14px sort arrow. Each row: rank, name (semibold, underlined on row hover) over a muted ID line, figure plus 24px band chip, Delta, sparkline, Nivel, Trayectoria, alert count, status tag, confidence. Row hover washes in Scan Wash at 40%.
@@ -319,7 +319,7 @@ Top-bar links in Label size, Viewer Muted at rest, Viewer Ink on hover, active s
 A segmented radio group with a Viewer Rule border. Inactive segments are Viewer Muted text on the frame and turn Viewer Raised on hover; the active segment inverts to Viewer Ink fill with Viewer text, semibold.
 
 ### Month Strip
-24 radio ticks (3px wide, 3px apart), one per month, with a year label above each January. Elapsed months are 16px Viewer Muted ticks, future months 12px Viewer Rule ticks, hover grows any tick to 24px in Viewer Ink, and the selected month is a 32px, 5px-wide Scan Cyan tick with glow. Arrow keys step through months. A square month select sits beside it as the precise fallback.
+A month stepper and a 24-tick strip. The stepper is a joined group (previous, readout, next): the readout names the month in words ("Agosto 2026", semibold) with its M-code in Viewer Muted, at a fixed width so it never jumps. The readout is also a button with a chevron: it opens a month grid on Viewer Black under the stepper, one row per year split into two lines of six month slots (ene…dic). Months outside the data are empty Viewer Rule labels; the selected month is filled in Scan with its glow. Arrows move one month (up/down half a year), Escape or a click outside closes it and returns focus to the readout. The strip groups the ticks by year: each year has its label above (Viewer Ink semibold for the selected month's year) and its ticks stand on a Viewer Rule baseline, separated from the next year by a 12px gap. Elapsed months are 14px Viewer Muted ticks, future months 8px Viewer Rule ticks, hover grows any tick to 20px in Viewer Ink and names the month in a small Viewer Raised label below it, and the selected month is a 28px, 5px-wide Scan tick with glow. Arrow keys step, Home and End jump to the ends.
 
 ### Pipeline Lamp
 A hairline-bordered status chip in the frame: an 8px round lamp, "Pipeline" in muted text, the state in medium weight. In demo mode a "Datos de demostración" marker takes its slot.
@@ -347,7 +347,7 @@ Decisions and reasons: `docs/ALGORITHM_PAGE.md`. All reuse the existing material
 
 ### Do:
 - **Do** put every content section on a film with a tab title; use the meta slot to state what is measured.
-- **Do** show the full A–E ladder whenever bands appear, lighting only the current band.
+- **Do** show the full S–E ladder whenever bands appear, lighting only the current band.
 - **Do** mark the active month in Scan Cyan on every time axis.
 - **Do** set figures tabular, in Spanish format, with a true minus sign.
 - **Do** tile cells on a 1px hairline gap instead of separate bordered boxes.

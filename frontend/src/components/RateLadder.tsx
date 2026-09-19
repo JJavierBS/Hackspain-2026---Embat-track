@@ -11,10 +11,10 @@ interface RateLadderProps {
   active?: BandLetter;
 }
 
-/** A product tariff on the full A–E ladder (The Full Ladder Rule): one figure per band, the current band lit. */
+/** A product tariff on the full S–E ladder (The Full Ladder Rule): one figure per band, the current band lit. */
 export function RateLadder({ label, values, missing, active }: RateLadderProps) {
   return (
-    <ol className="grid grid-cols-5 gap-px border border-rule bg-rule" aria-label={label}>
+    <ol className="grid grid-cols-3 gap-px sm:grid-cols-6 border border-rule bg-rule" aria-label={label}>
       {BANDS.map(({ band, color }) => {
         const lit = active === band;
         const value = values[band];

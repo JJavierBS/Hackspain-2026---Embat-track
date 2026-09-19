@@ -210,7 +210,12 @@ function trajectory(series: number[], m: number): number {
   return round1(clamp(50 + raw * 10));
 }
 
+/** Best to worst. Letters do not sort alphabetically once S tops the scale. */
+const BAND_RANK: BandLetter[] = ["S", "A", "B", "C", "D", "E"];
+const rankOf = (b: BandLetter) => BAND_RANK.indexOf(b);
+
 export function bandLetter(score: number): BandLetter {
+  if (score >= 90) return "S";
   if (score >= 80) return "A";
   if (score >= 65) return "B";
   if (score >= 50) return "C";
@@ -349,11 +354,11 @@ const PARAMS: Omit<Methodology, "alertRules"> = {
     defaultTermMonths: 12,
     referenceRate: 0.035,
     referenceRateIsExample: true,
-    spreadBpsByBand: { A: 90, B: 150, C: 250, D: 400 },
+    spreadBpsByBand: { S: 60, A: 90, B: 150, C: 250, D: 400 },
     actionThreshold: 0.1,
     roundingEur: 1000,
   },
-  insurer: { basePremiumRate: 0.0025, multiplierByBand: { A: 0.8, B: 1, C: 1.4, D: 2 } },
+  insurer: { basePremiumRate: 0.0025, multiplierByBand: { S: 0.6, A: 0.8, B: 1, C: 1.4, D: 2 } },
   momentum: { risingStarMaxLevel: 60, risingStarMinTraj: 70 },
   watchlist: { minCritical: 1, minWarn: 2, confirmMonths: 2, recentMonths: 3 },
   forecast: {
@@ -515,7 +520,7 @@ function premiumAt(id: string, m: number): PremiumQuote {
     premiumRate: rate(band),
     previousPremiumRate: previousBand === null ? null : rate(previousBand),
     previousBand,
-    tierChange: previousBand === null || previousBand === band ? null : band < previousBand ? "UP" : "DOWN",
+    tierChange: previousBand === null || previousBand === band ? null : rankOf(band) < rankOf(previousBand) ? "UP" : "DOWN",
     recommendedBuyerLimitEur: insurable ? floorTo(purchases * (dpo / 30) * limitFactor(ms.final), L.roundingEur) : 0,
   };
 }
@@ -674,8 +679,8 @@ function alertBook(series: EntitySeries, profile: Profile): AlertBook {
     if (m === 0) return;
     const was = bandLetter(months[m - 1].final);
     const band = bandLetter(ms.final);
-    if (band < was) push(m, "BAND_UPGRADE", { severity: "INFO", direction: "POSITIVE", message: `Sube de la banda ${was} a la ${band}`, value: ms.final });
-    if (band > was)
+    if (rankOf(band) < rankOf(was)) push(m, "BAND_UPGRADE", { severity: "INFO", direction: "POSITIVE", message: `Sube de la banda ${was} a la ${band}`, value: ms.final });
+    if (rankOf(band) > rankOf(was))
       push(m, "BAND_DOWNGRADE", {
         severity: band === "E" ? "CRITICAL" : "WARN",
         direction: "NEGATIVE",

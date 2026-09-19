@@ -300,7 +300,7 @@ Evaluated in this precedence order:
 7. `HEALTHY` — Final ≥ 65
 8. `WATCH` — otherwise
 
-Score bands (for pricing and colors): `A ≥ 80`, `B 65–79.9`, `C 50–64.9`, `D 35–49.9`, `E < 35`.
+Score bands (for pricing and colors): `S ≥ 90`, `A 80–89.9`, `B 65–79.9`, `C 50–64.9`, `D 35–49.9`, `E < 35`.
 
 ### 8.4 Lead time (measured anticipation — bonus)
 Since there is no default label, define **proxy events** (config):
@@ -383,7 +383,7 @@ profiles:
   INSURER: { lambda: 0.70, weights: { PAYMENT_BEHAVIOUR: 30, DELINQUENCY: 20, CONCENTRATION: 20, LIQUIDITY: 15, OPERATING_CASH_FLOW: 10, LEVERAGE: 5 } }
 
 regimes:  { cusum_k: 0.5, cusum_h: 4.0, persistence_months: 3, slope_threshold: 1.5, dip_z: -2.0, dip_max_months: 2 }
-bands:    { A: 80, B: 65, C: 50, D: 35 }
+bands:    { S: 90, A: 80, B: 65, C: 50, D: 35 }
 limit_engine:
   base: median_operating_in_3m
   score_floor: 35

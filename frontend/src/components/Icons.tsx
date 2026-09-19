@@ -41,6 +41,30 @@ export function IconFlat(props: IconProps) {
   );
 }
 
+export function IconPrev(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M10 3.5 5.5 8l4.5 4.5" />
+    </svg>
+  );
+}
+
+export function IconNext(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M6 3.5 10.5 8 6 12.5" />
+    </svg>
+  );
+}
+
+export function IconChevron(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M3.5 6 8 10.5 12.5 6" />
+    </svg>
+  );
+}
+
 export function IconPlay(props: IconProps) {
   return (
     <svg {...base(props)}>

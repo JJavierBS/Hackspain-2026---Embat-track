@@ -218,6 +218,17 @@ final class ScoringConfigValidator {
         }
     }
 
+    /** Band lower bounds strictly descend: S above A above B above C above D, all inside (0, 100]. */
+    static void validateBands(ScoringConfig.BandConfig b) {
+        if (b == null) {
+            throw fail("scoring.bands is missing");
+        }
+        if (!(100 >= b.s() && b.s() > b.a() && b.a() > b.b() && b.b() > b.c() && b.c() > b.d() && b.d() > 0)) {
+            throw fail("scoring.bands needs 100 >= s > a > b > c > d > 0, got s=" + b.s() + " a=" + b.a()
+                    + " b=" + b.b() + " c=" + b.c() + " d=" + b.d());
+        }
+    }
+
     /** Coverage gate: a share of the profile weight, in [0, 1]. */
     static void validateConfidence(ScoringConfig.ConfidenceConfig confidence) {
         if (confidence == null) {

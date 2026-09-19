@@ -4,6 +4,7 @@ import { CartesianGrid, Line, LineChart, ReferenceArea, ReferenceLine, Responsiv
 import type { EntityDetail, EntityEvent, PortfolioRow, ShowcasePair } from "../api/types";
 import { useEntity, usePortfolio, useShowcasePairs } from "../api/queries";
 import { Film } from "../components/Film";
+import { HorizonPicker, ReliabilityTag } from "../components/ForecastControls";
 import { IconDown, IconUp } from "../components/Icons";
 import { LoadState } from "../components/LoadState";
 import { Meter } from "../components/Meter";
@@ -11,6 +12,7 @@ import { PageHeader } from "../components/PageHeader";
 import { ScoreReadout } from "../components/ScoreReadout";
 import { StatusTag, TrendTag } from "../components/StatusTag";
 import { MONTHS, useGlobalParams } from "../hooks/useGlobalParams";
+import { useHorizon } from "../hooks/useHorizon";
 import { useLinkSearch } from "../hooks/useLinkSearch";
 import { BANDS, EVENT_MARK_LABELS, TRIGGER_LABELS, formatLead, formatScore, leadText, monthCode, monthShort } from "../lib/format";
 
@@ -55,8 +57,9 @@ export function ComparePage() {
   const settled = !showcase.isPending;
   const a = params.get("a") ?? (settled ? (fallback?.a ?? "") : "");
   const b = params.get("b") ?? (settled ? (fallback?.b ?? "") : "");
-  const ea = useEntity(a, profile, month);
-  const eb = useEntity(b, profile, month);
+  const { horizon, setHorizon } = useHorizon();
+  const ea = useEntity(a, profile, month, horizon);
+  const eb = useEntity(b, profile, month, horizon);
   const activePair = apiPairs.find((p) => p.up.id === a && p.down.id === b) ?? null;
 
   function pick(key: "a" | "b", id: string) {
@@ -118,8 +121,9 @@ export function ComparePage() {
               );
             })}
           </div>
-          <Film title="Evolución superpuesta" meta={`Puntuación final hasta ${monthCode(month)}`}>
+          <Film title="Evolución superpuesta" meta={`Puntuación final hasta ${monthCode(month)} y proyección`}>
             <Overlay a={ea.data} b={eb.data} month={month} />
+            <ProjectionControls a={ea.data} b={eb.data} horizon={horizon} onHorizon={setHorizon} />
             <Verdict a={ea.data} b={eb.data} />
           </Film>
         </>
@@ -218,10 +222,54 @@ function Side({ entity, month }: { entity: EntityDetail; month: string }) {
   );
 }
 
+/** A row of the overlay: measured finals (a, b) and projections (pa, pb), joined at the selected month. */
+interface OverlayRow {
+  month: string;
+  a: number | null;
+  b: number | null;
+  pa: number | null;
+  pb: number | null;
+}
+
+/** Fewest months the overlay shows, so two short histories still read as a trend. */
+const MIN_WINDOW = 6;
+
+/**
+ * The months worth plotting: from the first month either entity has a score (at least MIN_WINDOW before the
+ * selected month) to the selected month, then the projected months of both.
+ */
+function overlayRows(a: EntityDetail, b: EntityDetail, month: string): OverlayRow[] {
+  const at = (e: EntityDetail) => new Map(e.timeline.map((p) => [p.month, p.final]));
+  const fa = at(a);
+  const fb = at(b);
+  const end = MONTHS.indexOf(month);
+  const first = MONTHS.findIndex((m, i) => i <= end && (fa.get(m) != null || fb.get(m) != null));
+  const start = first < 0 ? 0 : Math.max(0, Math.min(first, end - (MIN_WINDOW - 1)));
+  const measured: OverlayRow[] = MONTHS.slice(start, end + 1).map((m) => ({
+    month: m, a: fa.get(m) ?? null, b: fb.get(m) ?? null, pa: null, pb: null,
+  }));
+  const last = measured[measured.length - 1];
+  const pointsA = a.forecast?.points ?? [];
+  const pointsB = b.forecast?.points ?? [];
+  // Each projection leaves from its measured point, so the dotted line continues the solid one.
+  if (last && pointsA.length > 0) last.pa = last.a;
+  if (last && pointsB.length > 0) last.pb = last.b;
+  const future = [...new Set([...pointsA, ...pointsB].map((p) => p.month))].sort();
+  const pa = new Map(pointsA.map((p) => [p.month, p.value]));
+  const pb = new Map(pointsB.map((p) => [p.month, p.value]));
+  return [
+    ...measured,
+    ...future.map((m) => ({ month: m, a: null, b: null, pa: last?.a == null ? null : (pa.get(m) ?? null), pb: last?.b == null ? null : (pb.get(m) ?? null) })),
+  ];
+}
+
+const PROJECTION_DASH = "1 6";
+
 function Overlay({ a, b, month }: { a: EntityDetail; b: EntityDetail; month: string }) {
-  // Joined by month: a month with no score is null and draws as a gap.
-  const bByMonth = new Map(b.timeline.map((p) => [p.month, p.final]));
-  const data = a.timeline.map((p) => ({ month: p.month, a: p.final, b: bByMonth.get(p.month) ?? null }));
+  const data = overlayRows(a, b, month);
+  const lastProjected = [...data].reverse().find((r) => r.pa !== null || r.pb !== null);
+  const projecting = lastProjected !== undefined && lastProjected.month !== month;
+  const visible = new Set(data.map((d) => d.month));
   return (
     <div>
       <ul className="mb-3 flex flex-wrap gap-x-6 gap-y-1 text-[15px] text-ink-muted">
@@ -233,6 +281,14 @@ function Overlay({ a, b, month }: { a: EntityDetail; b: EntityDetail; month: str
           <span aria-hidden className="h-[3px] w-6" style={{ background: COLORS.b }} />
           {b.name}
         </li>
+        {projecting && (
+          <li className="flex items-center gap-2">
+            <svg width="22" height="8" aria-hidden>
+              <line x1="1.5" y1="4" x2="21" y2="4" stroke="var(--color-ink)" strokeWidth={2.5} strokeDasharray={PROJECTION_DASH} strokeLinecap="round" />
+            </svg>
+            Proyección (no es un dato medido)
+          </li>
+        )}
         {a.events.length + b.events.length > 0 && (
           <li className="flex items-center gap-2">
             <svg width="10" height="14" aria-hidden>
@@ -242,7 +298,7 @@ function Overlay({ a, b, month }: { a: EntityDetail; b: EntityDetail; month: str
           </li>
         )}
       </ul>
-      <div className="h-[300px]">
+      <div className="h-[320px]">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}>
             {BANDS.map((band, i) => (
@@ -257,38 +313,100 @@ function Overlay({ a, b, month }: { a: EntityDetail; b: EntityDetail; month: str
               />
             ))}
             <CartesianGrid vertical={false} stroke="var(--color-rule)" strokeDasharray="2 4" />
-            <ReferenceLine x={month} stroke="var(--color-scan)" strokeOpacity={0.22} strokeWidth={14} />
-            <XAxis dataKey="month" tickFormatter={monthShort} tick={{ fill: "var(--color-ink-muted)", fontSize: 14 }} tickLine={false} axisLine={{ stroke: "var(--color-rule)" }} minTickGap={32} />
-            <YAxis domain={[0, 100]} ticks={[0, 35, 50, 65, 80, 100]} tick={{ fill: "var(--color-ink-muted)", fontSize: 14 }} tickLine={false} axisLine={false} />
-            <Tooltip
-              labelFormatter={(m) => `${monthShort(String(m))} · ${monthCode(String(m))}`}
-              formatter={(v, key) => [formatScore(Number(v)), key === "a" ? a.name : b.name]}
-              contentStyle={{ border: "1px solid var(--color-rule)", borderRadius: 0, background: "var(--color-film)" }}
-            />
-            {(["a", "b"] as const).flatMap((key) =>
-              (key === "a" ? a : b).events.map((e) => (
-                <ReferenceLine
-                  key={`${key}-${e.eventType}-${e.eventMonth}`}
-                  x={e.eventMonth}
-                  stroke={COLORS[key]}
-                  strokeWidth={1.5}
-                  strokeDasharray="5 3"
-                  label={{
-                    value: "evento",
-                    // Past the middle of the axis the label sits left of its line, so it never runs off the plot.
-                    position: `inside${key === "a" ? "Top" : "Bottom"}${data.findIndex((d) => d.month === e.eventMonth) > data.length / 2 ? "Right" : "Left"}`,
-                    fill: COLORS[key],
-                    fontSize: 13,
-                    fontWeight: 600,
-                  }}
-                />
-              )),
+            {projecting && (
+              <ReferenceArea
+                x1={month}
+                x2={lastProjected.month}
+                fill="var(--color-ink)"
+                fillOpacity={0.05}
+                stroke="none"
+                label={{ value: "Proyección", position: "insideTopRight", fill: "var(--color-ink-muted)", fontSize: 13 }}
+              />
             )}
-            <Line dataKey="a" stroke={COLORS.a} strokeWidth={3} dot={false} isAnimationActive={false} />
-            <Line dataKey="b" stroke={COLORS.b} strokeWidth={3} dot={false} isAnimationActive={false} />
+            <ReferenceLine x={month} stroke="var(--color-scan)" strokeOpacity={0.22} strokeWidth={14} />
+            <XAxis dataKey="month" tickFormatter={monthShort} tick={{ fill: "var(--color-ink-muted)", fontSize: 14 }} tickLine={false} axisLine={{ stroke: "var(--color-rule)" }} interval="preserveStartEnd" minTickGap={32} />
+            <YAxis domain={[0, 100]} ticks={[0, 35, 50, 65, 80, 90, 100]} tick={{ fill: "var(--color-ink-muted)", fontSize: 14 }} tickLine={false} axisLine={false} />
+            <Tooltip content={<OverlayTip a={a} b={b} month={month} />} />
+            {(["a", "b"] as const).flatMap((key) =>
+              (key === "a" ? a : b).events
+                .filter((e) => visible.has(e.eventMonth))
+                .map((e) => (
+                  <ReferenceLine
+                    key={`${key}-${e.eventType}-${e.eventMonth}`}
+                    x={e.eventMonth}
+                    stroke={COLORS[key]}
+                    strokeWidth={1.5}
+                    strokeDasharray="5 3"
+                    label={{
+                      value: "evento",
+                      // Past the middle of the axis the label sits left of its line, so it never runs off the plot.
+                      position: `inside${key === "a" ? "Top" : "Bottom"}${data.findIndex((d) => d.month === e.eventMonth) > data.length / 2 ? "Right" : "Left"}`,
+                      fill: COLORS[key],
+                      fontSize: 13,
+                      fontWeight: 600,
+                    }}
+                  />
+                )),
+            )}
+            <Line dataKey="a" stroke={COLORS.a} strokeWidth={3} dot={false} activeDot={{ r: 4 }} isAnimationActive={false} />
+            <Line dataKey="b" stroke={COLORS.b} strokeWidth={3} dot={false} activeDot={{ r: 4 }} isAnimationActive={false} />
+            {(["a", "b"] as const).map((key) => (
+              <Line
+                key={`p${key}`}
+                dataKey={`p${key}`}
+                stroke={COLORS[key]}
+                strokeWidth={2.5}
+                strokeDasharray={PROJECTION_DASH}
+                strokeLinecap="round"
+                dot={{ r: 3.5, fill: "var(--color-film)", stroke: COLORS[key], strokeWidth: 1.5 }}
+                activeDot={{ r: 4.5 }}
+                isAnimationActive={false}
+                connectNulls={false}
+              />
+            ))}
           </LineChart>
         </ResponsiveContainer>
       </div>
+    </div>
+  );
+}
+
+/** Measured or projected score of each entity in the hovered month; the join month shows only the measurement. */
+function OverlayTip({ a, b, month, active, payload }: { a: EntityDetail; b: EntityDetail; month: string; active?: boolean; payload?: { payload: OverlayRow }[] }) {
+  const row = payload?.[0]?.payload;
+  if (!active || !row) return null;
+  const future = row.month > month;
+  const lines = [
+    { name: a.name, color: COLORS.a, value: future ? row.pa : row.a },
+    { name: b.name, color: COLORS.b, value: future ? row.pb : row.b },
+  ];
+  return (
+    <div className="border border-rule bg-film px-3 py-2 text-sm tabular-nums shadow-[var(--shadow-level-2)]">
+      <p className="mb-1 font-semibold">
+        {monthShort(row.month)} · {future ? "proyección" : monthCode(row.month)}
+      </p>
+      {lines.map((l) => (
+        <p key={l.name} className="flex items-center gap-2">
+          <span aria-hidden className="h-[3px] w-4" style={{ background: l.color }} />
+          <span className="text-ink-muted">{l.name}</span>
+          <span className="ml-auto pl-3 font-semibold">{l.value == null ? "—" : formatScore(l.value)}</span>
+        </p>
+      ))}
+    </div>
+  );
+}
+
+/** One horizon for both projections, and how far to trust each. */
+function ProjectionControls({ a, b, horizon, onHorizon }: { a: EntityDetail; b: EntityDetail; horizon: number; onHorizon: (h: number) => void }) {
+  const forecasts = [{ e: a }, { e: b }].filter((x) => x.e.forecast !== null) as { e: EntityDetail & { forecast: NonNullable<EntityDetail["forecast"]> } }[];
+  if (forecasts.length === 0) return null;
+  const maxHorizon = Math.max(...forecasts.map((x) => x.e.forecast.maxHorizon));
+  return (
+    <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+      <HorizonPicker horizon={horizon} maxHorizon={maxHorizon} onHorizon={onHorizon} />
+      {forecasts.map(({ e }) => (
+        <ReliabilityTag key={e.id} forecast={e.forecast} who={e.name} />
+      ))}
     </div>
   );
 }

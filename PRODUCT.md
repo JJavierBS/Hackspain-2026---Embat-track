@@ -52,7 +52,7 @@ Incumbents (Informa D&B, Axesor) score on annual filed accounts. X-Ray scores mo
 - UI copy in Spanish. Code in English.
 
 ## Capabilities and Constraints
-- Score bands: A ≥ 80, B 65–79.9, C 50–64.9, D 35–49.9, E < 35. One accent color per band.
+- Score bands: S ≥ 90, A 80–89.9, B 65–79.9, C 50–64.9, D 35–49.9, E < 35. One accent color per band.
 - Green and red mean direction only (improve / deteriorate).
 - Statuses: Excepcional, Sano, Mejorando, Empieza a torcerse, Bache, Deterioro, Crítico, Vigilar.
 - Every number has a tooltip with its definition.

@@ -353,7 +353,7 @@ function ReadOnlyFilm({ config }: { config: ConfigTree }) {
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="grid content-start gap-3">
           <h3 className="text-lg font-semibold tracking-tight">Bandas</h3>
-          <div className="grid grid-cols-5 gap-px border border-rule bg-rule">
+          <div className="grid grid-cols-3 gap-px border border-rule bg-rule sm:grid-cols-6">
             {BANDS.map((b) => (
               <div key={b.band} className="bg-film px-2 pt-0 pb-2">
                 <span aria-hidden className="-mx-2 mb-2 block h-1" style={{ background: b.color }} />

@@ -14,42 +14,71 @@ const RELIABILITY: Record<ForecastReliability, { label: string; className: strin
   },
 };
 
+interface HorizonPickerProps {
+  horizon: number;
+  maxHorizon: number;
+  onHorizon: (h: number) => void;
+}
+
+/** How many months to project (1..maxHorizon, written to the URL). */
+export function HorizonPicker({ horizon, maxHorizon, onHorizon }: HorizonPickerProps) {
+  const shown = Math.min(horizon, maxHorizon);
+  const options = Array.from({ length: maxHorizon }, (_, i) => i + 1);
+  return (
+    <div className="flex items-center gap-2" role="group" aria-label="Meses de proyección">
+      <span className="text-ink-muted">Proyectar</span>
+      <div className="flex border border-rule">
+        {options.map((h) => (
+          <button
+            key={h}
+            type="button"
+            aria-pressed={h === shown}
+            onClick={() => onHorizon(h)}
+            className={`min-w-8 px-2 py-1 tabular-nums ${h === shown ? "bg-ink text-film" : "text-ink hover:bg-panel"}`}
+          >
+            {h}
+          </button>
+        ))}
+      </div>
+      <span className="text-ink-muted">{shown === 1 ? "mes" : "meses"}</span>
+    </div>
+  );
+}
+
+/** How far to trust one projection. `who` names the entity when two share a chart. */
+export function ReliabilityTag({ forecast, who }: { forecast: Forecast; who?: string }) {
+  const prefix = who ? `${who}: ` : "";
+  if (forecast.reliability === null) {
+    return (
+      <span className="text-ink-muted">
+        {prefix}sin proyección en {monthCode(forecast.origin)}, hace falta más historia.
+      </span>
+    );
+  }
+  return (
+    <span className={`border px-2 py-0.5 ${RELIABILITY[forecast.reliability].className}`}>
+      {prefix}
+      {RELIABILITY[forecast.reliability].label}
+      {forecast.history !== null && ` · ${forecast.history} meses`}
+    </span>
+  );
+}
+
 interface ForecastControlsProps {
   forecast: Forecast;
   horizon: number;
   onHorizon: (h: number) => void;
 }
 
-/** How many months to project (1..maxHorizon, written to the URL) and how far to trust it. */
+/** How many months to project and how far to trust it. */
 export function ForecastControls({ forecast, horizon, onHorizon }: ForecastControlsProps) {
-  const shown = Math.min(horizon, forecast.maxHorizon);
-  const options = Array.from({ length: forecast.maxHorizon }, (_, i) => i + 1);
   return (
     <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-      <div className="flex items-center gap-2" role="group" aria-label="Meses de proyección">
-        <span className="text-ink-muted">Proyectar</span>
-        <div className="flex border border-rule">
-          {options.map((h) => (
-            <button
-              key={h}
-              type="button"
-              aria-pressed={h === shown}
-              onClick={() => onHorizon(h)}
-              className={`min-w-8 px-2 py-1 tabular-nums ${h === shown ? "bg-ink text-film" : "text-ink hover:bg-panel"}`}
-            >
-              {h}
-            </button>
-          ))}
-        </div>
-        <span className="text-ink-muted">{shown === 1 ? "mes" : "meses"}</span>
-      </div>
+      <HorizonPicker horizon={horizon} maxHorizon={forecast.maxHorizon} onHorizon={onHorizon} />
       {forecast.reliability === null ? (
         <span className="text-ink-muted">Sin proyección en {monthCode(forecast.origin)}: hace falta más historia.</span>
       ) : (
-        <span className={`border px-2 py-0.5 ${RELIABILITY[forecast.reliability].className}`}>
-          {RELIABILITY[forecast.reliability].label}
-          {forecast.history !== null && ` · ${forecast.history} meses`}
-        </span>
+        <ReliabilityTag forecast={forecast} />
       )}
     </div>
   );
