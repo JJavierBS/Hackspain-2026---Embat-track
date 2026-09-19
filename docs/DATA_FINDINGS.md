@@ -618,3 +618,86 @@ etiquetas de impago. Las cifras son del perfil {name} y cambian con el perfil." 
 
 Post-demo items: record every onset in `lead_time_events`, not only the first one per entity. Evaluate
 with the overlap removed. Look again at the DSCR event rule (2 months below 1,0 on monthly flows flickers).
+
+## Phase 7 R4 — Watchlist, improvement event and baseline (2026-09-19)
+
+**Rule for these changes.** The hidden test data can differ from this dataset. So no value below is
+chosen for its result on this data. Each rule comes from the brief, the SPEC or the code. The data only
+checks that the rule behaves as expected.
+
+### Watchlist: moves, not states
+
+**Finding.** The watchlist counted every active negative state. A group with a DSCR below 1,0 for 12
+months stayed on the list for 12 months. `AlertEngine` has no confirmation step: 29 % of `DSCR_BREACH`
+runs and 43 % of `RUNWAY_LOW` runs (BANK, groups) last one month only. At M23 the list held 176 of 250
+BANK groups (70 %).
+
+**Rejected option.** `min-critical: 3, min-warn: 4` gave the best precision on this data (13,6 % of the
+groups). It was chosen by its result on the same data, so it is overfit. On other data it can flag 2 %
+or 50 %.
+
+**Change.** An alert counts for the watchlist only while its negative run is **confirmed** (on for
+`confirm-months: 2` months in a row) and **new** (confirmed in the last `recent-months: 3` months).
+2 months is the hold that SPEC §8.4 already asks of every deterioration event. 3 months is the window of
+`score-drop-months`. The brief asks for a monitor that "levanta la mano cuando una empresa se mueve de
+verdad": "se mueve" is a change, "de verdad" is a confirmation. A long-lasting condition shows in the
+entity status. Code: `S80_Alerts` (watchlist build only). The alert feed does not change.
+
+**Check (groups, M23):**
+
+| Profile | Before | After |
+|---|---:|---:|
+| BANK | 176 | 75 |
+| FUND | 184 | 92 |
+| INSURER | 173 | 79 |
+
+On a forward outcome (a group at 35 or more falls below 35 within 6 months, base rate 15,2 %), no
+watchlist rule that we tried predicts much better than chance (precision 17–24 %). So the claim for
+the list is "new and confirmed", not "predictive".
+
+**Correction of an earlier idea.** A 12-month DSCR does not shrink the list: 116 groups are below 1,0
+at M23, against 104 with the 3-month DSCR. It only removes flicker (256 crossings of 1,0 instead of
+623). Post-demo item, because it changes scores, events and limits.
+
+### Improvement event: the same proof in both directions
+
+**Finding.** A deterioration event from runway or DSCR needs the condition for 2 months in a row. An
+improvement event needed one month above 65. Only 196 of 326 crossings of 65 (BANK, groups) stay above
+65 for 3 months. From below 65, 70,6 % of group-months touch 65 within 6 months, and 69,0 % of the
+IMPROVING months do. So the old event measured a rebound, and the signal could not beat it.
+
+**Change.** `lead-time.events.improvement-cross-months: 2`, the same value as `runway-months` and
+`dscr-months`. The event month is the second month above 65, as the deterioration event month is the
+second month in the condition. Code: `LeadTimeAnalyzer.improvement`.
+
+**Fact from the design.** The trajectory comes from past changes of the score. It rises after the
+score rises. So a trajectory signal cannot lead a crossing of the same score by much. Claim
+"confirms improvement". For deterioration, see the baseline below before any claim of anticipation.
+
+### Baseline next to every lead-time number
+
+**Change.** `LeadTimeAnalyzer` also counts every month outside the event condition and whether the
+event followed within the horizon (`lead_time_baseline`). The API gives `hitRate`, `baseRate` and
+`lift = hitRate / baseRate`. The Methodology page shows "Frente al azar". The number reads the same
+on any dataset: above 1 the signal adds information, at 1 it adds none.
+
+**Result (groups, horizon 6 months):**
+
+| Profile | Event | Events | Ahead (≥ 1 month) | False alarms | Signal hit | Base | Lift |
+|---|---|---:|---:|---:|---:|---:|---:|
+| BANK | deterioration | 139 | 54 | 36,4 % | 63,6 % | 63,2 % | 1,01 |
+| BANK | improvement | 54 (was 63) | 25 (was 7) | 76,9 % (was 75,2 %) | 23,1 % | 13,2 % | 1,75 |
+| FUND | deterioration | 157 | 57 | 25,5 % | 74,5 % | 73,7 % | 1,01 |
+| FUND | improvement | 57 (was 67) | 21 (was 12) | 81,2 % | 18,8 % | 13,4 % | 1,40 |
+| INSURER | deterioration | 141 | 60 | 35,5 % | 64,5 % | 63,5 % | 1,02 |
+| INSURER | improvement | 21 (was 26) | 13 (was 6) | 88,3 % | 11,7 % | 5,4 % | 2,17 |
+
+Read it with two cautions:
+
+1. **Part of the improvement "ahead" gain is the dating rule.** The event is now dated at the second
+   month. A signal that starts at the first month above 65 counts as 1 month ahead. BANK: 12 of the 25
+   are at 1 month, 13 are at 2 months or more.
+2. **The deterioration signal does not beat chance on this data (lift 1,01).** Most months are followed
+   by a deterioration condition within 6 months (base 63 %), mostly from DSCR flicker. This agrees with
+   R3: the score detects distress when it arrives, not 3 or more months before. The pitch must not
+   claim more than the lift shows.
