@@ -165,7 +165,10 @@ def load_config(path: Path) -> dict[str, Any]:
 
 
 def load_database_values(
-    path: Path, indicators: set[str], entity_id: str | None = None
+    path: Path,
+    indicators: set[str],
+    entity_id: str | None = None,
+    entity_type: str | None = None,
 ) -> dict[tuple[str, str, str], dict[str, Any]]:
     """Read available raw indicator values grouped by entity type, entity and month."""
     if not path.is_file():
@@ -197,6 +200,9 @@ def load_database_values(
         if entity_id is not None:
             query += " AND entity_id = ?"
             parameters.append(entity_id)
+        if entity_type is not None:
+            query += " AND entity_type = ?"
+            parameters.append(entity_type)
         query += " ORDER BY entity_type, entity_id, month, indicator_id"
         rows = connection.execute(query, parameters).fetchall()
     finally:
@@ -271,6 +277,10 @@ def main() -> None:
         "--entity-id", "--company", dest="entity_id",
         help="Only score one company/entity, for example COMP_0720",
     )
+    parser.add_argument(
+        "--group-id",
+        help="Score one precomputed group entity, for example GROUP_0001",
+    )
     parser.add_argument("--alert-threshold", type=float, required=True)
     parser.add_argument("--profile", help="External profile key; its name is not predefined")
     parser.add_argument("--json", action="store_true", help="Print raw JSON output instead of visual summary")
@@ -282,7 +292,11 @@ def main() -> None:
     weights = normalize_weight_names(weights)
     indicators = config["indicators"]
     validate_weighted_indicators(weights, indicators)
-    raw_values = load_database_values(args.database, set(weights), args.entity_id)
+    if args.group_id and args.entity_id:
+        parser.error("use either --entity-id/--company or --group-id, not both")
+    selected_entity_id = args.group_id or args.entity_id
+    selected_entity_type = "GROUP" if args.group_id else None
+    raw_values = load_database_values(args.database, set(weights), selected_entity_id, selected_entity_type)
     
     results = []
     skipped_groups = 0

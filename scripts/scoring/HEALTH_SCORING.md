@@ -113,6 +113,29 @@ python health_scoring.py \
 
 El filtro se ejecuta dentro de DuckDB y evita procesar las demás empresas.
 
+## Ejecución para un grupo
+
+El pipeline ya calcula entidades agregadas de tipo `GROUP`. Es preferible usar esas filas para medir la salud de un grupo, porque sus flujos se agregan antes de recomputar los indicadores. No se promedian ratios brutos entre compañías.
+
+```bash
+python health_scoring.py \
+  --profile bank \
+  --alert-threshold 0.4 \
+  --group-id GROUP_0001
+```
+
+El forecast CUSUM también admite grupos:
+
+```bash
+python cusum_forecast.py \
+  --profile bank \
+  --alert-threshold 0.4 \
+  --group-id GROUP_0001 \
+  --forecast-months 3
+```
+
+Una media de los índices finales de varias compañías puede servir como resumen de una cartera, pero no representa necesariamente la salud financiera consolidada del grupo. Para eso se recomienda `--group-id`.
+
 ## Ejecución para todas las empresas
 
 Omitiendo el filtro:
@@ -237,3 +260,49 @@ Ejecuta los tests desde cualquier ubicación con:
 ```bash
 python /Users/almudenamartin/Desktop/Hackspain-2026---Embat-track/scripts/scoring/test_health_scoring.py
 ```
+
+## Previsión con CUSUM
+
+`cusum_forecast.py` reutiliza los resultados de `health_scoring.py` para una empresa concreta:
+
+1. Construye el histórico mensual del índice global.
+2. Detecta cambios sostenidos con CUSUM.
+3. Calcula la pendiente reciente.
+4. Proyecta los meses siguientes, limitando el índice a `[0, 1]`.
+
+Ejemplo:
+
+```bash
+cd scripts/scoring
+python cusum_forecast.py \
+  --profile bank \
+  --alert-threshold 0.4 \
+  --entity-id COMP_0720 \
+  --forecast-months 3
+```
+
+Para obtener JSON:
+
+```bash
+python cusum_forecast.py \
+  --profile bank \
+  --alert-threshold 0.4 \
+  --entity-id COMP_0720 \
+  --forecast-months 3 \
+  --json > forecast.json
+```
+
+Parámetros opcionales:
+
+- `--recent-window`: meses usados para calcular la pendiente reciente. Por defecto `6`.
+- `--damping`: amortiguación de la tendencia por mes futuro, en `(0, 1]`. Por defecto `0.8`.
+- `--cusum-k`: tolerancia frente a cambios pequeños. Por defecto `0.01`.
+- `--cusum-h`: umbral de alarma CUSUM. Por defecto `0.05`.
+
+La previsión es una señal temprana orientativa. No sustituye al índice calculado sobre datos reales futuros.
+
+La salida siempre incluye una valoración del histórico:
+
+- Menos de `6` meses: se imprime la previsión, pero CUSUM se marca como no fiable.
+- Entre `6` y `7` meses: la señal se marca como de fiabilidad limitada.
+- `8` meses o más: la señal CUSUM se considera fiable.

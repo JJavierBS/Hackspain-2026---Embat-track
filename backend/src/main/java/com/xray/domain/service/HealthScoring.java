@@ -38,6 +38,11 @@ public final class HealthScoring {
 
     public List<HealthResult> score(Path weightsPath, String profile, double alertThreshold, String entityId)
             throws IOException {
+        return score(weightsPath, profile, alertThreshold, entityId, null);
+        }
+
+        public List<HealthResult> score(Path weightsPath, String profile, double alertThreshold,
+                        String entityId, String entityType) throws IOException {
         Map<IndicatorId, Double> weights = loadWeights(weightsPath, profile);
         validateWeights(weights);
         Map<IndicatorId, RawValue> requested = new LinkedHashMap<>();
@@ -54,6 +59,10 @@ public final class HealthScoring {
         if (entityId != null) {
             sql += " AND entity_id = ?";
             arguments.add(entityId);
+        }
+        if (entityType != null) {
+            sql += " AND entity_type = ?";
+            arguments.add(entityType);
         }
         sql += " ORDER BY entity_type, entity_id, month, indicator_id";
 
@@ -83,6 +92,91 @@ public final class HealthScoring {
         }
         return results;
     }
+
+        /** Average the individual COMPANY health results belonging to one group, month by month. */
+        public List<HealthResult> scoreGroupAverage(Path weightsPath, String profile,
+                            double alertThreshold, String groupId)
+            throws IOException {
+        List<String> companyIds = jdbc.query(
+            "SELECT entity_id FROM entities WHERE entity_type = 'COMPANY' AND group_id = ? ORDER BY entity_id",
+            (rs, rowNum) -> rs.getString(1), groupId);
+        List<HealthResult> companyResults = new ArrayList<>();
+        for (String companyId : companyIds) {
+            companyResults.addAll(score(weightsPath, profile, alertThreshold, companyId, "COMPANY"));
+        }
+        return averageGroupResults(companyResults, profile, alertThreshold, groupId);
+        }
+
+        static List<HealthResult> averageGroupResults(List<HealthResult> companyResults,
+                              String profile, double alertThreshold,
+                              String groupId) {
+        Map<String, List<HealthResult>> byMonth = new LinkedHashMap<>();
+        companyResults.stream().sorted(Comparator.comparing(HealthResult::month))
+            .forEach(result -> byMonth.computeIfAbsent(result.month(), ignored -> new ArrayList<>()).add(result));
+
+        List<HealthResult> results = new ArrayList<>();
+        for (var month : byMonth.entrySet()) {
+            List<HealthResult> entries = month.getValue();
+            Map<IndicatorId, Double> indicatorScores = averageIndicatorScores(entries);
+            Map<IndicatorId, Double> effectiveWeights = averageIndicatorWeights(entries);
+            Map<String, Double> categoryScores = averageCategoryScores(entries);
+            Map<String, List<RiskContribution>> groupedContributions = new LinkedHashMap<>();
+            entries.stream().flatMap(entry -> entry.riskContributions().stream())
+                .forEach(contribution -> groupedContributions
+                    .computeIfAbsent(contribution.indicator(), ignored -> new ArrayList<>())
+                    .add(contribution));
+            List<RiskContribution> contributions = groupedContributions.entrySet().stream()
+                .map(entry -> averageContribution(entry.getValue()))
+                .sorted(Comparator.comparingDouble(RiskContribution::riskContribution).reversed()
+                    .thenComparing(RiskContribution::indicator))
+                .toList();
+            double globalIndex = entries.stream().mapToDouble(HealthResult::globalIndex).average().orElse(0);
+            results.add(new HealthResult("GROUP", groupId, month.getKey(), profile, globalIndex,
+                alertThreshold, globalIndex < alertThreshold, indicatorScores, effectiveWeights,
+                categoryScores, contributions,
+                contributions.stream().mapToDouble(RiskContribution::riskContribution).sum()));
+        }
+        return results;
+        }
+
+        private static Map<IndicatorId, Double> averageIndicatorScores(List<HealthResult> entries) {
+        Map<IndicatorId, List<Double>> values = new LinkedHashMap<>();
+        entries.forEach(entry -> entry.indicatorScores().forEach((indicator, score) ->
+            values.computeIfAbsent(indicator, ignored -> new ArrayList<>()).add(score)));
+        return averageIndicatorMap(values);
+        }
+
+        private static Map<IndicatorId, Double> averageIndicatorWeights(List<HealthResult> entries) {
+        Map<IndicatorId, List<Double>> values = new LinkedHashMap<>();
+        entries.forEach(entry -> entry.effectiveWeights().forEach((indicator, weight) ->
+            values.computeIfAbsent(indicator, ignored -> new ArrayList<>()).add(weight)));
+        return averageIndicatorMap(values);
+        }
+
+        private static Map<IndicatorId, Double> averageIndicatorMap(Map<IndicatorId, List<Double>> values) {
+        Map<IndicatorId, Double> result = new LinkedHashMap<>();
+        values.forEach((indicator, scores) -> result.put(indicator,
+            scores.stream().mapToDouble(Double::doubleValue).average().orElse(0)));
+        return result;
+        }
+
+        private static Map<String, Double> averageCategoryScores(List<HealthResult> entries) {
+        Map<String, List<Double>> values = new LinkedHashMap<>();
+        entries.forEach(entry -> entry.categoryScores().forEach((category, score) ->
+            values.computeIfAbsent(category, ignored -> new ArrayList<>()).add(score)));
+        Map<String, Double> result = new LinkedHashMap<>();
+        values.forEach((category, scores) -> result.put(category,
+            scores.stream().mapToDouble(Double::doubleValue).average().orElse(0)));
+        return result;
+        }
+
+        private static RiskContribution averageContribution(List<RiskContribution> contributions) {
+        RiskContribution first = contributions.get(0);
+        return new RiskContribution(first.indicator(), first.category(),
+            contributions.stream().mapToDouble(RiskContribution::score).average().orElse(0),
+            contributions.stream().mapToDouble(RiskContribution::weight).average().orElse(0),
+            contributions.stream().mapToDouble(RiskContribution::riskContribution).average().orElse(0));
+        }
 
     public static double normalize(double value, IndicatorConfig indicator) {
         List<double[]> anchors = indicator.anchors().stream()
@@ -142,9 +236,7 @@ public final class HealthScoring {
             throw new IllegalArgumentException("profile " + profile + " is missing from weights.json");
         }
         Map<IndicatorId, Double> result = new LinkedHashMap<>();
-        var fields = weights.fields();
-        while (fields.hasNext()) {
-            var field = fields.next();
+        for (var field : weights.properties()) {
             String name = field.getKey();
                 IndicatorId indicator = INDICATOR_ALIASES.containsKey(name)
                     ? INDICATOR_ALIASES.get(name)
