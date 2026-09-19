@@ -23,7 +23,21 @@ function anchorProblems(anchors: Anchor[]): string[] {
  * The level curve of one indicator: a piecewise-linear function of the raw value, clamped outside the anchors
  * (no extrapolation). Band zones sit behind it because the output is a 0–100 health level.
  */
-export function AnchorChart({ anchors, shipped, percent }: { anchors: Anchor[]; shipped: Anchor[] | null; percent: boolean }) {
+export function AnchorChart({
+  anchors,
+  shipped,
+  percent,
+  mark = null,
+}: {
+  anchors: Anchor[];
+  shipped: Anchor[] | null;
+  percent: boolean;
+  /**
+   * The raw value of one entity this month: a Scan line (the present) across the plot. A value past the axis sits
+   * on the edge, where the clamped level is the same.
+   */
+  mark?: number | null;
+}) {
   const all = [...anchors, ...(shipped ?? [])].map(([x]) => x);
   let lo = Math.min(...all);
   let hi = Math.max(...all);
@@ -86,6 +100,11 @@ export function AnchorChart({ anchors, shipped, percent }: { anchors: Anchor[]; 
           />
           <polyline points={line(anchors)} fill="none" stroke="var(--color-ink)" strokeWidth={2.5} strokeLinejoin="round" />
         </>
+      )}
+      {mark !== null && (
+        <line x1={sx(Math.min(hi, Math.max(lo, mark)))} x2={sx(Math.min(hi, Math.max(lo, mark)))} y1={sy(100)} y2={sy(0)} stroke="var(--color-scan)" strokeWidth={2}>
+          <title>{`Valor de esta entidad: ${label(mark)}`}</title>
+        </line>
       )}
       {anchors.map(([x, y], i) => (
         <rect key={i} x={sx(x) - 3.5} y={sy(y) - 3.5} width={7} height={7} fill="var(--color-film)" stroke="var(--color-ink)" strokeWidth={2} />
