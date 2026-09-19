@@ -33,26 +33,38 @@ public class ForecastQuery {
         int horizon = horizon(horizonRaw);
         int max = config.forecast().maxHorizonMonths();
         if (!DuckDbTables.exists(sql, "forecast_points")) {
-            return new ForecastDto(origin, null, null, null, horizon, max, List.of());
+            return new ForecastDto(origin, null, null, null, horizon, max, List.of(), null, null);
         }
-        record Row(String month, int horizon, double value, double median, int history, String reliability) {
+        record Row(String month, int horizon, double value, double median, int history, String reliability,
+                   Double actual) {
         }
         List<Row> rows = sql.query("""
-                SELECT target_month, horizon, value, median, history, reliability FROM forecast_points
-                WHERE entity_type = ? AND entity_id = ? AND profile = ? AND month = ? AND horizon <= ?
-                ORDER BY horizon""",
+                SELECT f.target_month, f.horizon, f.value, f.median, f.history, f.reliability, s.final AS actual
+                FROM forecast_points f
+                LEFT JOIN profile_scores s ON s.entity_type = f.entity_type AND s.entity_id = f.entity_id
+                     AND s.profile = f.profile AND s.month = f.target_month
+                WHERE f.entity_type = ? AND f.entity_id = ? AND f.profile = ? AND f.month = ? AND f.horizon <= ?
+                ORDER BY f.horizon""",
                 (rs, i) -> new Row(rs.getString(1), rs.getInt(2), rs.getDouble(3), rs.getDouble(4), rs.getInt(5),
-                        rs.getString(6)),
+                        rs.getString(6), Scores.dbl(rs, "actual")),
                 type, id, p.name(), origin, horizon);
         if (rows.isEmpty()) {
-            return new ForecastDto(origin, null, null, null, horizon, max, List.of());
+            return new ForecastDto(origin, null, null, null, horizon, max, List.of(), null, null);
         }
         List<ForecastPointDto> points = new ArrayList<>(rows.size());
+        double absSum = 0, errSum = 0;
+        int n = 0;
         for (Row r : rows) {
-            points.add(new ForecastPointDto(r.month(), r.horizon(), Scores.round1(r.value())));
+            points.add(new ForecastPointDto(r.month(), r.horizon(), Scores.round1(r.value()), Scores.round1(r.actual())));
+            if (r.actual() != null) {
+                double err = r.value() - r.actual();
+                absSum += Math.abs(err);
+                errSum += err;
+                n++;
+            }
         }
         Row first = rows.getFirst();
         return new ForecastDto(origin, first.reliability(), first.history(), Scores.round1(first.median()), horizon,
-                max, List.copyOf(points));
+                max, List.copyOf(points), n == 0 ? null : Scores.round1(absSum / n), n == 0 ? null : Scores.round1(errSum / n));
     }
 }

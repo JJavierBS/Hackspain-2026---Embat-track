@@ -32,6 +32,7 @@ import { PageHeader } from "../components/PageHeader";
 import { PendingFilm } from "../components/PendingFilm";
 import { ScoreReadout } from "../components/ScoreReadout";
 import { StatusTag, TrendTag } from "../components/StatusTag";
+import { ForecastCheck } from "../components/ForecastCheck";
 import { ForecastControls } from "../components/ForecastControls";
 import { TrendChart } from "../components/TrendChart";
 import { MONTHS, useGlobalParams } from "../hooks/useGlobalParams";
@@ -182,6 +183,7 @@ export function EntityPage() {
               projection={data.forecast?.points ?? []}
             />
             {data.forecast && <ForecastControls forecast={data.forecast} horizon={horizon} onHorizon={setHorizon} />}
+            {data.forecast && <ForecastCheck forecast={data.forecast} />}
           </div>
         </div>
       </Film>

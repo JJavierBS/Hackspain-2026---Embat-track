@@ -23,7 +23,8 @@ export type Status =
   | "WATCH";
 
 export type Regime = "STABLE" | "DIP" | "DIP_RECOVERED" | "STRUCTURAL_DECLINE" | "STRUCTURAL_IMPROVEMENT";
-export type Confidence = "HIGH" | "MEDIUM" | "LOW";
+/** INSUFFICIENT: the available data holds too little of the profile weight to rank or trust the score. */
+export type Confidence = "HIGH" | "MEDIUM" | "LOW" | "INSUFFICIENT";
 export type BandLetter = "A" | "B" | "C" | "D" | "E";
 
 export type Category =
@@ -138,6 +139,8 @@ export interface ForecastPoint {
   month: string;
   horizon: number;
   value: number;
+  /** The final score measured later at this month; null when the month has no score yet. Display only. */
+  actual: number | null;
 }
 
 export type ForecastReliability = "LOW" | "MEDIUM" | "HIGH";
@@ -153,6 +156,10 @@ export interface Forecast {
   horizon: number;
   maxHorizon: number;
   points: ForecastPoint[];
+  /** Mean |projected − actual| over the points with an actual; null when none has one. */
+  meanAbsError: number | null;
+  /** Mean (projected − actual): above 0 the projection was optimistic. */
+  bias: number | null;
 }
 
 export interface Timeline {

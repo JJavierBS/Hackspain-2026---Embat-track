@@ -2,6 +2,7 @@ package com.xray.pipeline.stages;
 
 import com.xray.config.ScoringConfig;
 import com.xray.domain.model.Category;
+import com.xray.domain.model.CategoryScore;
 import com.xray.domain.model.Changepoint;
 import com.xray.domain.model.Confidence;
 import com.xray.domain.model.DynamicsPoint;
@@ -49,7 +50,7 @@ public class S70_Dynamics implements PipelineStage {
 
     private record Setup(CusumDetector.Params cusum, RegimeClassifier.Params regime, StatusResolver.Params status,
                          ConfidenceResolver.Params confidence, List<IndicatorId> cusumIndicators,
-                         Map<Profile, List<IndicatorId>> used) {
+                         Map<Profile, List<IndicatorId>> used, Map<Profile, Map<Category, Double>> weights) {
     }
 
     @Override
@@ -76,12 +77,18 @@ public class S70_Dynamics implements PipelineStage {
         var f = c.confidence();
         Map<Category, List<IndicatorId>> members = CategoryMembers.of(c);
         Map<Profile, List<IndicatorId>> used = new EnumMap<>(Profile.class);
+        Map<Profile, Map<Category, Double>> weights = new EnumMap<>(Profile.class);
         c.profiles().forEach((p, pc) -> {
             List<IndicatorId> ids = new ArrayList<>();
-            pc.weights().forEach((cat, w) -> {
-                if (cat != Category.MOMENTUM && w > 0) ids.addAll(members.get(cat));
+            Map<Category, Double> w = new EnumMap<>(Category.class);
+            pc.weights().forEach((cat, wt) -> {
+                if (cat != Category.MOMENTUM && wt > 0) {
+                    ids.addAll(members.get(cat));
+                    w.put(cat, wt);
+                }
             });
             used.put(p, ids);
+            weights.put(p, w);
         });
         return new Setup(
                 new CusumDetector.Params(r.cusumK(), r.cusumH(), r.cusumZCap(), r.baselineMonths(), r.baselineMinPoints(),
@@ -90,8 +97,9 @@ public class S70_Dynamics implements PipelineStage {
                         r.persistenceMonths(), r.dipZ(), r.dipMaxMonths(), r.dipRecoveryMonths()),
                 new StatusResolver.Params(s.criticalBelow(), s.turningMinLevel(), s.turningMaxTraj(),
                         s.improvingMinTraj(), s.exceptionalMinFinal(), s.exceptionalMinTraj(), s.healthyMinFinal()),
-                new ConfidenceResolver.Params(f.lowHistoryMonths(), f.mediumHistoryMonths(), f.lowAvailableShare()),
-                r.cusumIndicators(), used);
+                new ConfidenceResolver.Params(f.lowHistoryMonths(), f.mediumHistoryMonths(), f.lowAvailableShare(),
+                        f.minTrustedWeightShare()),
+                r.cusumIndicators(), used, weights);
     }
 
     private static void dynamics(EntityPanel panel, Setup setup) {
@@ -130,7 +138,14 @@ public class S70_Dynamics implements PipelineStage {
                     }
                 }
                 double share = used.isEmpty() ? 0 : (double) avail / used.size();
-                Confidence conf = ConfidenceResolver.resolve(history, share, fallback, setup.confidence());
+                double wAvail = 0, wTotal = 0;
+                for (var e : setup.weights().get(p).entrySet()) {
+                    wTotal += e.getValue();
+                    CategoryScore[] cs = panel.categoryScores(e.getKey());
+                    if (cs != null && cs[m].available()) wAvail += e.getValue();
+                }
+                double weightShare = wTotal > 0 ? wAvail / wTotal : 0;
+                Confidence conf = ConfidenceResolver.resolve(history, share, weightShare, fallback, setup.confidence());
                 out[m] = new DynamicsPoint(status, regime, regimes.seasonal()[m], conf);
             }
             panel.setDynamics(p, out);

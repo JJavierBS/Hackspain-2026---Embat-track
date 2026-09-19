@@ -199,6 +199,7 @@ export const FIELDS: Record<string, FieldMeta> = {
   "confidence.lowHistoryMonths": { label: "Confianza baja con menos de", ...months },
   "confidence.mediumHistoryMonths": { label: "Confianza media con menos de", ...months },
   "confidence.lowAvailableShare": { label: "Indicadores disponibles mínimos", hint: "Por debajo de esta cuota, la confianza es baja.", ...share },
+  "confidence.minTrustedWeightShare": { label: "Peso mínimo para confiar", hint: "Por debajo de esta cuota del peso del perfil en categorías disponibles, la puntuación se marca «Sin historial» y no entra en el ranking.", ...share },
   "explanation.narrativeTopN": { label: "Motivos narrados por entidad", integer: true, min: 1 },
   "explanation.minNarratedDelta": { label: "Cambio mínimo narrado", unit: "puntos", min: 0 },
 
