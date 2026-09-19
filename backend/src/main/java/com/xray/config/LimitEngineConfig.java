@@ -14,7 +14,8 @@ public record LimitEngineConfig(
         int defaultTermMonths,
         double referenceRate,
         Map<String, Integer> spreadBpsByBand,
-        double actionThreshold) {
+        double actionThreshold,
+        double roundingEur) {
 
     public record RunwayGuard(double belowMonths, double multiplier) {
     }
