@@ -1,4 +1,15 @@
-import type { AlertCode, BindingConstraint, Category, Confidence, LimitAction, Regime, Severity, Status } from "../api/types";
+import type {
+  AlertCode,
+  BindingConstraint,
+  Category,
+  Confidence,
+  EventTrigger,
+  EventType,
+  LimitAction,
+  Regime,
+  Severity,
+  Status,
+} from "../api/types";
 import { MONTHS, type Profile } from "../hooks/useGlobalParams";
 
 const MONTH_FORMAT = new Intl.DateTimeFormat("es-ES", { month: "short", year: "numeric", timeZone: "UTC" });
@@ -252,3 +263,36 @@ export function formatNumber(x: number): string {
 }
 
 const FLEX = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 2 });
+
+/** Lead-time event types (SPEC §8.4). */
+export const EVENT_TYPE_LABELS: Record<EventType, string> = {
+  DETERIORATION: "Deterioro",
+  IMPROVEMENT: "Mejora",
+};
+
+/** What confirmed the proxy event (decisions G3, G4). */
+export const TRIGGER_LABELS: Record<EventTrigger, string> = {
+  RUNWAY: "Caja",
+  DSCR: "DSCR",
+  OVERDUE: "Impagos",
+  SCORE: "Nota",
+  LEVEL_CROSS: "Cruce de nivel",
+};
+
+/** A lead in months: 3 → "3 meses", 1 → "1 mes", 0 → "el mismo mes". */
+export function formatLead(months: number): string {
+  if (months === 0) return "el mismo mes";
+  const n = FLEX.format(months);
+  return months === 1 ? `${n} mes` : `${n} meses`;
+}
+
+/** A 0–1 rate as a whole percent: 0.684 → "68 %". */
+export function formatShare(rate: number): string {
+  return `${NUM0.format(rate * 100)} %`;
+}
+
+/** How early the signal came, in words: "detectado 3 meses antes", "detectado el mismo mes". null = no signal in the window. */
+export function leadText(leadMonths: number | null, missing = "no detectado"): string {
+  if (leadMonths === null) return missing;
+  return leadMonths === 0 ? "detectado el mismo mes" : `detectado ${formatLead(leadMonths)} antes`;
+}
