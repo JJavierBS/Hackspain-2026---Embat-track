@@ -207,7 +207,38 @@ function MethodologyFilms() {
     <>
       <AlertCatalogue data={data} />
       <ProductParameters data={data} />
+      {data.forecast && <ForecastMethod forecast={data.forecast} />}
     </>
+  );
+}
+
+/** Phase 7 projection (plan B-4). Every number comes from /api/methodology, i.e. scoring.forecast. */
+function ForecastMethod({ forecast: f }: { forecast: NonNullable<Methodology["forecast"]> }) {
+  return (
+    <Film title="Proyección" meta="Parámetros de la configuración actual">
+      <div className="grid gap-x-12 gap-y-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+        <section className="min-w-0">
+          <p className="max-w-[62ch] text-[15px] text-ink-muted">
+            Cada mes proyectado se acerca a la mediana de la propia entidad: proyección = mediana + ρ × (mes anterior −
+            mediana). La mediana usa solo los meses hasta el mes elegido, nunca meses posteriores. Este método ganó al de
+            tendencia lineal en la prueba sobre los datos reales: la tendencia lineal es peor que repetir el último valor.
+          </p>
+          <p className="mt-4 max-w-[62ch] text-[15px] font-semibold">
+            La proyección es una señal de orientación, no una medición.
+          </p>
+        </section>
+        <Params
+          rows={[
+            { label: "Factor de retorno ρ", hint: "1 = sin retorno a la mediana", value: formatNumber(f.meanReversion) },
+            { label: "Horizonte máximo", value: `${f.maxHorizonMonths} meses` },
+            { label: "Sin proyección", hint: "meses puntuados", value: `menos de ${f.minPoints}` },
+            { label: "Fiabilidad baja", hint: "meses puntuados", value: `menos de ${f.minHistoryMonths}` },
+            { label: "Fiabilidad limitada", hint: "meses puntuados", value: `menos de ${f.mediumHistoryMonths}` },
+            { label: "Histórico suficiente", hint: "meses puntuados", value: `${f.mediumHistoryMonths} o más` },
+          ]}
+        />
+      </div>
+    </Film>
   );
 }
 
