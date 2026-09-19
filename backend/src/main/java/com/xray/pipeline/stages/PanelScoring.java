@@ -101,7 +101,8 @@ public final class PanelScoring {
         for (Profile p : Profile.values()) {
             ProfileConfig pc = config.profiles().get(p);
             params.put(p, new ProfileScorer.Params(pc.lambda(), pc.weights(),
-                    config.momentum().pointsPerMonth(), config.momentum().cap(), bands));
+                    config.momentum().pointsPerMonth(), config.momentum().cap(),
+                    config.confidence().minTrustedWeightShare(), bands));
         }
         return params;
     }

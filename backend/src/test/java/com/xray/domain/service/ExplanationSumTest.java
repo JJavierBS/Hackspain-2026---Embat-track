@@ -75,7 +75,7 @@ class ExplanationSumTest {
         Map<Category, CategoryScore[]> cats = new EnumMap<>(Category.class);
         members.forEach((c, ids) -> cats.put(c, CategoryAggregator.aggregate(ids.stream().map(subs::get).toList(),
                 ids.stream().mapToDouble(iw::get).toArray(), MONTHS)));
-        return ProfileScorer.score(cats, MONTHS, new ProfileScorer.Params(lambda, weights, 2, 10, BANDS));
+        return ProfileScorer.score(cats, MONTHS, new ProfileScorer.Params(lambda, weights, 2, 10, 0, BANDS));
     }
 
     /** Weights inside a category (E11): half of the trials use equal weights, the other half random ones. */

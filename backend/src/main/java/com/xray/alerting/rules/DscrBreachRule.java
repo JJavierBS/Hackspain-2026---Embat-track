@@ -30,7 +30,18 @@ public class DscrBreachRule implements AlertRule {
     @Override
     public Optional<AlertSignal> evaluate(EntityMonthView v) {
         Double dscr = v.value(IndicatorId.DEBT_DSCR, v.m());
-        return Thresholds.below(dscr, level).map(s -> AlertSignal.negative(s,
-                "Cobertura del servicio de deuda " + AlertText.num(dscr, 2) + "x", dscr));
+        return Thresholds.below(dscr, level).map(s -> AlertSignal.negative(s, message(dscr), dscr));
+    }
+
+    /**
+     * A negative DSCR is a negative 3-month operating cash flow divided by a small debt service. The ratio
+     * then reaches values like -501.235x, which reads as a bug to a risk officer and tells nobody anything.
+     * Below zero the fact is the burn, so the message states the fact and the value column keeps the ratio.
+     */
+    private static String message(Double dscr) {
+        if (dscr != null && dscr < 0) {
+            return "Caja operativa negativa: no cubre el servicio de deuda";
+        }
+        return "Cobertura del servicio de deuda " + AlertText.num(dscr, 2) + "x";
     }
 }

@@ -51,7 +51,7 @@ buys a limit that moves with its own cash flow instead of sending the same dossi
 
 **The lender or the insurer pays second**, per line opened or per policy written, with the SME's
 consent. For the lender the pitch is one measured number: on this dataset **the engine cut the limit
-before the risk event in 112 of 139 cases, 2.8 months ahead on average**.
+before the risk event in 70 of 81 cases, 4.5 months ahead on average**.
 
 Two more views of the same score ship with it, selected by one switch in the URL:
 
@@ -107,22 +107,31 @@ enum constant, a YAML entry and one SQL insert.
 BANK profile, 250 groups, 24 months, against documented proxy events. Every number below comes from
 `/api/analytics/lead-time` and is reproducible from the frozen database.
 
+**The signal that anticipates is the limit engine.**
+
+| | |
+|---|---:|
+| Deterioration events with a limit cut before them | **70 of 81 — 86 %** |
+| Mean lead of the cut | **4.5 months** |
+| Median lead | 3.0 months |
+
+It reads the level and the trajectory together, so it moves while the status flag still says the
+entity is fine.
+
+The status flag itself is weaker, and we publish that too:
+
 | | Deterioration | Improvement |
 |---|---:|---:|
-| Proxy events | 139 | 54 |
-| Detected at least one month ahead | 39 % | 46 % |
-| Mean lead | 1.9 months | 1.2 months |
-| False alarm rate | 35 % | 77 % |
-| **Lift over chance** | **1.03** | **1.77** |
+| Proxy events | 81 | 51 |
+| Detected at least one month ahead | 40 % | 47 % |
+| Mean lead | 1.8 months | 1.2 months |
+| False alarm rate | 65 % | 76 % |
+| **Lift over chance** | **0.96** | **1.54** |
 
-Read the lift first, and read it honestly. **On deterioration the signal is barely better than the
-base rate of 1.03.** The proxy events in this synthetic dataset are common, so a signal that fires
-often is almost guaranteed to be followed by one. The number that does carry information is the limit
-engine: it cut the line 2.8 months ahead in 112 of 139 cases, because it reacts to the level and the
-trajectory together, not to a status flag.
-
-We show the weak number in the demo, on the Methodology page, next to the strong one. A score that
-only reports its wins is not a score anyone can underwrite with.
+Read the lift, not the lead. A lift of 1 means the signal fires no more often before an event than
+any other month does. **On deterioration the status signal does not beat chance.** On improvement it
+does, by half again. Both figures sit on the Methodology page next to the limit engine, because a
+number that only reports its wins is not a number anyone can underwrite with.
 
 ## Run it
 
@@ -139,7 +148,7 @@ cd backend && ./mvnw test
 ```
 
 No CSVs at hand? The repo ships a frozen slice of the results database
-(`backend/demo/xray-demo.duckdb.gz`, 49 MB in git, 112 MB expanded). Start the backend with
+(`backend/demo/xray-demo.duckdb.gz`, 47 MB in git, 108 MB expanded). Start the backend with
 `XRAY_DEMO_MODE=true` and it serves the
 precomputed data without ever running the pipeline. That is exactly how production runs
 ([`docs/DEPLOY.md`](docs/DEPLOY.md)).

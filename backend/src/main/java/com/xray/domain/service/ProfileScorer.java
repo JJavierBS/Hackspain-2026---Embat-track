@@ -18,8 +18,12 @@ public final class ProfileScorer {
 
     private static final double EPS = 1e-9;
 
+    /**
+     * minTrustedWeightShare is the coverage gate (decision M8): the share of the profile's non-MOMENTUM
+     * weight that the available categories must carry before this month gets a score at all.
+     */
     public record Params(double lambda, Map<Category, Double> weights, double momPointsPerMonth,
-                         double momCap, BandThresholds bands) {
+                         double momCap, double minTrustedWeightShare, BandThresholds bands) {
     }
 
     private ProfileScorer() {
@@ -39,6 +43,10 @@ public final class ProfileScorer {
         ProfileScore[] out = new ProfileScore[months];
         Double prevLevel = null;
         int persistence = 0;
+        double wTotal = 0;
+        for (var e : p.weights().entrySet()) {
+            if (e.getKey() != Category.MOMENTUM && e.getValue() > 0) wTotal += e.getValue();
+        }
         for (int m = 0; m < months; m++) {
             double ln = 0, ld = 0, tn = 0, td = 0;
             for (var e : p.weights().entrySet()) {
@@ -53,6 +61,15 @@ public final class ProfileScorer {
                     tn += w * cs.traj();
                     td += w;
                 }
+            }
+            // Coverage gate (decision M8). One available category out of ten renormalizes to 100 % of the
+            // weight, so a single indicator at its best anchor used to publish a final of 100. That month
+            // has no score: it is not a healthy entity, it is an entity we cannot read yet.
+            if (wTotal > 0 && ld / wTotal < p.minTrustedWeightShare()) {
+                out[m] = ProfileScore.unscored();
+                prevLevel = null;
+                persistence = 0;
+                continue;
             }
             Double level = ld > 0 ? ln / ld : null;
             Double traj = td > 0 ? tn / td : null;      // = TrajOverall (SPEC §7.3)
