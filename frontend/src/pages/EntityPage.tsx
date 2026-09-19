@@ -62,6 +62,7 @@ import {
   formatRate,
   formatScore,
   formatWeight,
+  indicatorHelp,
   indicatorLabel,
   isPendingAnchor,
   monthCode,
@@ -671,6 +672,28 @@ function Indicators({ indicators }: { indicators: IndicatorRow[] }) {
   );
 }
 
+function IndicatorName({ id }: { id: string }) {
+  const info = indicatorHelp(id);
+  const better = info.better === "higher" ? "Mayor valor es mejor" : "Menor valor es mejor";
+
+  return (
+    <span className="group relative inline-flex items-center gap-1.5 align-middle">
+      <span tabIndex={0} className="inline-flex cursor-help items-center rounded-sm border border-transparent px-0.5 py-0.5 text-left outline-none transition hover:border-rule focus:border-rule focus:outline-none" aria-label={`${indicatorLabel(id)}. ${better}. ${info.summary}`}>
+        <span className="font-medium">{indicatorLabel(id)}</span>
+        <span aria-hidden="true" className="ml-1 text-[11px] leading-none text-ink-muted">
+          i
+        </span>
+      </span>
+
+      <span className="pointer-events-none absolute left-0 top-full z-20 mt-2 hidden w-72 rounded-md border border-rule bg-panel px-2.5 py-2 text-left text-xs leading-5 text-ink shadow-lg group-hover:block group-focus-within:block">
+        <span className="block font-semibold text-ink">{indicatorLabel(id)}</span>
+        <span className="mt-1 block text-ink-muted">{info.summary}</span>
+        <span className="mt-1.5 block font-medium text-ink">{better}</span>
+      </span>
+    </span>
+  );
+}
+
 function IndicatorLine({ row: i }: { row: IndicatorRow }) {
   const notes: { text: string; title: string; pending: boolean }[] = [];
   if (i.isStatic) notes.push({ text: "foto 2026-09-01", title: "Deuda dispuesta y concedida: una sola foto, no una serie mensual", pending: false });
@@ -678,7 +701,7 @@ function IndicatorLine({ row: i }: { row: IndicatorRow }) {
   if (isPendingAnchor(i.anchorStatus)) notes.push({ text: "umbral provisional", title: "Umbrales pendientes de revisión", pending: true });
   return (
     <tr className={`border-t border-rule ${i.available ? "" : "text-ink-muted"}`}>
-      <td className="px-5 py-2 font-medium">{indicatorLabel(i.indicatorId)}</td>
+      <td className="px-5 py-2 font-medium"><IndicatorName id={i.indicatorId} /></td>
       <td className="px-2 py-2 text-right whitespace-nowrap">{i.available ? formatIndicatorValue(i.indicatorId, i.value) : "sin datos"}</td>
       <td className="px-2 py-2 text-right">
         {i.level === null || !i.available ? (

@@ -181,6 +181,108 @@ export function indicatorLabel(id: string): string {
   return INDICATOR_LABELS[id]?.label ?? id;
 }
 
+export const INDICATOR_HELP: Record<string, { summary: string; better: "higher" | "lower" }> = {
+  LIQ_RUNWAY: {
+    summary: "Meses que la empresa podría sostener su operación con la caja disponible y sin nuevos ingresos.",
+    better: "higher",
+  },
+  LIQ_BUFFER: {
+    summary: "Capacidad de liquidez para cubrir salidas puntuales sin depender de financiación adicional.",
+    better: "higher",
+  },
+  LIQ_MIN_BALANCE: {
+    summary: "Nivel mínimo de efectivo que la empresa necesita mantener para operar con margen de seguridad.",
+    better: "higher",
+  },
+  CF_NOCF_MARGIN: {
+    summary: "Margen de caja generado por la actividad antes de inversiones y financiación estructural.",
+    better: "higher",
+  },
+  CF_VOLATILITY: {
+    summary: "Variabilidad del flujo de caja: cuanto más estable sea, mejor suele ser la planificación de tesorería.",
+    better: "lower",
+  },
+  CF_IN_OUT_RATIO: {
+    summary: "Relación entre cobros y pagos; indica cuánta caja entra frente a la que sale en el periodo.",
+    better: "higher",
+  },
+  ACT_COLLECTIONS_GROWTH: {
+    summary: "Velocidad a la que crecen los cobros, un indicador de salud comercial y del ciclo de cobro.",
+    better: "higher",
+  },
+  DEBT_DSCR: {
+    summary: "Cobertura de deuda: cuántas veces puede pagar la empresa el servicio de la deuda con su caja disponible.",
+    better: "higher",
+  },
+  DEBT_LINE_UTIL: {
+    summary: "Uso de la línea de crédito o póliza disponible; refleja la dependencia de la financiación bancaria.",
+    better: "lower",
+  },
+  LEV_DEBT_TO_CF: {
+    summary: "Nivel de endeudamiento respecto a la caja operativa de la compañía; muestra presión financiera.",
+    better: "lower",
+  },
+  LEV_FACTORING_RELIANCE: {
+    summary: "Peso del factoring o financiación comercial sobre la estructura financiera del negocio.",
+    better: "lower",
+  },
+  LEV_FUNDING_COST: {
+    summary: "Coste diferencial de financiación, importante para saber si la estructura financiera se está encareciendo.",
+    better: "lower",
+  },
+  PAY_DSO: {
+    summary: "Días medios de cobro a clientes; cuanto más lento, más se retrasa la conversión a caja.",
+    better: "lower",
+  },
+  PAY_DPO: {
+    summary: "Días medios de pago a proveedores; ayuda a medir hasta dónde se puede aprovechar la financiación ajena.",
+    better: "higher",
+  },
+  PAY_SUPPLIER_LATENESS: {
+    summary: "Retraso medio frente a los plazos pactados con proveedores; sugiere tensión de pagos.",
+    better: "lower",
+  },
+  PAY_OVERDUE_PAYABLES: {
+    summary: "Parte de pagos vencidos respecto al total, con efecto directo sobre la relación con proveedores.",
+    better: "lower",
+  },
+  DEL_OVERDUE_RECEIVABLES: {
+    summary: "Parte de clientes con facturas vencidas; refleja riesgo de impagos y lentitud de cobro.",
+    better: "lower",
+  },
+  DEL_AGING_90: {
+    summary: "Cobros que llevan más de 90 días vencidos; es un indicador clásico de morosidad acumulada.",
+    better: "lower",
+  },
+  CON_HHI_CUSTOMERS: {
+    summary: "Concentración de clientes: cuanto más alto, más depende la empresa de unos pocos clientes.",
+    better: "lower",
+  },
+  CON_HHI_SUPPLIERS: {
+    summary: "Concentración de proveedores: mide la dependencia hacia un número reducido de suministradores.",
+    better: "lower",
+  },
+  CON_CUSTOMER_CHURN: {
+    summary: "Rotación de clientes: muestra cuánta base comercial se pierde o cambia en el periodo.",
+    better: "lower",
+  },
+  TAX_REGULARITY: {
+    summary: "Regularidad fiscal: indica si la empresa cumple con sus obligaciones tributarias de forma estable.",
+    better: "higher",
+  },
+  MOMENTUM: {
+    summary: "Momentum o tendencia del negocio; refleja si la empresa está mejorando o deteriorando su posición financiera.",
+    better: "higher",
+  },
+};
+
+export function indicatorHelp(id: string): { summary: string; better: "higher" | "lower" } {
+  return INDICATOR_HELP[id] ?? {
+    summary: "Indicador clave del equilibrio financiero y la gestión de la tesorería de la empresa.",
+    better: "higher",
+  };
+}
+
 /** A raw indicator value in its own unit, with a true minus sign (The Measured Figure Rule). */
 export function formatIndicatorValue(id: string, value: number | null): string {
   if (value === null) return "—";
