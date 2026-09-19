@@ -1,14 +1,21 @@
 package com.xray.pipeline.stages;
 
+import com.xray.config.XRayProperties;
 import com.xray.pipeline.PipelineContext;
 import com.xray.pipeline.PipelineStage;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
-/** Block 2 replaces the body with sql/00_ingest.sql. */
+/** sql/00_ingest.sql: raw_* views over the CSVs. */
 @Component
 @Order(0)
 public class S00_Ingest implements PipelineStage {
+
+    private final XRayProperties props;
+
+    public S00_Ingest(XRayProperties props) {
+        this.props = props;
+    }
 
     @Override
     public String id() {
@@ -17,6 +24,11 @@ public class S00_Ingest implements PipelineStage {
 
     @Override
     public void execute(PipelineContext ctx) {
-        ctx.report(id(), 0, "no-op until block 2");
+        if (!RawData.present(props)) {
+            ctx.report(id(), 0, "skipped: no CSVs in " + props.rawPath());
+            return;
+        }
+        ctx.sql().runScript("sql/00_ingest.sql", SqlParams.of(ctx.config(), props));
+        ctx.report(id(), 5, "raw views ready");
     }
 }

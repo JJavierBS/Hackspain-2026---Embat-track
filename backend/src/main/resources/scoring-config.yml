@@ -5,7 +5,7 @@ scoring:
   months: { start: "2024-09", end: "2026-08" }
   cash-product-types: [checking, saving, tpv, expensesPlatform]
   semi-liquid-types: [investment]
-  booked-status-values: [booked]    # confirm in profiling (SPEC §4.3)
+  booked-status-values: [booked]    # Q3: booked 2.52M, null 30k, pending 7k
   runway-cap-months: 24
   trajectory:
     smoothing-window: 3
@@ -15,22 +15,92 @@ scoring:
     slope-weight: 0.7
     delta-weight: 0.3
 
-  # Category names are GUESSES until profiling (SPEC §4.1). Replace after block 2.
+  # Category values from profiling — see docs/DATA_FINDINGS.md Q1. Unmapped ("-", null, payment_refund) = OTHER.
   flow-classes:
     collection: OPERATING_IN
-    supplier: OPERATING_OUT
-    payroll: OPERATING_OUT
+    bulk_collection: OPERATING_IN
+    cash_settlement: OPERATING_IN
+    cash_settlements: OPERATING_IN
+    pos_settlement: OPERATING_IN
+    payment: OPERATING_OUT
+    bulk_payment: OPERATING_OUT
     utility: OPERATING_OUT
-    rent: OPERATING_OUT
+    salary: OPERATING_OUT
+    fee: OPERATING_OUT
+    collection_refund: OPERATING_OUT
+    cash_withdrawal: OPERATING_OUT
+    pos_withdrawal: OPERATING_OUT
     tax: TAX
-    loan: DEBT_SERVICE
-    interest: DEBT_SERVICE
-    leasing: DEBT_SERVICE
+    tax_refund: TAX
+    social_security: TAX
+    debt_repayment: DEBT_SERVICE
+    interest_charge: DEBT_SERVICE
     transfer: INTERNAL
-    financing: FINANCING_IN
-    factoring: FINANCING_IN
+    investment_deployment: INTERNAL
+    investment_return: INTERNAL
   default-flow-class: OTHER
   other-sign-fallback: true
+
+  # Data semantics from profiling — see docs/DATA_FINDINGS.md (Q2, Q3, Q4, Q5, Q10).
+  data-rules:
+    fx-convention: NONE              # Q4: exchange_rate (DIVIDE convention) has bad outliers; use static rates only
+    fx-target: LOCAL                 # Q4b: fx-to-eur converts the native (product / invoice currency) amount
+    # Q4b: EUR per 1 unit. ECB reference rates 2026-09-01; AED AOA ARS BAM CLP COP GHS MAD MZN NAD PEN RUB SAR VND
+    # XOF from @fawazahmed0/currency-api@2026-09-01 (no ECB rate).
+    fx-to-eur:
+      EUR: 1.0
+      AED: 0.234669
+      AOA: 0.000938203
+      ARS: 0.000571245
+      AUD: 0.616143
+      BAM: 0.511292
+      BRL: 0.165961
+      CAD: 0.621272
+      CHF: 1.06451
+      CLP: 0.000922087
+      CNY: 0.128352
+      COP: 0.000267425
+      CZK: 0.0413924
+      DKK: 0.133783
+      GBP: 1.16747
+      GHS: 0.0765633
+      HKD: 0.110039
+      HUF: 0.00272695
+      IDR: 0.0000486237
+      ILS: 0.286221
+      INR: 0.0090869
+      ISK: 0.00710227
+      JPY: 0.00538706
+      MAD: 0.0926615
+      MXN: 0.0507511
+      MYR: 0.213593
+      MZN: 0.0135032
+      NAD: 0.0534819
+      NOK: 0.0924343
+      NZD: 0.508285
+      PEN: 0.256226
+      PHP: 0.0138207
+      PLN: 0.230878
+      RON: 0.190233
+      RUB: 0.0099841
+      SAR: 0.229819
+      SEK: 0.0899726
+      SGD: 0.677553
+      THB: 0.0259376
+      TRY: 0.0178732
+      USD: 0.862813
+      VND: 0.0000330193
+      XOF: 0.00152449
+      ZAR: 0.0534057
+    invoice-direction: AMOUNT_SIGN   # Q2c: positive invoice -> counterparty that pays us
+    invoice-issued-sign: 1
+    invoice-excluded-document-types: [note, refund, deposit, paymentDocument, deliveryNote, purchaseOrder, other, cheque]   # Q2
+    invoice-excluded-status-values: [cancel]   # Q3
+    invoice-paid-status-values: [paid]         # Q10: payment_date is a real payment only for these statuses
+    intragroup-rule: MIRROR_MATCH    # Q5: no counterparty is a company; 135k mirror pairs in 163 groups
+    intragroup-max-lag-days: 2       # Q5b
+    own-account-max-lag-days: 1      # Q5d: opposite amounts on two products of one company -> INTERNAL; -1 = off
+    tx-excluded-abs-amounts: [999999999]   # Q12: sentinel amounts, dropped from staging
 
   indicators:
     LIQ_RUNWAY:             { category: LIQUIDITY, method: anchors, status: closed, source: "runway literature", anchors: [[0,0],[1,20],[3,50],[6,75],[12,100]] }
