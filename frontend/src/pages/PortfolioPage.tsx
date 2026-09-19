@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import type { PortfolioRow, Status } from "../api/types";
 import { useMethodology, usePortfolio } from "../api/queries";
@@ -14,13 +14,13 @@ import { useGlobalParams } from "../hooks/useGlobalParams";
 import { useLinkSearch } from "../hooks/useLinkSearch";
 import { BANDS, type Band, bandOf, confidenceLabel, formatScore, monthCode } from "../lib/format";
 
-/** The six questions of the track, as status filters (SPEC §8.3). */
-const QUESTIONS: { key: string; label: string; statuses: Status[] }[] = [
+/** The six questions of the track, as status filters on the ranking (SPEC §8.3). */
+const QUESTIONS: { key: string; label: string; statuses: Status[]; dir?: "up" | "down" }[] = [
   { key: "healthy", label: "Sanas y excepcionales", statuses: ["HEALTHY", "EXCEPTIONAL"] },
-  { key: "improving", label: "Mejorando", statuses: ["IMPROVING"] },
-  { key: "turning", label: "Empiezan a torcerse", statuses: ["TURNING"] },
-  { key: "dip", label: "Bache", statuses: ["DIP"] },
-  { key: "decline", label: "Deterioro", statuses: ["STRUCTURAL_DECLINE"] },
+  { key: "improving", label: "Mejorando", statuses: ["IMPROVING"], dir: "up" },
+  { key: "turning", label: "Empiezan a torcerse", statuses: ["TURNING"], dir: "down" },
+  { key: "dip", label: "Bache", statuses: ["DIP"], dir: "down" },
+  { key: "decline", label: "Deterioro", statuses: ["STRUCTURAL_DECLINE"], dir: "down" },
   { key: "critical", label: "Críticas", statuses: ["CRITICAL"] },
 ];
 
@@ -75,6 +75,15 @@ export function PortfolioPage() {
       const next = new URLSearchParams(prev);
       if (next.get("rising") === "1") next.delete("rising");
       else next.set("rising", "1");
+      return next;
+    });
+  }
+
+  function clearFilters() {
+    setParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("status");
+      next.delete("rising");
       return next;
     });
   }
@@ -136,35 +145,21 @@ export function PortfolioPage() {
           </Film>
 
           <Film
-            title="Las seis preguntas"
+            title="Ranking de entidades"
             meta={
-              trusted.some((r) => r.status !== null)
-                ? "Pulsa para filtrar el ranking"
-                : untracked.length > 0
-                  ? "Ninguna entidad con historial suficiente este mes"
-                  : "Los estados llegan con el bloque 5"
+              filter || rising
+                ? `${rows.length} de ${trusted.length} · ${[filter?.label, rising && "Estrellas emergentes"].filter(Boolean).join(" · ")}`
+                : `${rows.length} entidades${untrackedRows.length > 0 ? ` · ${untrackedRows.length} sin historial al final` : ""}`
             }
           >
-            <div className="flex flex-wrap gap-2">
-              {QUESTIONS.map((q) => {
-                const n = trusted.filter((r) => r.status !== null && q.statuses.includes(r.status)).length;
-                const active = filter?.key === q.key;
-                return (
-                  <button
-                    key={q.key}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => toggleFilter(q.key)}
-                    disabled={n === 0 && !active}
-                    className={`flex items-center gap-2 border px-3 py-2 text-[15px] transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
-                      active ? "border-ink bg-ink text-film" : "border-ink/25 bg-film text-ink hover:border-ink"
-                    }`}
-                  >
-                    {q.label}
-                    <span className={`min-w-6 px-1.5 text-center text-sm font-semibold ${active ? "bg-film text-ink" : "bg-panel"}`}>{n}</span>
-                  </button>
-                );
-              })}
+            <StatusFilters
+              rows={trusted}
+              active={filter?.key ?? null}
+              onToggle={toggleFilter}
+              onClear={clearFilters}
+              anyFilter={filter !== null || rising}
+              pendingNote={untracked.length > 0 ? "Ninguna entidad con historial suficiente este mes." : "Los estados llegan con el bloque 5."}
+            >
               {isFund && (
                 <>
                   <span aria-hidden className="mx-1 hidden w-px self-stretch bg-rule sm:block" />
@@ -176,17 +171,7 @@ export function PortfolioPage() {
                   />
                 </>
               )}
-            </div>
-          </Film>
-
-          <Film
-            title="Ranking de entidades"
-            meta={
-              filter || rising
-                ? `${rows.length} de ${trusted.length} · ${[filter?.label, rising && "Estrellas emergentes"].filter(Boolean).join(" · ")}`
-                : `${rows.length} entidades${untrackedRows.length > 0 ? ` · ${untrackedRows.length} sin historial al final` : ""}`
-            }
-          >
+            </StatusFilters>
             <ul className="-mx-5 lg:hidden">
               {rows.map((r) => (
                 <CompactRow key={r.id} row={r} rank={rankOf.get(r.id) ?? 0} href={`/entity/${r.id}${linkSearch}`} star={isFund && r.risingStar === true ? risingRule : null} />
@@ -261,7 +246,71 @@ export function PortfolioPage() {
   );
 }
 
-/** The rising-star filter of the FUND view, shaped like the question chips. */
+const CHIP =
+  "flex shrink-0 items-center gap-2 border px-3 py-1.5 text-[15px] whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-45";
+const CHIP_ON = "border-ink bg-ink text-film";
+const CHIP_OFF = "border-ink/25 bg-film text-ink hover:border-ink";
+
+function ChipCount({ n, on }: { n: number; on: boolean }) {
+  return <span className={`min-w-6 px-1.5 text-center text-sm font-semibold tabular-nums ${on ? "bg-film text-ink" : "bg-panel"}`}>{n}</span>;
+}
+
+/**
+ * The filter bar on top of the ranking: "Todas" plus one chip per status question, each with its count.
+ * The arrows repeat the ones of the Estado column, so a chip and the rows it keeps read the same.
+ */
+function StatusFilters({
+  rows, active, onToggle, onClear, anyFilter, pendingNote, children,
+}: {
+  rows: PortfolioRow[];
+  active: string | null;
+  onToggle: (key: string) => void;
+  onClear: () => void;
+  anyFilter: boolean;
+  pendingNote: string;
+  children?: ReactNode;
+}) {
+  const hasStatus = rows.some((r) => r.status !== null);
+  return (
+    <div className="-mx-5 flex items-center gap-2 overflow-x-auto border-b border-ink/20 px-5 pb-4 sm:flex-wrap">
+      <span id="status-filter-label" className="mr-1 shrink-0 text-sm text-ink-muted">
+        Filtrar
+      </span>
+      <div role="group" aria-labelledby="status-filter-label" className="contents">
+        <button type="button" aria-pressed={!anyFilter} onClick={onClear} className={`${CHIP} ${!anyFilter ? CHIP_ON : CHIP_OFF}`}>
+          Todas
+          <ChipCount n={rows.length} on={!anyFilter} />
+        </button>
+        {hasStatus ? (
+          QUESTIONS.map((q) => {
+            const n = rows.filter((r) => r.status !== null && q.statuses.includes(r.status)).length;
+            const on = active === q.key;
+            const Icon = q.dir === "up" ? IconUp : q.dir === "down" ? IconDown : null;
+            return (
+              <button
+                key={q.key}
+                type="button"
+                aria-pressed={on}
+                onClick={() => onToggle(q.key)}
+                disabled={n === 0 && !on}
+                className={`${CHIP} ${on ? CHIP_ON : CHIP_OFF}`}
+              >
+                {Icon && <Icon width={14} height={14} className={on ? "" : q.dir === "up" ? "text-up" : "text-down"} />}
+                {q.label}
+                <ChipCount n={n} on={on} />
+              </button>
+            );
+          })
+        ) : (
+          <span className="text-sm text-ink-muted">{pendingNote}</span>
+        )}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** The rising-star filter of the FUND view, shaped like the status chips. */
 function RisingChip({ active, count, title, onToggle }: { active: boolean; count: number; title: string; onToggle: () => void }) {
   return (
     <button
@@ -270,13 +319,11 @@ function RisingChip({ active, count, title, onToggle }: { active: boolean; count
       title={title}
       onClick={onToggle}
       disabled={count === 0 && !active}
-      className={`flex items-center gap-2 border px-3 py-2 text-[15px] transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
-        active ? "border-ink bg-ink text-film" : "border-ink/25 bg-film text-ink hover:border-ink"
-      }`}
+      className={`${CHIP} ${active ? CHIP_ON : CHIP_OFF}`}
     >
       <IconStar width={15} height={15} />
       Estrellas emergentes
-      <span className={`min-w-6 px-1.5 text-center text-sm font-semibold ${active ? "bg-film text-ink" : "bg-panel"}`}>{count}</span>
+      <ChipCount n={count} on={active} />
     </button>
   );
 }
