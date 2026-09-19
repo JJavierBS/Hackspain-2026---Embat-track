@@ -93,3 +93,23 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
     }),
   );
 }
+
+/** A write that returns JSON. A 4xx body {"error": "..."} becomes the error message. */
+export async function apiSend<T>(method: "PUT" | "DELETE", path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`/api${path}`, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    let message = text;
+    try {
+      message = (JSON.parse(text) as { error?: string }).error ?? text;
+    } catch {
+      // not JSON: keep the text
+    }
+    throw new ApiError(res.status, message);
+  }
+  return (await res.json()) as T;
+}

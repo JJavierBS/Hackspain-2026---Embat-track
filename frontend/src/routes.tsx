@@ -1,5 +1,6 @@
 import { createBrowserRouter } from "react-router-dom";
 import { Layout } from "./components/Layout";
+import { AlgorithmPage } from "./pages/AlgorithmPage";
 import { ComparePage } from "./pages/ComparePage";
 import { EntityPage } from "./pages/EntityPage";
 import { MethodologyPage } from "./pages/MethodologyPage";
@@ -18,6 +19,7 @@ export const router = createBrowserRouter([
       { path: "monitor", element: <MonitorPage /> },
       { path: "compare", element: <ComparePage /> },
       { path: "methodology", element: <MethodologyPage /> },
+      { path: "algorithm", element: <AlgorithmPage /> },
       { path: "*", element: <NotFoundPage /> },
     ],
   },

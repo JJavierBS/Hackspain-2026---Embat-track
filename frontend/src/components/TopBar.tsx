@@ -11,6 +11,7 @@ const NAV = [
   { to: "/monitor", label: "Monitor" },
   { to: "/compare", label: "Comparar" },
   { to: "/methodology", label: "Metodología" },
+  { to: "/algorithm", label: "Algoritmo" },
 ];
 
 /** The viewer frame: navigation, the profile cord, the month strip and the pipeline lamp. */
