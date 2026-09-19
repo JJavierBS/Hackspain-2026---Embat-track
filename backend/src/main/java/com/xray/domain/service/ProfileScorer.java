@@ -26,6 +26,16 @@ public final class ProfileScorer {
     }
 
     public static ProfileScore[] score(Map<Category, CategoryScore[]> cats, int months, Params p) {
+        return score(cats, new boolean[months], p);
+    }
+
+    /**
+     * dataGap[m] (EntityPanel.dataGap): the level reads missing flows as zero. Inside a gap MOM_PERSISTENCE counts
+     * as usual, so a decline into it still shows. The first month with full data after it restarts the count at 0:
+     * a move out of zero-based levels is not a real move (rule 3).
+     */
+    public static ProfileScore[] score(Map<Category, CategoryScore[]> cats, boolean[] dataGap, Params p) {
+        int months = dataGap.length;
         ProfileScore[] out = new ProfileScore[months];
         Double prevLevel = null;
         int persistence = 0;
@@ -47,7 +57,8 @@ public final class ProfileScorer {
             Double level = ld > 0 ? ln / ld : null;
             Double traj = td > 0 ? tn / td : null;      // = TrajOverall (SPEC §7.3)
 
-            if (level != null && prevLevel != null) {
+            boolean back = m > 0 && dataGap[m - 1] && !dataGap[m];
+            if (level != null && prevLevel != null && !back) {
                 double d = level - prevLevel;
                 int sign = d > EPS ? 1 : d < -EPS ? -1 : 0;
                 persistence = sign == 0 ? 0 : Integer.signum(persistence) == sign ? persistence + sign : sign;

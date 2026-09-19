@@ -16,6 +16,21 @@ public final class TrajectoryCalculator {
     private TrajectoryCalculator() {
     }
 
+    /**
+     * dataGap[m] marks months whose level reads missing flows as zero. A month with full data never compares
+     * against them: its smoothing, slope and delta3 skip gap levels, so a return after a gap is not a jump.
+     * A gap month keeps the plain computation, so an entity that stops transacting still shows its decline.
+     */
+    public static Double[] compute(Double[] levels, boolean[] dataGap, Params p) {
+        Double[] clean = new Double[levels.length];
+        for (int m = 0; m < levels.length; m++) clean[m] = dataGap[m] ? null : levels[m];
+        Double[] plain = compute(levels, p);
+        Double[] fromClean = compute(clean, p);
+        Double[] out = new Double[levels.length];
+        for (int m = 0; m < levels.length; m++) out[m] = dataGap[m] ? plain[m] : fromClean[m];
+        return out;
+    }
+
     public static Double[] compute(Double[] levels, Params p) {
         int n = levels.length;
         Double[] smooth = new Double[n];

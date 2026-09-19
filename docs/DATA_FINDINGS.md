@@ -730,3 +730,36 @@ known". It is a config value, not a value fitted to these CSVs.
 **Separate finding.** Two runs of the same code gave different values for 52 rows of `LIQ_RUNWAY`,
 `LIQ_BUFFER` and `LIQ_MIN_BALANCE`, on 15 entities. The pipeline is not fully deterministic there.
 Not fixed here.
+
+## Missing months are not zero (2026-09-19)
+
+**Problem.** `is_active` stays TRUE from an entity's first booked flow to M23. After it, a month without any
+booked transaction was read as a month of zero flows (`COALESCE(..., 0)` in `ind30_base`). There are 917 such
+company-months (197 companies) and 193 group-months (27 groups). Of the gaps, 124 companies and 20 groups stay
+without data until M23. Variations measured against these zero months are artificial:
+- `ACT_COLLECTIONS_GROWTH` hit the best anchor x (zero base, D3) or a huge ratio when the base window was
+  empty or partly empty, so an entity back after a gap got a growth score of 100.
+- The trajectory and `MOM_PERSISTENCE` of the months after the gap compared real levels with levels built
+  from zeros, so momentum jumped (in either direction: zero flows give a low margin but a capped runway).
+
+**Rule.** `entity_months.has_data` = the month has at least one booked transaction. `data_gap` = an active
+month whose 3-month window (m-2..m) holds an active month without data (causal). A month with full data never
+uses gap months as a comparison base:
+- `ACT_COLLECTIONS_GROWTH` (sql/32): the base window (12 or 3 months before) needs `data_3m = 3`. If neither
+  base qualifies, the value is unavailable, never the best anchor x.
+- Trajectory (S50, `TrajectoryCalculator.compute(levels, dataGap, p)`): outside gap months, smoothing,
+  slope and delta3 skip gap levels. It is unavailable until enough clean points exist (`min-points`).
+- `MOM_PERSISTENCE` (`ProfileScorer`): restarts at 0 on the first month with full data after a gap.
+
+Levels, and the variations *inside* a gap month, keep the plain computation. At month m we cannot tell a data
+gap from an entity that stopped operating, and hiding the second would hide a real decline. Tried and rejected:
+dropping the trajectory in gap months too left only zero-based levels, and FUND scores went up to 100 for
+entities with no transactions (COMP_0889 at M23: 36.8 → 100).
+
+**Effect on this data (COMPANY unit, `main` vs this change, same raw CSVs).**
+- `ACT_COLLECTIONS_GROWTH`: 581 values become unavailable, 124 change value. Values ≥ 10 (growth of
+  ≥ 1,000 %): 799 → 709. p99: 222 → 157.
+- In the 6 months after a gap (515 entity-months), FUND momentum ≥ 80: 43 → 11, ≤ 20: 21 → 4. Momentum is
+  available in 317 of them (515 before) while the clean history rebuilds.
+- Final scores change on 1,137–1,167 of the 5,376 entity-months of gap entities (mean +2 pts, range
+  −36 to +42 in FUND). Entities without gaps do not change, apart from the known `LIQ_*` nondeterminism above.

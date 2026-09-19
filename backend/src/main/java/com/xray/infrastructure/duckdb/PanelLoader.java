@@ -59,6 +59,16 @@ public class PanelLoader {
                     r.value(), r.available(), r.isStatic(), r.fallback()));
         }
 
+        List<String[]> gaps = sql.query(
+                "SELECT entity_id, month FROM entity_months WHERE entity_type = ? AND data_gap",
+                (rs, i) -> new String[]{rs.getString(1), rs.getString(2)}, unit.name());
+        for (String[] g : gaps) {
+            Integer m = monthIndex.get(g[1]);
+            if (m != null) {
+                panels.get(g[0]).setDataGap(m, true);
+            }
+        }
+
         if (DuckDbTables.exists(sql, "signal_values")) {
             List<SignalRow> signals = sql.query(
                     "SELECT entity_id, month, signal_id, value FROM signal_values WHERE entity_type = ?",
