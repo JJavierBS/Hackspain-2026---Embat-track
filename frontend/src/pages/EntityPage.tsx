@@ -1,6 +1,20 @@
+import { type FormEvent, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
-import type { Category, CategoryScore, Change, Driver, EntityDetail, IndicatorRow, PortfolioRow } from "../api/types";
-import { useEntity } from "../api/queries";
+import type {
+  Category,
+  CategoryScore,
+  Change,
+  Driver,
+  EntityDetail,
+  IndicatorRow,
+  LimitAction,
+  LimitDecision,
+  LimitSimulation,
+  PortfolioRow,
+} from "../api/types";
+import { ApiError } from "../api/client";
+import { useEntity, useMethodology, useSimulateLimit } from "../api/queries";
+import { LimitHistoryChart } from "../components/LimitHistoryChart";
 import { Delta } from "../components/Delta";
 import { Film } from "../components/Film";
 import { IconDown, IconFlat, IconUp } from "../components/Icons";
@@ -14,14 +28,19 @@ import { TrendChart } from "../components/TrendChart";
 import { MONTHS, useGlobalParams } from "../hooks/useGlobalParams";
 import { useLinkSearch } from "../hooks/useLinkSearch";
 import {
+  BINDING_LABELS,
   CATEGORY_LABELS,
+  LIMIT_ACTION_LABELS,
   REGIME_LABELS,
   bandOf,
   confidenceLabel,
   formatDelta,
+  formatDscr,
   formatEur,
   formatIndicatorValue,
+  formatNumber,
   formatPct,
+  formatRate,
   formatScore,
   formatWeight,
   indicatorLabel,
@@ -420,24 +439,33 @@ function Companies({ companies }: { companies: PortfolioRow[] }) {
   );
 }
 
-const ACTION_LABELS = {
-  INCREASE: "Aumentar",
-  REDUCE: "Reducir",
-  FREEZE: "Congelar",
-  MAINTAIN: "Mantener",
-  DECLINE: "Denegar",
-} as const;
-
-const BINDING_LABELS = { SCORE: "puntuación", DSCR: "cobertura de deuda (DSCR)", RUNWAY: "meses de caja" } as const;
-
-function Stat({ label, value, sub }: { label: string; value: React.ReactNode; sub?: React.ReactNode }) {
+function Stat({
+  label,
+  value,
+  sub,
+  title,
+  big = false,
+}: {
+  label: string;
+  value: React.ReactNode;
+  sub?: React.ReactNode;
+  /** The definition of the figure (SPEC §12.7: every number explains itself). */
+  title?: string;
+  big?: boolean;
+}) {
   return (
-    <div className="bg-film px-4 py-3">
+    <div className="bg-film px-4 py-3" title={title}>
       <dt className="text-sm text-ink-muted">{label}</dt>
-      <dd className="mt-1 text-2xl font-semibold [font-stretch:88%]">{value}</dd>
+      <dd className={`mt-1 font-semibold ${big ? "text-3xl leading-9 [font-stretch:85%]" : "text-2xl [font-stretch:88%]"}`}>{value}</dd>
       {sub && <dd className="mt-0.5 text-sm text-ink-muted">{sub}</dd>}
     </div>
   );
+}
+
+const CUT_ACTIONS: LimitAction[] = ["REDUCE", "FREEZE", "DECLINE"];
+
+function actionTone(action: LimitAction): string {
+  return action === "INCREASE" ? "text-up" : CUT_ACTIONS.includes(action) ? "text-down" : "text-ink";
 }
 
 function ProductPanel({ data }: { data: EntityDetail }) {
@@ -449,36 +477,11 @@ function ProductPanel({ data }: { data: EntityDetail }) {
         <PendingFilm
           title="Límite de circulante"
           block="bloque 7"
-          items={["Límite recomendado", "Acción del mes", "Diferencial por banda", "Historia del límite"]}
+          items={["Límite recomendado", "Acción del mes", "Precio por banda", "Historia del límite", "Simulador de solicitudes"]}
         />
       );
     }
-    const limit = { ...data.limit, previousLimitEur: data.limit.previousLimitEur ?? 0 };
-    const change = limit.limitEur - limit.previousLimitEur;
-    const tone =
-      limit.action === "INCREASE" ? "text-up" : limit.action === "REDUCE" || limit.action === "FREEZE" || limit.action === "DECLINE" ? "text-down" : "";
-    return (
-      <Film title="Límite de circulante" meta="Motor de límites · se recalcula cada mes">
-        <dl className="grid gap-px border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-4">
-          <Stat label="Límite recomendado" value={formatEur(limit.limitEur)} sub={<>Mes anterior {formatEur(limit.previousLimitEur)}</>} />
-          <Stat
-            label="Acción"
-            value={<span className={tone}>{ACTION_LABELS[limit.action]}</span>}
-            sub={
-              <span className={limit.action === "MAINTAIN" ? "" : change > 0 ? "text-up" : change < 0 ? "text-down" : ""}>
-                {change > 0 ? "+" : change < 0 ? "−" : ""}
-                {formatEur(Math.abs(change))}
-                {limit.previousLimitEur > 0 && ` (${formatDelta((change / limit.previousLimitEur) * 100)} %)`}
-                {limit.action === "MAINTAIN" ? " · dentro de la banda de ±10 %" : " frente al mes anterior"}
-              </span>
-            }
-          />
-          <Stat label="Diferencial" value={limit.spreadBps === null ? "—" : `${limit.spreadBps} pb`} sub="Según banda" />
-          <Stat label="Restricción activa" value={<span className="text-lg">{BINDING_LABELS[limit.bindingConstraint]}</span>} />
-        </dl>
-        <p className="mt-3 text-sm text-ink-muted">Cálculo simplificado del motor de límites (SPEC §10.1).</p>
-      </Film>
-    );
+    return <BankPanel data={data} limit={data.limit} />;
   }
 
   if (profile === "INSURER") {
@@ -528,3 +531,259 @@ function ProductPanel({ data }: { data: EntityDetail }) {
     </Film>
   );
 }
+
+/** BANK: the working-capital limit of SPEC §10.1, how it was built, its history, and a what-if on a request. */
+function BankPanel({ data, limit }: { data: EntityDetail; limit: LimitDecision }) {
+  const { month } = useGlobalParams();
+  const { data: methodology } = useMethodology();
+  const prev = limit.previousLimitEur;
+  const change = prev === null ? null : limit.limitEur - prev;
+  const ActionIcon = limit.action === "INCREASE" ? IconUp : CUT_ACTIONS.includes(limit.action) ? IconDown : null;
+  const reference = methodology?.limitEngine;
+  return (
+    <Film title="Límite de circulante" meta={`Perfil ${limit.profile === "BANK" ? "Banco" : limit.profile} · recalculado cada mes · ${monthCode(limit.month)}`}>
+      <dl className="grid gap-px border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-4">
+        <Stat
+          big
+          label="Límite recomendado"
+          title="Límite de circulante que el motor recomienda este mes, redondeado a la baja"
+          value={formatEur(limit.limitEur)}
+          sub={prev === null ? "Primera decisión" : <>Mes anterior {formatEur(prev)}</>}
+        />
+        <Stat
+          label="Acción"
+          title="Qué hace el motor con el límite frente al mes anterior"
+          value={
+            <span className={`inline-flex items-center gap-1.5 ${actionTone(limit.action)}`}>
+              {ActionIcon && <ActionIcon width={20} height={20} />}
+              {LIMIT_ACTION_LABELS[limit.action]}
+            </span>
+          }
+          sub={
+            change === null ? (
+              "Sin mes anterior con el que comparar"
+            ) : (
+              <span className={change > 0 ? "text-up" : change < 0 ? "text-down" : ""}>
+                {change > 0 ? "+" : change < 0 ? "−" : ""}
+                {formatEur(Math.abs(change))}
+                {prev !== null && prev > 0 && ` (${formatDelta((change / prev) * 100)} %)`} frente al mes anterior
+              </span>
+            )
+          }
+        />
+        <Stat
+          label="Precio"
+          title="Tipo total: tipo de referencia más el diferencial de la banda"
+          value={limit.allInRate === null ? "—" : formatRate(limit.allInRate)}
+          sub={
+            limit.spreadBps === null ? (
+              "Banda sin crédito"
+            ) : (
+              <>
+                {limit.spreadBps} pb sobre la referencia
+                {reference && (
+                  <>
+                    {" "}
+                    ({formatRate(reference.referenceRate)}
+                    {reference.referenceRateIsExample && ", valor de ejemplo"})
+                  </>
+                )}
+              </>
+            )
+          }
+        />
+        <Stat
+          label="Restricción activa"
+          title="La regla que fija el límite: la puntuación, el tope de cobertura de deuda o la guarda de caja"
+          value={<span className="text-lg first-letter:uppercase">{BINDING_LABELS[limit.bindingConstraint]}</span>}
+          sub={limit.projectedDscr === null ? "DSCR proyectado: sin flujo de 12 meses" : `DSCR proyectado ${formatDscr(limit.projectedDscr)}`}
+        />
+      </dl>
+
+      <LimitLedger limit={limit} />
+
+      <div className="mt-10 grid gap-x-12 gap-y-10 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+        <section className="min-w-0">
+          <h3 className="mb-3 text-[15px] font-semibold">Historia del límite</h3>
+          <LimitHistoryChart points={data.timeline} activeMonth={month} />
+          <p className="mt-2 text-sm text-ink-muted">El límite se recalcula cada mes con datos hasta ese mes.</p>
+        </section>
+        <LimitSimulator id={data.id} limit={limit} />
+      </div>
+    </Film>
+  );
+}
+
+/** "Cómo se calcula": the limit built step by step from the numbers of the decision (contract item 3). */
+function LimitLedger({ limit }: { limit: LimitDecision }) {
+  const { data: methodology } = useMethodology();
+  const guard = methodology?.limitEngine;
+  const byScore = limit.baseEur * limit.factor * limit.trend * (limit.runwayGuard && guard ? guard.runwayGuardMultiplier : 1);
+  const lines: { label: React.ReactNode; hint: string; value: string; strong?: boolean }[] = [
+    { label: "Base", hint: "mediana de cobros de 3 meses", value: formatEur(limit.baseEur) },
+    { label: "× factor de puntuación", hint: `nota ${formatScore(limit.final)}, banda ${limit.band}`, value: `× ${formatNumber(limit.factor)}` },
+    { label: "× tendencia", hint: "según la trayectoria", value: `× ${formatNumber(limit.trend)}` },
+  ];
+  if (limit.runwayGuard)
+    lines.push({
+      label: "× guarda de caja",
+      hint: guard ? `menos de ${formatNumber(guard.runwayGuardBelowMonths)} meses de caja` : "pocos meses de caja",
+      value: guard ? `× ${formatNumber(guard.runwayGuardMultiplier)}` : "aplicada",
+    });
+  if (guard || !limit.runwayGuard) lines.push({ label: "= límite por puntuación", hint: "", value: formatEur(byScore) });
+  lines.push({
+    label: "Tope de cobertura de deuda",
+    hint: limit.dscrCapEur === null ? "" : "lo que el flujo puede pagar con el DSCR mínimo",
+    value: limit.dscrCapEur === null ? (limit.spreadBps === null ? "sin tope: banda sin crédito" : "sin tope: falta el flujo de 12 meses") : formatEur(limit.dscrCapEur),
+  });
+  lines.push({ label: "Límite recomendado", hint: "el menor de los dos, redondeado a la baja", value: formatEur(limit.limitEur), strong: true });
+  return (
+    <details className="group mt-5 border-t border-rule pt-4">
+      <summary className="inline-flex cursor-pointer list-none items-center gap-2 text-[15px] font-semibold select-none [&::-webkit-details-marker]:hidden">
+        <span aria-hidden className="inline-block transition-transform group-open:rotate-90">
+          <IconFlat width={14} height={14} />
+        </span>
+        Cómo se calcula
+      </summary>
+      <dl className="mt-3 grid max-w-[44rem]">
+        {lines.map((l, i) => (
+          <div
+            key={i}
+            className={`flex items-baseline justify-between gap-6 py-1.5 text-[15px] ${l.strong ? "mt-1 border-t border-ink/40 pt-2" : "border-b border-dashed border-rule"}`}
+          >
+            <dt className={l.strong ? "font-semibold" : ""}>
+              {l.label}
+              {l.hint && <span className="ml-2 text-sm text-ink-muted">{l.hint}</span>}
+            </dt>
+            <dd className={`shrink-0 text-right whitespace-nowrap ${l.strong ? "text-lg font-semibold" : ""}`}>{l.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </details>
+  );
+}
+
+const SIM_LABELS: Record<LimitSimulation["decision"], { text: string; tone: string }> = {
+  APPROVE: { text: "Aprobada", tone: "border-up text-up" },
+  PARTIAL: { text: "Parcial", tone: "border-ink text-ink" },
+  DECLINE: { text: "Denegada", tone: "border-down text-down" },
+};
+
+/** The backend sends Spring's JSON error body; show its message, not the raw JSON. */
+function errorText(error: Error): string {
+  if (!(error instanceof ApiError)) return error.message;
+  try {
+    const body = JSON.parse(error.message) as { detail?: string; message?: string };
+    return body.detail ?? body.message ?? error.message;
+  } catch {
+    return error.message || `Error ${error.status}`;
+  }
+}
+
+/** What-if on a credit request against this month's stored decision (F8). It writes nothing. */
+function LimitSimulator({ id, limit }: { id: string; limit: LimitDecision }) {
+  const { month, profile } = useGlobalParams();
+  const { data: methodology } = useMethodology();
+  const sim = useSimulateLimit(id);
+  const { reset } = sim;
+  // A new month or entity is a new decision: drop the previous answer.
+  useEffect(() => reset(), [id, month, profile, reset]);
+
+  function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    const term = String(form.get("term") ?? "").trim();
+    sim.mutate({ month, requestedAmountEur: Number(form.get("amount")), termMonths: term === "" ? undefined : Number(term) });
+  }
+
+  const result = sim.data;
+  const label = result ? SIM_LABELS[result.decision] : null;
+  return (
+    <section className="min-w-0">
+      <h3 className="mb-3 text-[15px] font-semibold">Simular una solicitud</h3>
+      <form onSubmit={onSubmit} className="grid gap-4 sm:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]" noValidate>
+        <label className="grid gap-1.5 text-sm text-ink-muted" htmlFor={`sim-amount-${id}`}>
+          Importe solicitado (EUR)
+          <input
+            id={`sim-amount-${id}`}
+            name="amount"
+            type="number"
+            inputMode="numeric"
+            required
+            min={1}
+            step="any"
+            key={`${id}-${limit.month}`}
+            defaultValue={limit.limitEur > 0 ? limit.limitEur : undefined}
+            className={FIELD}
+          />
+        </label>
+        <label className="grid gap-1.5 text-sm text-ink-muted" htmlFor={`sim-term-${id}`}>
+          Plazo (meses)
+          <input
+            id={`sim-term-${id}`}
+            name="term"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={120}
+            step={1}
+            key={methodology ? "ready" : "loading"}
+            defaultValue={methodology?.limitEngine.defaultTermMonths}
+            className={FIELD}
+          />
+        </label>
+        <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
+          <button
+            type="submit"
+            disabled={sim.isPending}
+            className="border border-ink bg-ink px-4 py-2 text-[15px] font-semibold text-film hover:bg-ink/85 disabled:cursor-wait disabled:opacity-60"
+          >
+            {sim.isPending ? "Simulando…" : "Simular"}
+          </button>
+          <span className="text-sm text-ink-muted">Sobre la decisión de {monthCode(limit.month)}. No guarda nada.</span>
+        </div>
+      </form>
+
+      <div aria-live="polite" className="mt-5">
+        {sim.error && (
+          <p role="alert" className="border border-down/60 px-3 py-2 text-[15px] text-down">
+            {errorText(sim.error)}
+          </p>
+        )}
+        {result && label && (
+          <div className="grid gap-3">
+            <div className="flex flex-wrap items-baseline gap-3">
+              <span className={`border px-2 py-0.5 text-sm font-semibold ${label.tone}`}>{label.text}</span>
+              <span className="text-3xl font-semibold [font-stretch:85%]" title="Importe que el motor concede de lo solicitado">
+                {formatEur(result.approvedAmountEur)}
+              </span>
+              <span className="text-sm text-ink-muted">de {formatEur(result.requestedAmountEur)} solicitados</span>
+            </div>
+            <dl className="grid grid-cols-2 gap-px border border-rule bg-rule">
+              <Stat label="Capacidad" title="Límite disponible este mes para esta entidad" value={<span className="text-xl">{formatEur(result.capacityEur)}</span>} />
+              <Stat
+                label="Tipo total"
+                title="Tipo de referencia más el diferencial de la banda"
+                value={<span className="text-xl">{result.allInRate === null ? "—" : formatRate(result.allInRate)}</span>}
+                sub={result.spreadBps === null ? "Sin diferencial" : `${result.spreadBps} pb · ${result.termMonths} meses`}
+              />
+              <Stat
+                label="DSCR proyectado"
+                title="Flujo operativo anual entre el servicio de la deuda, con el importe concedido"
+                value={<span className="text-xl">{result.projectedDscr === null ? "—" : formatDscr(result.projectedDscr)}</span>}
+              />
+              <Stat
+                label="Restricción"
+                title="La regla que limita el importe concedido"
+                value={<span className="text-base first-letter:uppercase">{BINDING_LABELS[result.bindingConstraint]}</span>}
+              />
+            </dl>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+const FIELD =
+  "border border-ink/25 bg-film px-3 py-2 text-base text-ink tabular-nums outline-none hover:border-ink focus-visible:border-ink focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-scan";
