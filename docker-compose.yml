@@ -5,10 +5,7 @@ name: xray
 
 services:
   backend:
-    build:
-      # Repo root, so the image can copy the frozen data/xray-demo.duckdb.gz.
-      context: .
-      dockerfile: backend/Dockerfile
+    build: ./backend
     restart: unless-stopped
     environment:
       XRAY_DATA_DIR: /data

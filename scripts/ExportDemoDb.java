@@ -18,7 +18,7 @@ import java.util.zip.GZIPOutputStream;
  * ~70% of its bytes. Demo mode (SPEC §14) never ingests, so they do not need to reach the image.
  * Single-file program, no build needed:
  *   J=$(ls ~/.m2/repository/org/duckdb/duckdb_jdbc/1.5.5.1/duckdb_jdbc-1.5.5.1.jar)
- *   java --enable-native-access=ALL-UNNAMED -cp $J scripts/ExportDemoDb.java data/xray.duckdb data/xray-demo.duckdb
+ *   java --enable-native-access=ALL-UNNAMED -cp $J scripts/ExportDemoDb.java data/xray.duckdb backend/demo/xray-demo.duckdb
  * The backend must be stopped: DuckDB allows one process per database file.
  */
 public class ExportDemoDb {

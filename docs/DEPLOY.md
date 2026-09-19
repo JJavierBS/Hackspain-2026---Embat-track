@@ -12,11 +12,12 @@ no query touches — `daily_product_balance` (3.5M rows), `stg_transactions` (2.
 | file | size | in git |
 |---|---|---|
 | `data/xray.duckdb` | 247 MB | no |
-| `data/xray-demo.duckdb` | 75 MB | no |
-| `data/xray-demo.duckdb.gz` | 31 MB | **yes** |
+| `backend/demo/xray-demo.duckdb` | 75 MB | no |
+| `backend/demo/xray-demo.duckdb.gz` | 31 MB | **yes** |
 
-The `.gz` is committed because Render builds from the repo and has no other way to get it. The
-backend image copies it in and expands it at startup.
+The `.gz` is committed because Render builds from the repo and has no other way to get it, and it
+sits under `backend/` because a Dockerfile cannot copy anything outside its build context. The
+image copies it in and expands it at startup.
 
 ### Regenerating it after a pipeline run
 
@@ -24,8 +25,8 @@ Stop the backend first — DuckDB allows one process per database file.
 
 ```bash
 J=$(ls ~/.m2/repository/org/duckdb/duckdb_jdbc/1.5.5.1/duckdb_jdbc-1.5.5.1.jar)
-java --enable-native-access=ALL-UNNAMED -cp $J scripts/ExportDemoDb.java data/xray.duckdb data/xray-demo.duckdb
-git add -f data/xray-demo.duckdb.gz && git commit -m "chore(data): refresh the frozen demo database"
+java --enable-native-access=ALL-UNNAMED -cp $J scripts/ExportDemoDb.java data/xray.duckdb backend/demo/xray-demo.duckdb
+git add backend/demo/xray-demo.duckdb.gz && git commit -m "chore(data): refresh the frozen demo database"
 ```
 
 A new query over a table not yet in the slice returns a 500 in the deployed app and a 200 locally.
@@ -36,7 +37,9 @@ A new query over a table not yet in the slice returns a 500 in the deployed app 
 `render.yaml` is a blueprint: **New → Blueprint** in the Render dashboard, pick this repo, deploy.
 It needs no persistent disk and no manual upload — the database rides inside the image.
 
-- Build context is the repo root, Dockerfile is `backend/Dockerfile` (both set in the blueprint).
+- Build context is `backend/`, Dockerfile is `backend/Dockerfile`. A service created from the
+  dashboard rather than the blueprint has these as **Root Directory** and **Dockerfile Path**;
+  they must agree, or every `COPY` fails with `not found`.
 - Render injects `$PORT`; `application.yml` prefers it over `SERVER_PORT`.
 - Health check is `/actuator/health`.
 - `plan: starter` keeps the service warm. `free` also works but spins down after 15 minutes idle,

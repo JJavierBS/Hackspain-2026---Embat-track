@@ -1,12 +1,12 @@
-# The build context is the repo root (see docker-compose.yml and render.yaml) so that the frozen
-# demo database under data/ can be copied into the image.
+# Build context is this directory (docker-compose.yml and render.yaml both point at backend/), so
+# demo/xray-demo.duckdb.gz lives here rather than under data/: nothing outside the context is reachable.
 # glibc base images: the DuckDB JDBC native library does not load on Alpine (musl).
 FROM eclipse-temurin:21-jdk AS build
 WORKDIR /build
-COPY backend/.mvn/ .mvn/
-COPY backend/mvnw backend/pom.xml ./
+COPY .mvn/ .mvn/
+COPY mvnw pom.xml ./
 RUN ./mvnw -q -B dependency:go-offline
-COPY backend/src/ src/
+COPY src/ src/
 RUN ./mvnw -q -B package -DskipTests && cp target/*.jar app.jar
 
 FROM eclipse-temurin:21-jre
@@ -18,8 +18,8 @@ COPY --from=build /build/app.jar app.jar
 # The API only ever reads results tables, so the image ships the slice scripts/ExportDemoDb.java
 # writes (~31 MB gzipped) rather than the full pipeline database (~247 MB). It is expanded at
 # startup, not here: that keeps the image small and leaves a mounted volume's own copy untouched.
-COPY --chown=xray:xray data/xray-demo.duckdb.gz /opt/xray/xray-demo.duckdb.gz
-COPY backend/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY --chown=xray:xray demo/xray-demo.duckdb.gz /opt/xray/xray-demo.duckdb.gz
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 # Demo mode is the deployed configuration (ARCHITECTURE §10): no ingest, no pipeline, no CSVs.
 # MaxRAMPercentage rather than -Xmx so one image fits whatever instance size Render gives it;
