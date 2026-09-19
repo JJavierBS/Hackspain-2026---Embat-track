@@ -31,3 +31,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### X-Ray
+# The uncompressed demo slice is a local by-product; only the .gz is committed.
+demo/*.duckdb
+demo/*.duckdb.wal

@@ -18,4 +18,5 @@ Product context for design work: `PRODUCT.md`.
 `duckdb < scripts/profiling.sql` → write the answers to `docs/DATA_FINDINGS.md`.
 
 ## Deploy
+Backend on Render from `render.yaml` (blueprint), serving the frozen `backend/demo/xray-demo.duckdb.gz`.
 See `docs/DEPLOY.md`.

@@ -1,3 +1,6 @@
 target/
 .idea/
 *.iml
+# The uncompressed slice is a local by-product; the image only needs the .gz.
+demo/*.duckdb
+demo/*.duckdb.wal

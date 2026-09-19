@@ -27,7 +27,8 @@ mobile/.expo/
 # Logs
 *.log
 
-# Data (CSVs and DuckDB file) never go to git
+# Data (CSVs and DuckDB file) never go to git. The slice the image ships is committed
+# under backend/demo/ instead, inside the Docker build context (docs/DEPLOY.md).
 data/
 
 # Frontend build
