@@ -10,6 +10,7 @@ import com.xray.infrastructure.web.dto.DriverDto;
 import com.xray.infrastructure.web.dto.EntityDetailDto;
 import com.xray.infrastructure.web.dto.IndicatorRowDto;
 import com.xray.infrastructure.web.dto.PortfolioRowDto;
+import com.xray.infrastructure.web.dto.RecommendationsDto;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -71,7 +72,37 @@ public class EntityDetailQuery {
                 products.momentum(e.type(), id, month),
                 alerts.read("entity_type = ? AND entity_id = ? AND profile = ? AND month <= ? ORDER BY month DESC, "
                         + AlertReads.SEVERITY_ORDER + ", code LIMIT " + MAX_ALERTS, e.type(), id, p.name(), month),
-                analytics.events(e.type(), id, p, month), forecast.forecast(e.type(), id, p, month, horizon));
+                analytics.events(e.type(), id, p, month), forecast.forecast(e.type(), id, p, month, horizon),
+                recommendations(e.type(), id, p, month));
+    }
+
+    /** Written by S88. Empty (situation null) when the database predates that stage. */
+    private RecommendationsDto recommendations(String type, String id, Profile p, String month) {
+        if (!DuckDbTables.exists(sql, "recommendation_summaries")) {
+            return RecommendationsDto.empty();
+        }
+        List<RecommendationsDto> summary = sql.query("""
+                SELECT situation, text, history, limited_history, missing FROM recommendation_summaries
+                WHERE entity_type = ? AND entity_id = ? AND profile = ? AND month = ?""",
+                (rs, i) -> new RecommendationsDto(rs.getString(1), rs.getString(2), rs.getInt(3), rs.getBoolean(4),
+                        rs.getString(5) == null || rs.getString(5).isEmpty() ? List.of()
+                                : List.of(rs.getString(5).split(",")), List.of()),
+                type, id, p.name(), month);
+        if (summary.isEmpty()) {
+            return RecommendationsDto.empty();
+        }
+        List<RecommendationsDto.Item> items = sql.query("""
+                SELECT rank, indicator_id, category, kind, variant, severity, survival, worsening, points, value,
+                       target, title, why, action, goal
+                FROM recommendations WHERE entity_type = ? AND entity_id = ? AND profile = ? AND month = ?
+                ORDER BY rank""",
+                (rs, i) -> new RecommendationsDto.Item(rs.getInt(1), rs.getString(2), rs.getString(3), rs.getString(4),
+                        rs.getString(5), rs.getString(6), rs.getBoolean(7), rs.getBoolean(8),
+                        Scores.round1(Scores.dbl(rs, "points")), Scores.dbl(rs, "value"), Scores.dbl(rs, "target"),
+                        rs.getString(12), rs.getString(13), rs.getString(14), rs.getString(15)),
+                type, id, p.name(), month);
+        RecommendationsDto s = summary.getFirst();
+        return new RecommendationsDto(s.situation(), s.summary(), s.history(), s.limitedHistory(), s.missing(), items);
     }
 
     private List<CategoryDto> categories(String type, String id, Profile p, String month, boolean explained) {

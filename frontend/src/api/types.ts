@@ -258,6 +258,41 @@ export interface MomentumView {
   risingStar: boolean;
 }
 
+export type RecommendationSeverity = "CRITICAL" | "HIGH" | "MEDIUM" | "INFO";
+
+/** One action of the "Qué hacer ahora" block (docs/RECOMMENDATIONS.md). */
+export interface RecommendationItem {
+  rank: number;
+  indicatorId: string;
+  category: Category;
+  kind: "PROBLEM" | "OPPORTUNITY";
+  variant: string;
+  severity: RecommendationSeverity;
+  /** Past the CRITICAL level of the runway, DSCR or credit-line alert: always ranked first. */
+  survival: boolean;
+  worsening: boolean;
+  /** Final-score points recovered if the indicator reached the target level and stopped worsening. null for an opportunity. */
+  points: number | null;
+  value: number | null;
+  target: number | null;
+  title: string;
+  why: string;
+  action: string;
+  /** "Meses de caja ≥ 6,0 meses". null when there is no target. */
+  goal: string | null;
+}
+
+export interface Recommendations {
+  /** null when the pipeline predates the recommendations stage. */
+  situation: string | null;
+  summary: string | null;
+  history: number;
+  limitedHistory: boolean;
+  /** Categories of the profile with no data this month. */
+  missing: Category[];
+  items: RecommendationItem[];
+}
+
 export interface EntityDetail {
   id: string;
   name: string;
@@ -287,6 +322,8 @@ export interface EntityDetail {
   events: EntityEvent[];
   /** Projection made at ?month, ?horizon months ahead (phase 7). null from a backend before phase 7. */
   forecast: Forecast | null;
+  /** Top actions at ?month for ?profile. Missing from a backend that predates them. */
+  recommendations?: Recommendations;
 }
 
 export interface Meta {

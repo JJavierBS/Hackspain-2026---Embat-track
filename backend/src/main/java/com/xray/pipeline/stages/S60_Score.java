@@ -92,7 +92,8 @@ public class S60_Score implements PipelineStage {
             panel.setCategoryScores(c, s);
             cats.put(c, s);
         });
-        params.forEach((p, pp) -> panel.setProfileScores(p, ProfileScorer.score(cats, panel.size(), pp)));
+        boolean[] dataGap = panel.dataGaps();
+        params.forEach((p, pp) -> panel.setProfileScores(p, ProfileScorer.score(cats, dataGap, pp)));
     }
 
     private static List<Object[]> indicatorRows(EntityPanel panel, ScoringConfig config) {

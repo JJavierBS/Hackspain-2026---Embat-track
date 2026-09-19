@@ -37,7 +37,8 @@ public class ExportDemoDb {
             "alerts", "alert_states", "watchlist", "changepoints",
             "limit_decisions", "premium_quotes", "momentum_screen",
             "lead_time_events", "lead_time_signals", "lead_time_baseline", "showcase_pairs",
-            "forecast_points", "months", "threshold_quantiles",
+            "forecast_points", "recommendations", "recommendation_summaries", "entity_months",
+            "months", "threshold_quantiles",
             "stg_companies", "raw_debt_products", "fx_to_eur", "debt_snapshot",
             "monthly_flows", "monthly_cash", "monthly_invoices", "monthly_counterparty",
             "monthly_line_tx", "monthly_interest");
