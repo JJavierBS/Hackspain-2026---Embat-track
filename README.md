@@ -81,8 +81,8 @@ petición de importe y plazo concretos.
 entrega los datos, y los datos son legalmente suyos: ningún banco ve un score sin su consentimiento.
 Compra un límite que se mueve con su propia caja en lugar de mandar el mismo dossier a ocho bancos.
 
-**El financiador o la aseguradora pagan después**, por línea abierta o por póliza emitida, con el
-consentimiento de la pyme. Para el financiador el argumento es un número medido: sobre este dataset,
+**Los bancos y las aseguradoras pagan después**, por línea abierta o por póliza emitida, con el
+consentimiento de la pyme. Para un banco el argumento es un número medido: sobre este dataset,
 **el motor recortó el límite antes del evento de riesgo en 70 de 81 casos, con 4,5 meses de
 antelación media**.
 
@@ -447,8 +447,8 @@ given amount and term.
 hands over the data, and the data is legally its own: no bank sees a score without its consent. It
 buys a limit that moves with its own cash flow instead of sending the same dossier to eight banks.
 
-**The lender or the insurer pays second**, per line opened or per policy written, with the SME's
-consent. For the lender the pitch is one measured number: on this dataset **the engine cut the limit
+**Banks and insurers pay second**, per line opened or per policy written, with the SME's
+consent. For a bank the pitch is one measured number: on this dataset **the engine cut the limit
 before the risk event in 70 of 81 cases, 4.5 months ahead on average**.
 
 Two more views of the same score ship with it, selected by one switch in the URL:
