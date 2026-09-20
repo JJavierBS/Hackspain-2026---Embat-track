@@ -86,10 +86,18 @@ consentimiento de la pyme. Para un banco el argumento es un número medido: sobr
 **el motor recortó el límite antes del evento de riesgo en 70 de 81 casos, con 4,5 meses de
 antelación media**.
 
-Con él se entregan otras dos vistas del mismo score, seleccionables con un parámetro en la URL:
+Los tres grandes clientes tienen cada uno su vista del mismo score, seleccionable con un parámetro
+en la URL (`?profile=BANK|FUND|INSURER`):
 
-- **Aseguradora** — una prima de crédito comercial que se mueve con la banda cada mes, no una vez al año.
-- **Fondo** — un screening de momentum que encuentra a la empresa que está en 45 camino de 65.
+- **Banco** (`BANK`) — el límite de circulante que se recalcula cada mes, con su spread por banda y su
+  tope por DSCR. Es el producto descrito arriba.
+- **Fondo** (`FUND`) — un screening de momentum que encuentra a la empresa que está en 45 camino de 65.
+- **Aseguradora** (`INSURER`) — una prima de crédito comercial que se mueve con la banda cada mes, no
+  una vez al año.
+
+Un perfil es una tabla de pesos distinta sobre el mismo motor: cambia qué categorías pesan para ese
+comprador, no cómo se calcula el score. Las tres vistas se materializan en el pipeline, así que cambiar de
+perfil reordena la cartera entera sin recalcular nada.
 
 Razonamiento y estructura de precios: [`docs/PRODUCT.md`](docs/PRODUCT.md).
 
@@ -451,10 +459,18 @@ buys a limit that moves with its own cash flow instead of sending the same dossi
 consent. For a bank the pitch is one measured number: on this dataset **the engine cut the limit
 before the risk event in 70 of 81 cases, 4.5 months ahead on average**.
 
-Two more views of the same score ship with it, selected by one switch in the URL:
+Each of the three buyers gets its own view of the same score, selected by one parameter in the URL
+(`?profile=BANK|FUND|INSURER`):
 
-- **Insurer** — a trade-credit premium that moves with the band every month instead of once a year.
-- **Fund** — a momentum screen that finds the company at 45 that is on its way to 65.
+- **Bank** (`BANK`) — the working-capital limit that recalculates every month, with its spread by band
+  and its DSCR cap. That is the product described above.
+- **Fund** (`FUND`) — a momentum screen that finds the company at 45 that is on its way to 65.
+- **Insurer** (`INSURER`) — a trade-credit premium that moves with the band every month instead of
+  once a year.
+
+A profile is a different weight table over the same engine: it changes which categories count for
+that buyer, not how the score is computed. All three are materialized at pipeline time, so switching
+profile re-ranks the whole portfolio without recomputing anything.
 
 Reasons and price structure: [`docs/PRODUCT.md`](docs/PRODUCT.md).
 
