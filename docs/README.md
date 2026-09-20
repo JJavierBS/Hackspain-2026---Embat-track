@@ -1,6 +1,6 @@
 # Documentation index
 
-Thirteen files, each with one owner. Read them in this order and stop when you have your answer.
+Fifteen files, each with one owner. Read them in this order and stop when you have your answer.
 
 ## Start here
 
