@@ -37,6 +37,7 @@ import { StatusTag, TrendTag } from "../components/StatusTag";
 import { ForecastCheck } from "../components/ForecastCheck";
 import { ForecastControls } from "../components/ForecastControls";
 import { TrendChart } from "../components/TrendChart";
+import { CustomPresets } from "../components/tuning/CustomPresets";
 import { SectorTuning } from "../components/tuning/SectorTuning";
 import { MONTHS, type Profile, useGlobalParams } from "../hooks/useGlobalParams";
 import { useHashScroll } from "../hooks/useHashScroll";
@@ -193,6 +194,8 @@ export function EntityPage() {
       </Film>
 
       <SectorTuning id={data.id} entityType={data.entityType} />
+
+      <CustomPresets id={data.id} entityType={data.entityType} />
 
       <Anticipation events={data.events} />
 
