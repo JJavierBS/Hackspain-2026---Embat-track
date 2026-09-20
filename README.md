@@ -189,6 +189,7 @@ Start here, then follow the one file you need.
 | [`docs/THRESHOLDS.md`](docs/THRESHOLDS.md) | The anchors: quantiles, proposals and review status |
 | [`docs/WEIGHTS.md`](docs/WEIGHTS.md) · [`docs/WEIGHTS_JUSTIFICATION.md`](docs/WEIGHTS_JUSTIFICATION.md) | How the weights were derived, and the sensitivity test that says the magnitudes barely matter |
 | [`docs/PRESETS.md`](docs/PRESETS.md) · [`docs/SECTOR_PRESETS.md`](docs/SECTOR_PRESETS.md) | Client and sector starting points, each value with the source we read |
+| [`docs/CUSTOM_PRESETS.md`](docs/CUSTOM_PRESETS.md) | Presets the client writes for one entity, in memory, with its own evidence |
 | [`docs/ALGORITHM_PAGE.md`](docs/ALGORITHM_PAGE.md) | The expert configuration page: decisions, limits and test evidence |
 | [`docs/FORECAST.md`](docs/FORECAST.md) · [`docs/RECOMMENDATIONS.md`](docs/RECOMMENDATIONS.md) | The two outputs that do not feed the score |
 | [`docs/DEPLOY.md`](docs/DEPLOY.md) | Render, Vercel, the frozen database and the memory budget |
