@@ -202,7 +202,9 @@ function Statuses() {
             <dt className="font-semibold">Confianza</dt>
             <dd className="text-ink-muted">
               Alta, media o baja, según los meses de historia y la parte de indicadores con datos. Una entidad con confianza baja se
-              puntúa igual y lleva una marca: no se excluye.
+              puntúa igual y lleva una marca: no se excluye. Hay un cuarto nivel, <span className="text-ink">insuficiente</span>: los
+              datos cubren muy poco del peso del perfil. Esa entidad también se puntúa y se muestra, pero queda fuera del ranking, de
+              las bandas y de los filtros de la cartera.
             </dd>
           </div>
           <div>
@@ -492,7 +494,10 @@ function ProductParameters({ data }: { data: Methodology }) {
           <section>
             <h3 className="text-lg font-semibold">Prima de seguro de crédito</h3>
             <p className="mt-1 mb-4 text-[15px] text-ink-muted">
-              Prima = prima base × multiplicador de la banda, revisada cada mes. Perfil {profileName(data.products.premiumProfile)}.
+              Prima = prima base × multiplicador de la banda, revisada cada mes. Perfil {profileName(data.products.premiumProfile)}. La
+              cotización añade un límite recomendado para el comprador: pagos operativos de 3 meses × (plazo de pago / 30) × el mismo
+              factor de puntuación del límite. Es una <span className="text-ink">aproximación de la exposición</span>, no una medida de
+              ella: no hay saldo de clientes en los datos.
             </p>
             <Params rows={[{ label: "Prima base", value: formatRate(data.insurer.basePremiumRate) }]} />
             <h4 className="mt-5 mb-2 text-[15px] font-semibold">Multiplicador por banda</h4>
@@ -540,27 +545,16 @@ function AnticipationFilm({ data }: { data: LeadTime }) {
   return (
     <Film id="anticipacion" className={JUMP} title="Anticipación" meta={`Perfil ${name} · eventos proxy · ventana de ${data.windowMonths} meses`}>
       <p className="max-w-[70ch] text-[15px] text-ink-muted">
-        Cuántos meses antes de un evento la nota ya avisaba. Medido contra <span className="font-semibold text-ink">eventos proxy</span>:
-        los datos no traen etiquetas de impago. Lee primero <span className="font-semibold text-ink">frente al azar</span>: compara el
-        acierto de la señal con la tasa base del mismo evento. Por encima de 1, la señal añade información. Cerca de 1, no añade nada,
-        aunque haya casos con antelación. En la mejora, la trayectoria sube después de la nota: la señal confirma la subida más que
-        adelantarla. Las cifras son del perfil {name} y cambian con el perfil.
+        Cuántos meses antes de un evento el sistema ya avisaba. Medido contra{" "}
+        <span className="font-semibold text-ink">eventos proxy</span>: los datos no traen etiquetas de impago. Lee siempre{" "}
+        <span className="font-semibold text-ink">frente al azar</span>: compara el acierto de la señal con la tasa base del mismo
+        evento. Por encima de 1, la señal añade información. En 1 o por debajo, no añade nada, aunque haya casos con antelación. Las
+        cifras son del perfil {name} y cambian con el perfil.
       </p>
 
-      <LeadBlock block={data.deterioration} horizon={data.horizonMonths} className="mt-8" />
+      {data.limit && <LimitLead limit={data.limit} />}
 
-      {data.limit && (
-        <p className="mt-6 flex items-baseline gap-x-2 border-t border-rule pt-4 text-[15px]">
-          <IconDown width={15} height={15} className="shrink-0 translate-y-0.5 text-down" />
-          <span className="min-w-0">
-            <span className="font-semibold">
-              El límite se recortó antes del evento en {data.limit.cutAhead} de {data.limit.events} casos
-            </span>
-            {data.limit.meanLead !== null && <>, {formatLead(data.limit.meanLead)} de media</>}.{" "}
-            <span className="text-ink-muted">Recorte = primera reducción o congelación del límite después de su última subida antes del evento.</span>
-          </span>
-        </p>
-      )}
+      <LeadBlock block={data.deterioration} horizon={data.horizonMonths} className="mt-12 border-t border-ink/20 pt-8" />
 
       <LeadBlock block={data.improvement} horizon={data.horizonMonths} className="mt-12 border-t border-ink/20 pt-8" />
 
@@ -569,6 +563,64 @@ function AnticipationFilm({ data }: { data: LeadTime }) {
         <Definitions data={data} />
       </div>
     </Film>
+  );
+}
+
+/**
+ * The headline of the film: the limit engine, the one signal that anticipates on this data. It reacts to the
+ * level and the trajectory together, not to a status flag, which is why it beats the status blocks below.
+ */
+function LimitLead({ limit }: { limit: NonNullable<LeadTime["limit"]> }) {
+  const share = limit.events > 0 ? limit.cutAhead / limit.events : null;
+  return (
+    <section className="mt-8">
+      <h3 className="flex items-center gap-2 text-lg font-semibold">
+        <IconDown width={18} height={18} className="text-down" />
+        El límite de circulante se recortó antes del evento
+      </h3>
+      <dl className="mt-4 grid gap-px border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-3">
+        <Figure
+          label="Eventos con recorte previo"
+          title="Eventos de deterioro en los que el motor bajó o congeló el límite antes del evento"
+          value={share === null ? "—" : formatShare(share)}
+          sub={`${limit.cutAhead} de ${limit.events}`}
+          lead
+        />
+        <Figure
+          label="Antelación media"
+          title="Media de meses entre el recorte y el evento"
+          value={
+            limit.meanLead === null ? (
+              "—"
+            ) : (
+              <>
+                {formatNumber(limit.meanLead)} <span className="text-base font-normal text-ink-muted">meses</span>
+              </>
+            )
+          }
+          lead
+        />
+        <Figure
+          label="Mediana"
+          title="Mediana de meses entre el recorte y el evento"
+          value={
+            limit.medianLead === null ? (
+              "—"
+            ) : (
+              <>
+                {formatNumber(limit.medianLead)} <span className="text-base font-normal text-ink-muted">meses</span>
+              </>
+            )
+          }
+        />
+      </dl>
+      <p className="mt-4 max-w-[80ch] text-[15px] text-ink-muted">
+        Recorte = primera reducción o congelación del límite después de su última subida antes del evento. El motor lee el nivel y la
+        trayectoria a la vez, no un estado. <span className="font-semibold text-ink">Este es el número que aporta.</span> Los dos
+        bloques siguientes miden la señal de estado, y en el deterioro esa señal no supera al azar sobre estos datos: lo decimos
+        porque un número que solo enseña sus aciertos no sirve para decidir un crédito.
+      </p>
+    </section>
   );
 }
 

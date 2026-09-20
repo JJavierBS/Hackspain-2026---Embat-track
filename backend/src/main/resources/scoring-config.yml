@@ -287,12 +287,16 @@ scoring:
     events:
       runway-below: 1.5
       runway-months: 2
-      dscr-below: 1.0
-      dscr-months: 2
+      # Sustained cash burn while carrying debt service, not a weak quarter. DSCR < 1.0 for 2 months held
+      # in 29.7 % of the scored group-months of the 2026-09-20 run, and 33 % of the months have a negative
+      # 3-month NOCF: that is a state of this data, not an event, and it pinned the base rate at 0.62.
+      # DSCR < 0 for 6 months holds in 5.8 %. docs/THRESHOLDS.md "Proxy event triggers".
+      dscr-below: 0.0
+      dscr-months: 6
       overdue-max-level: 20        # both DEL_OVERDUE_RECEIVABLES and PAY_OVERDUE_PAYABLES, pending anchors
       score-below: 35
       improvement-cross: 65
-      improvement-cross-months: 2  # same hold as runway-months and dscr-months: one proof for both directions
+      improvement-cross-months: 2  # same hold as runway-months: one proof for both directions
       improvement-below: 50
       improvement-below-months: 3
     signal:

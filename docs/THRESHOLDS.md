@@ -50,7 +50,10 @@ The applied value lives in `data/scoring-overrides.yml`, not in the shipped file
 A preset does not close a pending anchor. Close it here only when the team adopts the proposal as the
 shipped default.
 
-## Phase 7 A-8 — AHP weights adopted (2026-09-19)
+## Phase 7 A-8 — AHP weights adopted (2026-09-19) · decisions W1–W3
+
+The decision and its reason are in `DECISIONS.md`. What follows is the evidence: the source, the
+measured before and after, and the histogram check.
 
 **Change.** `scoring.profiles.<P>.weights` and `scoring.indicators.<ID>.weight` now come from the AHP
 generator (`scripts/weights_calc/ahp_w_cat_ind.py`). All ten categories have a positive weight in all
@@ -82,7 +85,7 @@ Limit engine at M23 (BANK): DECLINE 5 → 10 (band E has no spread), MAINTAIN 16
 No profile clusters in a ~15-point band, so the anchors stay. INSURER is the tightest: check it again
 after any change to the `PAY_*` anchors.
 
-## Band S — top tier above A (2026-09-19)
+## Band S — top tier above A (2026-09-19) · decision W5
 
 **Change.** `scoring.bands` gains `s: 90`: S ≥ 90, A 80–89.9, the rest unchanged. `Band` is now
 `S, A, B, C, D, E` (ordinal = best to worst, so band-step alerts count S → A as one step).
@@ -99,3 +102,90 @@ The config validator requires `100 ≥ s > a > b > c > d > 0`.
   DECLINE / not insurable, so every map that lists A must also list S.
 
 **Side effect.** `BandDowngradeRule` counts steps by ordinal: S → B is now 2 steps (CRITICAL), as A → C was.
+
+## Coverage gate and proxy event triggers (2026-09-20) · decisions M8, M11
+
+Two measurement defects found in the CTO review. Both are evidence problems, not weight problems.
+The decisions and their reasons are in `DECISIONS.md`. The numbers are here.
+
+### 1. Cold-start saturation — the coverage gate now refuses a month (M8)
+
+`min-trusted-weight-share` was 0.4 and only tagged the confidence. `ProfileScorer` still published a
+score. One available category renormalizes to 100 % of the weight, so a single indicator sitting on its
+best anchor published a final of 100.
+
+Measured on the run of 2026-09-19, GROUP, BANK, 4,280 scored months:
+
+| confidence | months | mean final | months at exactly 100.0 |
+|---|---:|---:|---:|
+| HIGH | 1,022 | 59.2 | 0 |
+| MEDIUM | 1,447 | 59.4 | 0 |
+| LOW | 1,315 | 66.4 | 8 |
+| **INSUFFICIENT** | **496** | **92.1** | **341** |
+
+Every one of the 248 entities had an `INSUFFICIENT` first scored month, and 173 of those read 100.0.
+
+`ProfileScorer` now returns no score below the gate. Effect, same unit and profile:
+
+| | before | after |
+|---|---:|---:|
+| scored months | 4,280 | 3,784 |
+| entities whose first score is 100.0 | 173 of 248 | 8 of 248 |
+| first scored value, median | 100.0 | 73.8 |
+| entities with 10 months or fewer: first to last change | −33.5 points | −6.7 points |
+| **M23 scores** | | **unchanged** |
+| `SCORE_DROP` alerts reading "(100 → …)" at M23 | 43 | 1 |
+
+M23 holds no `INSUFFICIENT` BANK row, so the leaderboard export does not move. FUND loses 5 rows at
+M23 and INSURER 6: those entities lack the evidence those profiles weigh, and the portfolio already
+kept them out of the ranking.
+
+### 2. The deterioration proxy event was a state, not an event (M11)
+
+`dscr-below: 1.0` with `dscr-months: 2` held in **29.7 %** of scored group-months. The DSCR
+distribution explains it: p25 = −9.76, median 0.36, and **33 % of the months have a negative 3-month
+operating cash flow**. With no balance sheet, DSCR is a cash-flow proxy (SPEC §15), so one weak
+quarter drives it below zero without any distress.
+
+Prevalence of each trigger, run of 2026-09-20, GROUP, BANK, 3,784 scored months:
+
+| trigger | share of months |
+|---|---:|
+| runway < 1.5 for 2 months | 12.8 % |
+| `dscr < 1.0` for 2 months (was shipped) | **29.7 %** |
+| `dscr < 0.0` for 6 months (now shipped) | 5.8 % |
+| both overdue levels ≤ 20 | 2.6 % |
+| final < 35 | 5.2 % |
+| any trigger, old rule | **36.6 %** |
+| any trigger, new rule | 20.1 % |
+
+Lowering the threshold alone does not work: `dscr < 0.25` still holds in 34.8 % of months. The mass is
+negative. The new rule asks for a sustained burn — operating cash below debt service for six straight
+months — which a lender reads as distress.
+
+Measured effect, BANK:
+
+| | old rule | new rule |
+|---|---:|---:|
+| deterioration events | 139 | 81 |
+| base rate | 0.634 | 0.365 |
+| signal hit rate | 0.653 | 0.351 |
+| **lift over chance** | **1.03** | **0.96** |
+| detected at least one month ahead | 39 % | 40 % |
+| **limit cut before the event** | 112 of 139, 2.8 months | **70 of 81, 4.5 months** |
+
+The lift fell below 1. That is the point: the old base rate of 0.63 made every lift look like 1, so the
+old 1.03 said nothing. With a real event the answer is legible — **the status signal does not beat
+chance on deterioration**, the improvement signal does (1.54), and the limit engine anticipates by 4.5
+months. The Methodology page now leads with the limit engine and prints all three.
+
+`leadTime` values are evaluation only. They never enter a score, a band, a limit or a premium, so this
+change cannot flatter any number the product shows.
+
+### 3. The baseline counted the condition, not the onset
+
+`LeadTimeAnalyzer` asked whether the risk condition was true within the horizon. An entity that stays
+under the runway floor for a year made every neighbouring month count as "followed". It now asks
+whether the entity *enters* the condition. On its own the fix moved the BANK base rate from 0.619 to
+0.622: the real cause was the trigger above. The rule is correct either way, and both hit rate and base
+rate use it, so they stay comparable.

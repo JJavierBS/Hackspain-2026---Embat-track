@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { usePortfolio } from "../../api/queries";
 import { useTuning } from "../../api/useTuning";
@@ -28,7 +28,10 @@ export function DraftPreview({ draft, changes, invalid }: { draft: ConfigTree; c
     return keys.length === 0 ? null : (Object.fromEntries(keys.map((k) => [k, draft[k]])) as ConfigTree);
   }, [changes, draft]);
 
-  const tuning = useTuning({ id, profile, month, config }, config !== null && invalid === 0);
+  // One keystroke is not one question to the server: wait until the expert stops typing.
+  const settled = useSettled(config, 400);
+
+  const tuning = useTuning({ id, profile, month, config: settled }, settled !== null && invalid === 0);
 
   return (
     <div className="grid gap-6">
@@ -115,6 +118,22 @@ export function DraftPreview({ draft, changes, invalid }: { draft: ConfigTree; c
       )}
     </div>
   );
+}
+
+/** The value after it stopped changing for `ms`. A null drops through at once: nothing left to preview. */
+function useSettled<T>(value: T | null, ms: number): T | null {
+  const [settled, setSettled] = useState<T | null>(value);
+  const [seen, setSeen] = useState<T | null>(value);
+  if (seen !== value) {
+    setSeen(value);
+    if (value === null) setSettled(null);
+  }
+  useEffect(() => {
+    if (value === null) return;
+    const t = setTimeout(() => setSettled(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return settled;
 }
 
 function Level({ value }: { value: number | null }) {

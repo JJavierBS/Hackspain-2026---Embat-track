@@ -45,7 +45,13 @@ public final class LeadTimeAnalyzer {
 
     /**
      * The naive baseline of one event type: over all months outside the condition, how many were followed by
-     * the condition within the horizon. A signal is useful only when its followed rate is above this rate.
+     * an ONSET of the condition within the horizon. A signal is useful only when its followed rate is above
+     * this rate.
+     * <p>
+     * It counts onsets, not months inside the condition (fixed 2026-09-20). An entity that stays under the
+     * runway floor for a year has the condition true in every one of those months, so every month beside that
+     * run counted as "followed". The base rate reached 0.62 and the lift could not move away from 1, whatever
+     * the signal did. The same rule applies to a signal onset, so hit rate and base rate stay comparable.
      */
     public record Baseline(EventType type, int evaluable, int followed) {
     }
@@ -138,7 +144,7 @@ public final class LeadTimeAnalyzer {
         for (int m = first; m < cond.length; m++) {
             boolean on = signal(s, type, m, p);
             if (on && !previous && cond[m] == null) {
-                boolean followed = followedWithin(cond, m, p.horizonMonths());
+                boolean followed = onsetWithin(cond, m, p.horizonMonths());
                 boolean evaluable = followed || m + p.horizonMonths() <= cond.length - 1;
                 out.add(new Signal(type, m, evaluable, followed));
             }
@@ -155,7 +161,7 @@ public final class LeadTimeAnalyzer {
             if (cond[m] != null) {
                 continue;
             }
-            boolean next = followedWithin(cond, m, p.horizonMonths());
+            boolean next = onsetWithin(cond, m, p.horizonMonths());
             if (next || m + p.horizonMonths() <= cond.length - 1) {
                 evaluable++;
                 followed += next ? 1 : 0;
@@ -164,10 +170,11 @@ public final class LeadTimeAnalyzer {
         return new Baseline(type, evaluable, followed);
     }
 
-    private static boolean followedWithin(EventTrigger[] cond, int m, int horizon) {
+    /** True when the entity ENTERS the condition within the horizon: cond turns on at k and was off at k-1. */
+    private static boolean onsetWithin(EventTrigger[] cond, int m, int horizon) {
         int last = Math.min(cond.length - 1, m + horizon);
         for (int k = m + 1; k <= last; k++) {
-            if (cond[k] != null) {
+            if (cond[k] != null && cond[k - 1] == null) {
                 return true;
             }
         }

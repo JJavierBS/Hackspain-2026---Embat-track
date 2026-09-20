@@ -4,6 +4,10 @@
     {
       "source": "/api/:path*",
       "destination": "https://hackspain-2026-embat-track.onrender.com/api/:path*"
+    },
+    {
+      "source": "/:path*",
+      "destination": "/index.html"
     }
   ]
 }

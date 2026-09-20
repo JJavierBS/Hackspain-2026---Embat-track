@@ -31,7 +31,7 @@ class ProfileRenormalizationTest {
     @Test
     void missingCategoryRedistributesWeight() {
         var cats = constant(Map.of(Category.LIQUIDITY, 80.0, Category.OPERATING_CASH_FLOW, 40.0), null);
-        ProfileScore s = ProfileScorer.score(cats, 1, new ProfileScorer.Params(0.7, BANK_LIKE, 2, 10, BANDS))[0];
+        ProfileScore s = ProfileScorer.score(cats, 1, new ProfileScorer.Params(0.7, BANK_LIKE, 2, 10, 0, BANDS))[0];
         assertEquals(1.0, sum(s.effectiveWeights()), 1e-9);
         assertEquals(60.0, s.finalScore(), 1e-9);          // 20/40·80 + 20/40·40, no trajectory -> level (D5)
         assertEquals(Band.C, s.band());
@@ -39,7 +39,7 @@ class ProfileRenormalizationTest {
 
     @Test
     void nothingAvailableGivesNoScore() {
-        ProfileScore s = ProfileScorer.score(Map.of(), 1, new ProfileScorer.Params(0.7, BANK_LIKE, 2, 10, BANDS))[0];
+        ProfileScore s = ProfileScorer.score(Map.of(), 1, new ProfileScorer.Params(0.7, BANK_LIKE, 2, 10, 0, BANDS))[0];
         assertNull(s.finalScore());
         assertTrue(s.effectiveWeights().isEmpty());
     }
@@ -47,12 +47,37 @@ class ProfileRenormalizationTest {
     @Test
     void momentumTakesItsWeightOnlyWhenTrajectoryExists() {
         var noTraj = constant(Map.of(Category.ACTIVITY_GROWTH, 70.0), null);
-        var s1 = ProfileScorer.score(noTraj, 1, new ProfileScorer.Params(0.5, FUND_LIKE, 2, 10, BANDS))[0];
+        var s1 = ProfileScorer.score(noTraj, 1, new ProfileScorer.Params(0.5, FUND_LIKE, 2, 10, 0, BANDS))[0];
         assertFalse(s1.effectiveWeights().containsKey(Category.MOMENTUM));
         var withTraj = constant(Map.of(Category.ACTIVITY_GROWTH, 70.0), 60.0);
-        var s2 = ProfileScorer.score(withTraj, 1, new ProfileScorer.Params(0.5, FUND_LIKE, 2, 10, BANDS))[0];
+        var s2 = ProfileScorer.score(withTraj, 1, new ProfileScorer.Params(0.5, FUND_LIKE, 2, 10, 0, BANDS))[0];
         assertEquals(1.0, sum(s2.effectiveWeights()), 1e-9);
         assertEquals(30.0 / 55.0, s2.effectiveWeights().get(Category.ACTIVITY_GROWTH), 1e-9);
+    }
+
+    /**
+     * Decision M8. Renormalization over one thin category used to publish a final of 100: LEVERAGE alone
+     * carries 10 of the 100 BANK points, and its weight became 100 % of the score. The gate refuses that
+     * month instead. Every entity's first months looked like a perfect entity before this.
+     */
+    @Test
+    void coverageGateRefusesAMonthWithTooLittleWeightAvailable() {
+        var thin = constant(Map.of(Category.LEVERAGE, 100.0), null);          // 10 of 100 points -> 0.10
+        var gated = new ProfileScorer.Params(0.7, BANK_LIKE, 2, 10, 0.4, BANDS);
+        ProfileScore refused = ProfileScorer.score(thin, 1, gated)[0];
+        assertNull(refused.finalScore());
+        assertNull(refused.level());
+        assertNull(refused.band());
+        assertTrue(refused.effectiveWeights().isEmpty());
+
+        // Without the gate the same month scores 100: this is the bug the gate removes.
+        var ungated = new ProfileScorer.Params(0.7, BANK_LIKE, 2, 10, 0, BANDS);
+        assertEquals(100.0, ProfileScorer.score(thin, 1, ungated)[0].finalScore(), 1e-9);
+
+        // 65 of 100 points available passes the gate and scores on the evidence there is.
+        var enough = constant(Map.of(Category.DEBT_SERVICE, 60.0, Category.LIQUIDITY, 60.0,
+                Category.OPERATING_CASH_FLOW, 60.0), null);
+        assertEquals(60.0, ProfileScorer.score(enough, 1, gated)[0].finalScore(), 1e-9);
     }
 
     @Test
@@ -66,7 +91,7 @@ class ProfileRenormalizationTest {
                         rnd.nextBoolean() ? rnd.nextDouble() * 100 : null, 1)});
             }
             for (var w : List.of(BANK_LIKE, FUND_LIKE)) {
-                ProfileScore s = ProfileScorer.score(cats, 1, new ProfileScorer.Params(0.7, w, 2, 10, BANDS))[0];
+                ProfileScore s = ProfileScorer.score(cats, 1, new ProfileScorer.Params(0.7, w, 2, 10, 0, BANDS))[0];
                 if (s.finalScore() == null) {
                     assertTrue(s.effectiveWeights().isEmpty());
                     continue;

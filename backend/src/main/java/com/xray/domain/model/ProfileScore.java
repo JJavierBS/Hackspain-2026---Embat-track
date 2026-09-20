@@ -9,4 +9,9 @@ import java.util.Map;
  */
 public record ProfileScore(Double finalScore, Double level, Double traj, Band band,
                            Double momentum, int momPersistence, Map<Category, Double> effectiveWeights) {
+
+    /** A month the coverage gate refused (decision M8): too little of the profile weight is readable. */
+    public static ProfileScore unscored() {
+        return new ProfileScore(null, null, null, null, null, 0, Map.of());
+    }
 }

@@ -43,3 +43,6 @@ frontend/dist/
 # Python bytecode
 __pycache__/
 *.pyc
+
+# npm is the package manager here: a second lockfile changes how Vercel builds.
+frontend/pnpm-lock.yaml

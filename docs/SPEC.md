@@ -7,6 +7,33 @@
 
 ---
 
+## Status of this document (read before anything else)
+
+This file owns **what to compute**. It was written before the build and parts of it have been
+superseded by decisions taken during the weekend. Every one of those decisions, with its reason and
+its evidence, is in **[`DECISIONS.md`](DECISIONS.md)**. When this file and the register disagree, the
+register wins.
+
+| Section here | Status | Who owns it now |
+|---|---|---|
+| §7.4 weight table | **Superseded.** The weights come from the AHP generator and all ten categories carry weight. | `WEIGHTS.md`, `GET /api/profiles` (decision W1) |
+| §7.7 supervised calibration | **Out of scope.** Interface only, no implementation, no endpoints. | decision M10 |
+| §9 config example | **Illustrative.** The shipped file is the truth. | `backend/src/main/resources/scoring-config.yml`, `GET /api/config` |
+| §10 buyer | **Superseded.** The SME pays first, the lender second. | `PRODUCT.md`, decision P1 |
+| §12.3 packages, §12.5 endpoints | **Superseded.** More endpoints exist (config, methodology, tuning, forecast, recommendations, sectors). | `ARCHITECTURE.md` §3, `/swagger-ui.html` |
+| §13 milestones | **Superseded** by the two-developer block plan. | `ARCHITECTURE.md` §11 |
+| §16 open questions | **Closed**, except the hidden test. | `DECISIONS.md` §5 |
+
+Everything else in this file is current: the data rules, the 22 indicators, the anchors, the scoring
+formulas, the regimes, the statuses, the lead time and the alert catalogue.
+
+Shipped after this file was written, documented elsewhere: band S (`THRESHOLDS.md`), the score
+projection (`FORECAST.md`), the recommendations (`RECOMMENDATIONS.md`), the expert configuration page
+(`ALGORITHM_PAGE.md`), the client and sector presets (`PRESETS.md`, `SECTOR_PRESETS.md`) and the
+coverage gate (`DATA_FINDINGS.md`).
+
+---
+
 ## 0. Rules for the agent (read first)
 
 1. **Never assume data semantics that are marked `⚠ UNKNOWN`.** Run the profiling queries in §4, write the answers to `docs/DATA_FINDINGS.md`, and only then implement the dependent logic. If a finding contradicts this spec, update the config (§9), not hard-coded logic.
@@ -227,7 +254,10 @@ Final_p = Σ_{c≠MOM} w'_c · (λ_p·C_level(c) + (1−λ_p)·C_traj(c)) + w'_M
 ```
 `w'` = weights renormalized over **available** categories (missing categories redistribute their weight proportionally). All scores are 0–100, rounded to 1 decimal.
 
-**Weight tables** (from research; mapping to canonical categories):
+**Weight tables** — ⚠ **superseded on 2026-09-19 (decision W1).** The table below was the first draft.
+The shipped weights come from the AHP generator, every category carries a positive weight in every
+profile, and λ is unchanged. Read `WEIGHTS.md` for the method and the ratings, `WEIGHTS_JUSTIFICATION.md`
+for why they are closed, and `GET /api/profiles` for the live values. The table is kept for history:
 
 | Category | BANK (lender) | FUND (investor) | INSURER (trade credit) |
 |---|---|---|---|
@@ -263,7 +293,11 @@ blended_subscore_i = λ·level_i + (1−λ)·traj_i   (MOMENTUM handled as one p
 ### 7.6 Confidence
 `confidence ∈ {HIGH, MEDIUM, LOW}` per entity-month from: months of history (< 6 → LOW, < 12 → MEDIUM), share of indicators available (< 50% → LOW), fallback indicators used. Low-confidence entities are scored, never excluded, and shown with a badge.
 
-### 7.7 Supervised calibration (activates only if Embat provides labels)
+### 7.7 Supervised calibration — ⚠ NOT BUILT (decision M10)
+**Out of scope.** Only the `ScoreCalibrator` interface exists: no implementation, no Smile dependency,
+no `/api/labels` and no `/api/model/*`. The dataset carries no target column and the hidden test did
+not arrive on Friday as announced. The rest of this section is the design to follow if labels appear.
+
 The dataset dictionary has **no target column**; the track mentions a scoring script and leaderboard from Friday. ⚠ UNKNOWN: label semantics and format.
 - `POST /api/labels` uploads the labels file; a `LabelAdapter` maps it to `(entity_id, month?, target)`.
 - If the target is **binary** (distress yes/no): fit a **WoE scorecard + logistic regression** on indicator sub-scores (5 quantile bins per indicator → WoE), 5-fold CV AUC reported. Library: Smile (`com.github.haifengl:smile-core`) or a hand-rolled logistic (gradient descent is enough for ~250×22).
@@ -339,6 +373,10 @@ Aligned with EBA/GL/2020/06 §8.5: each EWI has trigger levels, severity and esc
 ---
 
 ## 9. Configuration (`scoring-config.yml`)
+
+⚠ **Illustrative.** The block below shows the shape, not the shipped values: the weights, several
+anchors and the band list have changed since. Read the real file, or `GET /api/config`, which also
+serves the shipped defaults next to any expert override.
 
 ```yaml
 scoring:
@@ -499,7 +537,13 @@ com.xray
 `premium_quotes(entity, month, premium_rate, buyer_limit)`
 `lead_time_events(...)`, `threshold_quantiles(indicator_id, quantiles_json)` (reference only for §6.1, never read by scoring), `pipeline_runs(...)`
 
-### 12.5 REST API
+### 12.5 REST API — ⚠ partial
+The list below is the original plan. The shipped API also serves the expert configuration
+(`/api/config`, `/api/config/presets`, `/api/config/sectors`), the methodology (`/api/methodology`),
+the one-entity what-if (`POST /api/entities/{id}/tuning`), the projection and the recommendations.
+The supervised endpoints on the last row were never built (decision M10).
+**`/swagger-ui.html` is the live contract.**
+
 | Method | Path | Returns |
 |---|---|---|
 | POST | `/api/pipeline/run` · GET `/api/pipeline/status` | run / progress |
@@ -535,6 +579,9 @@ UI principles: one accent color per band (A→E), green/red only for direction, 
 
 ## 13. Build order (milestones with acceptance criteria)
 
+⚠ **Superseded** by the two-developer block plan in `ARCHITECTURE.md` §11, which maps to these
+milestones. Kept for the acceptance criteria, which are still the right ones.
+
 All features are in scope. Order ensures a working demo exists as early as possible.
 
 | # | Milestone | Done when |
@@ -566,12 +613,13 @@ All features are in scope. Order ensures a working demo exists as early as possi
 - Short histories and missing ERP data lower confidence; entities are scored, not dropped.
 - EBA/GL/2020/06 is cited as a framework of best practices (EWIs with trigger levels + watchlist), not as a mandatory metric list.
 
-## 16. Open questions to resolve with Embat on Friday (block list)
-1. Scoring unit of the hidden test: `group_id` or `company_id`?
-2. Label/target definition for training entities and submission format of the scoring script.
-3. How to distinguish issued vs received invoices.
-4. Full list of transaction `category` values and meaning (esp. financing, factoring, internal transfers).
-5. `exchange_rate` convention.
-6. How to identify intragroup counterparties.
-7. Whether debt products have transactions (monthly utilization/debt service).
-8. (Internal, not Embat) Close the 10 `⏳ PENDING` thresholds of §6.1 after M2 quantiles.
+## 16. Open questions — closed, except one
+
+Items 3 to 7 were answered by profiling the data, not by Embat. Each answer, with the query that
+produced it, is in `DATA_FINDINGS.md` (Q1 to Q15). Item 8 is decision W4: the ten anchors have
+provisional values and documented proposals in `THRESHOLDS.md`, and wait for a human review.
+
+Items 1 and 2 are still open, and they are the only ones. The hidden test, its scoring script and
+the leaderboard were announced for Friday and did not arrive. The one known fact: the test comes in
+the same CSV format as `data/raw/`, so the pipeline runs on it unchanged. On Sunday, read the unit
+from the test IDs, adapt `SubmissionExporter`, submit once. See `DECISIONS.md` §5.
