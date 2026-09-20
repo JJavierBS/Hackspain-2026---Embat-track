@@ -10,7 +10,7 @@ Hackathon context: two developers, ~20 effective hours, demo on Sunday 11:00. **
 3. `docs/ARCHITECTURE.md` — **how** to build it: packages, contracts, pipeline stages, SQL files, extension points, tests, build order.
 4. `docs/DATA_FINDINGS.md` — answers to data profiling (SPEC §4). Check it before implementing anything marked `⚠ UNKNOWN`.
 5. `docs/THRESHOLDS.md` — status of the 10 `⏳ PENDING` anchors (SPEC §6.1).
-6. `docs/ALGORITHM_PAGE.md`, `docs/PRESETS.md`, `docs/SECTOR_PRESETS.md` — the expert configuration page, the runtime overrides, the client presets and the per-entity sector tuning.
+6. `docs/ALGORITHM_PAGE.md`, `docs/PRESETS.md`, `docs/SECTOR_PRESETS.md`, `docs/CUSTOM_PRESETS.md` — the expert configuration page, the runtime overrides, the client presets, the per-entity sector tuning and the presets a client writes itself.
 
 `README.md` maps every other file.
 

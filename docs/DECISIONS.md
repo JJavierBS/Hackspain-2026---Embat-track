@@ -53,6 +53,7 @@ Dates are the day the team closed the item. All of them fall in the build weeken
 | P5 | The recommendations are template text built from the entity's own contributions. No model runs at request time. | 2026-09-19 | `SPEC.md` §14 forbids an external call at runtime. A template that names the real driver is also easier to defend than generated prose. | `RECOMMENDATIONS.md` |
 | P6 | A client preset changes rules, never a weight. | 2026-09-19 | Each target client already has a weight profile with sources (W1). We found no source that gives different weights for these four clients. | `PRESETS.md` §1 |
 | P7 | The per-entity sector tuning changes anchors only, computes one entity, and writes nothing. | 2026-09-19 | The data has no sector field, so the reader picks the sector. A what-if must not change what anyone else sees. | `SECTOR_PRESETS.md` |
+| P8 | A custom preset is written by the client on the entity page, lives in memory, changes any editable section except the weights, and computes only that entity. | 2026-09-20 | The catalogue presets carry a source we read, so a client value must not enter `presets.yml`. Memory needs no write in demo mode and no volume in production, and the film states the limit. | `CUSTOM_PRESETS.md` |
 
 ## 4. Build and delivery
 
