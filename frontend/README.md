@@ -18,4 +18,4 @@ The app reads `/api` same-origin. In development Vite proxies it; on Vercel `ver
 to the Render service, which is why the backend needs no CORS (`../docs/DEPLOY.md`).
 
 What the pages show, and the rules behind every number: `../README.md` and `../docs/DECISIONS.md`.
-The design system is `../DESIGN.md`.
+The design system is `../docs/DESIGN.md`.

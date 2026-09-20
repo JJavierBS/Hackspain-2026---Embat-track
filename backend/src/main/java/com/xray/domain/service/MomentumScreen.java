@@ -9,7 +9,7 @@ import java.util.Objects;
 
 /**
  * SPEC §10.3 momentum screen (overview contract item 5).
- * Peer ranks and percentiles are display only (SPEC §10.3). No scoring code reads them (CLAUDE.md rule 2).
+ * Peer ranks and percentiles are display only (SPEC §10.3). No scoring code reads them (docs/RULES.md rule 2).
  */
 public final class MomentumScreen {
 

@@ -34,13 +34,13 @@ Dates are the day the team closed the item. All of them fall in the build weeken
 
 | # | Decision | Date | Why | Evidence |
 |---|---|---|---|---|
-| W1 | The category weights, the intra-category weights and λ come from the AHP generator, and they are closed. | 2026-09-19 | The Embat CTO asked the team to stop tuning weights. A ±50 % error on every weight keeps the rank correlation at 0.98–0.99, while the choice of profile moves it to 0.74. The profile design carries the information, not the magnitudes. | `WEIGHTS.md`, `WEIGHTS_JUSTIFICATION.md` §2 |
+| W1 | The category weights, the intra-category weights and λ come from the AHP generator, and they are closed. | 2026-09-19 | The Embat CTO asked the team to stop tuning weights. A ±50 % error on every weight keeps the rank correlation at 0.98–0.99, while the choice of profile moves it to 0.74. The profile design carries the information, not the magnitudes. | `WEIGHTS.md` §11 |
 | W2 | All ten categories carry a positive weight in all three profiles. | 2026-09-19 | A zero weight deletes a category for that buyer. An AHP rating can rank a category last without erasing it. | `WEIGHTS.md` §2.2 |
-| W3 | Only three events reopen a weight: real labels arrive, an Embat expert disputes an ordering, or the ±50 % test falls below 0.90 on new data. | 2026-09-19 | Any other change would fit the score to this one synthetic dataset. | `WEIGHTS_JUSTIFICATION.md` §5 |
+| W3 | Only three events reopen a weight: real labels arrive, an Embat expert disputes an ordering, or the ±50 % test falls below 0.90 on new data. | 2026-09-19 | Any other change would fit the score to this one synthetic dataset. | `WEIGHTS.md` §13 |
 | W4 | Ten anchors stay `status: pending` with provisional values. The quantiles and a proposal for each one are written down and wait for a human review. | 2026-09-19 | Rounding a quantile into an anchor is a judgment. The UI marks every pending anchor, so no number is presented as settled when it is not. | `THRESHOLDS.md` |
 | W5 | Band S (≥ 90) sits above band A. | 2026-09-19 | The product needed a tier for the few outstanding entities. At M23 it holds 2 to 3 entities of 248, so it stays rare. | `THRESHOLDS.md` "Band S" |
 | W6 | `limit-engine.reference-rate` stays 0.035 in the shipped config. It is an example value, and the UI says so. | 2026-09-19 | No expert has agreed a rate with us. The bank and SME presets propose 0.030, the 12-month Euribor of 31 August 2026 read from Banco de España table 1.7. | `THRESHOLDS.md`, `PRESETS.md` §6 |
-| W7 | The spread grid and the premium multipliers are our assumptions. They are monotone in the band and have no market source. | 2026-09-19 | State it when asked. Inventing a source would be worse than having none. | `WEIGHTS_JUSTIFICATION.md` §4 |
+| W7 | The spread grid and the premium multipliers are our assumptions. They are monotone in the band and have no market source. | 2026-09-19 | State it when asked. Inventing a source would be worse than having none. | `WEIGHTS.md` §12 |
 
 ## 3. Product
 
@@ -52,8 +52,8 @@ Dates are the day the team closed the item. All of them fall in the build weeken
 | P4 | The score projection uses AR(1) mean reversion to the entity's own median, ρ = 0.85. It is output only and never feeds a score. | 2026-09-19 | In the backtest it beats repeating the last value from horizon 2 on, and the damped linear trend loses to repeating the last value at every horizon. | `FORECAST.md` §4 |
 | P5 | The recommendations are template text built from the entity's own contributions. No model runs at request time. | 2026-09-19 | `SPEC.md` §14 forbids an external call at runtime. A template that names the real driver is also easier to defend than generated prose. | `RECOMMENDATIONS.md` |
 | P6 | A client preset changes rules, never a weight. | 2026-09-19 | Each target client already has a weight profile with sources (W1). We found no source that gives different weights for these four clients. | `PRESETS.md` §1 |
-| P7 | The per-entity sector tuning changes anchors only, computes one entity, and writes nothing. | 2026-09-19 | The data has no sector field, so the reader picks the sector. A what-if must not change what anyone else sees. | `SECTOR_PRESETS.md` |
-| P8 | A custom preset is written by the client on the entity page, lives in memory, changes any editable section except the weights, and computes only that entity. | 2026-09-20 | The catalogue presets carry a source we read, so a client value must not enter `presets.yml`. Memory needs no write in demo mode and no volume in production, and the film states the limit. | `CUSTOM_PRESETS.md` |
+| P7 | The per-entity sector tuning changes anchors only, computes one entity, and writes nothing. | 2026-09-19 | The data has no sector field, so the reader picks the sector. A what-if must not change what anyone else sees. | `PRESETS.md` |
+| P8 | A custom preset is written by the client on the entity page, lives in memory, changes any editable section except the weights, and computes only that entity. | 2026-09-20 | The catalogue presets carry a source we read, so a client value must not enter `presets.yml`. Memory needs no write in demo mode and no volume in production, and the film states the limit. | `PRESETS.md` |
 
 ## 4. Build and delivery
 

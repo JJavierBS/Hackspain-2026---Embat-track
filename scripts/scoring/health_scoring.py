@@ -15,7 +15,7 @@ Example:
     python scripts/scoring/health_scoring.py --profile BANK --alert-threshold 0.4
 
 Anchors and weights are read from ``backend/src/main/resources/scoring-config.yml``, the only
-source of truth (CLAUDE.md rule 5): indicator weight = scoring.profiles.<P>.weights[category] / 100
+source of truth (docs/RULES.md rule 5): indicator weight = scoring.profiles.<P>.weights[category] / 100
 x scoring.indicators.<ID>.weight / sum of the weights of its category. MOMENTUM has no indicators,
 so it drops out and the rest renormalize. Raw indicator values are read from ``data/xray.duckdb``
 table ``indicator_values_raw``; the backend locks that file, so query a copy.

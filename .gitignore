@@ -37,12 +37,16 @@ frontend/dist/
 # Local env
 .env
 
-# Impeccable review captures (local only)
-.impeccable/review/
-
 # Python bytecode
 __pycache__/
 *.pyc
 
 # npm is the package manager here: a second lockfile changes how Vercel builds.
 frontend/pnpm-lock.yaml
+
+# Coding-agent and design-tool working files (local only, never part of the deliverable)
+CLAUDE.md
+.claude/
+.cursor/
+.impeccable/
+docs/superpowers/

@@ -527,7 +527,7 @@ B's final report is not in the repository. Its data findings (open question 4, `
 
 BANK and FUND do not cluster (p5–p95 spans 46 and 65 points). INSURER has a narrow middle: p25–p75 spans 15 points, but p5–p95 spans 48 points.
 A probable cause is the payment and delinquency levels near 100 (mean level at M23: `PAY_DPO` 97.8, `DEL_OVERDUE_RECEIVABLES` 93.8, `PAY_DSO` 93.0), and INSURER gives these two categories 50 % of the weight.
-**Decision:** no anchor change now (D6). The `PAY_DPO` proposal in `THRESHOLDS.md` widens the tail. Weights do not change for this reason (CLAUDE.md).
+**Decision:** no anchor change now (D6). The `PAY_DPO` proposal in `THRESHOLDS.md` widens the tail. Weights do not change for this reason (`RULES.md` §3).
 
 ## Phase 6 lead-time review (2026-09-19)
 

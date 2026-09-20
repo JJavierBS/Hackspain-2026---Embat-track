@@ -39,7 +39,7 @@ LEFT JOIN ind34_debt d ON d.entity_type = b.entity_type AND d.entity_id = b.enti
 -- Interest = booked interest-category outflows. Groups sum their companies without intragroup rows.
 -- No interest in the window, or too few active months: fallback to the schedule rate
 -- (rate_x_outstanding / rated_outstanding - reference_rate). No debt: unavailable (nothing to score).
--- reference_rate is a placeholder until a human sets it (CLAUDE.md open items).
+-- reference_rate is a placeholder until a human sets it (docs/DECISIONS.md §5).
 INSERT INTO indicator_values_raw
 WITH ic AS (SELECT company_id, month, interest, interest_ext FROM monthly_interest),
 i AS (

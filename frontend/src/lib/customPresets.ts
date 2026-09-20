@@ -31,7 +31,7 @@ export interface CustomPreset {
 }
 
 /**
- * The custom presets of the Algorithm page, per entity, in memory (docs/CUSTOM_PRESETS.md).
+ * The custom presets of the Algorithm page, per entity, in memory (docs/PRESETS.md).
  * They live while the tab lives: a reload empties them, and the page says so. Nothing reaches the server
  * except the what-if body of POST /api/entities/{id}/tuning, which writes nothing.
  */

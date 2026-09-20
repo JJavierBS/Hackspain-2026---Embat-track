@@ -1,7 +1,5 @@
 # Product
 
-<!-- impeccable:product-schema 1 -->
-
 ## Platform
 
 web
@@ -36,7 +34,7 @@ Why it pays off:
 - **For the SME:** a working-capital limit that is recalculated every month from its own cash flow. It does not send the same dossier to eight banks. When its score goes up, its limit goes up and its band, and so its spread, improves.
 - **For the lender:** the limit shrinks when the cash flow gets worse, without a manual annual review. The Methodology page shows how often the engine cut a limit before a proxy event.
 
-Price (structure, no amount): a flat monthly fee for the SME module, plus a fee in basis points on each line a lender opens. No fact supports an amount yet, so we give none. The spread grid and the premium multipliers in the config are our assumptions, not market data (`docs/WEIGHTS_JUSTIFICATION.md` §4).
+Price (structure, no amount): a flat monthly fee for the SME module, plus a fee in basis points on each line a lender opens. No fact supports an amount yet, so we give none. The spread grid and the premium multipliers in the config are our assumptions, not market data (`docs/WEIGHTS.md` §12).
 
 In the demo, show the numbers of one entity on the Entity page (limit, rate, limit action). Do not quote dataset totals: they change with the hidden test data.
 
@@ -48,7 +46,7 @@ Incumbents (Informa D&B, Axesor) score on annual filed accounts. X-Ray scores mo
 ## Operating Context
 - Main viewing context: a projector during the pitch, plus a laptop, plus a jury member on another device. Numbers must read at a distance.
 - Global `profile` (BANK | FUND | INSURER) and `month` (2024-09 … 2026-08) live in the URL. Every view is linkable.
-- Pages: Portfolio, Entity, Monitor (alert replay), Compare, Methodology, Algorithm (expert configuration with client presets. In demo mode the expert edits a draft and previews it on one entity, but cannot recalculate; `docs/ALGORITHM_PAGE.md`). The Entity page tunes one entity by sector (four sourced sector presets, anchors only, what-if, nothing stored; `docs/SECTOR_PRESETS.md`).
+- Pages: Portfolio, Entity, Monitor (alert replay), Compare, Methodology, Algorithm (expert configuration with client presets. In demo mode the expert edits a draft and previews it on one entity, but cannot recalculate; `docs/ALGORITHM_PAGE.md`). The Entity page tunes one entity by sector (four sourced sector presets, anchors only, what-if, nothing stored; `docs/PRESETS.md`).
 - UI copy in Spanish. Code in English.
 
 ## Capabilities and Constraints

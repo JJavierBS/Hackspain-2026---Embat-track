@@ -23,7 +23,7 @@ public class MethodologyQuery {
             "SCORE_DROP", "STRUCTURAL_DECLINE", "STRUCTURAL_IMPROVEMENT", "BAND_UPGRADE", "BAND_DOWNGRADE",
             "LIMIT_ACTION");
 
-    /** CLAUDE.md open items: reference-rate is an example value, not agreed with the experts. A disclosure. */
+    /** docs/DECISIONS.md §5: reference-rate is an example value, not agreed with the experts. A disclosure. */
     private static final boolean REFERENCE_RATE_IS_EXAMPLE = true;
 
     private final SqlRunner sql;

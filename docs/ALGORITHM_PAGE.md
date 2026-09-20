@@ -2,7 +2,7 @@
 
 Status: added on 2026-09-19 (PR #17, branch `feat/algorithm-config`).
 Scope: the `/algorithm` page, the `/api/config` endpoints and the client presets.
-Companion files: `PRESETS.md` (evidence of each preset), `WEIGHTS_JUSTIFICATION.md` (why the weights
+Companion files: `PRESETS.md` (evidence of each preset), `WEIGHTS.md` (why the weights
 stay), `THRESHOLDS.md` (anchor status).
 
 Each decision gives the context, the choice, the options we rejected, and the evidence. Use it to answer
@@ -25,7 +25,7 @@ A risk expert edits every scoring parameter on one page and recalculates all dat
 
 - **Choice.** `PUT /api/config` writes `data/scoring-overrides.yml`. `application.yml` imports it after
   `classpath:scoring-config.yml`, so its values win (Spring: a later import has priority).
-- **Why.** `scoring-config.yml` is in the JAR and in git. It is the reviewed baseline (CLAUDE.md rule 5,
+- **Why.** `scoring-config.yml` is in the JAR and in git. It is the reviewed baseline (docs/RULES.md rule 5,
   "config over code"). A file next to `xray.duckdb` keeps the expert values with the data they produced,
   outside git. A reset is one file delete, and the baseline never changes.
 - **Rejected.** Write back to `scoring-config.yml`: the file is read-only inside the JAR, and a write
@@ -86,7 +86,7 @@ A risk expert edits every scoring parameter on one page and recalculates all dat
 |---|---|---|
 | Profile weights and λ, indicator anchors and weights, trajectory, regimes, statuses, confidence, explanation, indicator edge rules, limit engine, premium, products, alerts, lead time, showcase, forecast | Band cut-offs 80/65/50/35 | The UI draws the band ladder and colours with fixed cut-offs (`lib/format.ts` `BANDS`). A backend-only change gives letters and colours that do not match. |
 | | Data rules: flow classes, FX, invoice and intragroup rules, CSV filters | They come from data profiling (`DATA_FINDINGS.md`), not from expert judgment. A wrong value corrupts the input, not the score. |
-| | Scoring unit and month range | They define the dataset and the submission (CLAUDE.md open items). |
+| | Scoring unit and month range | They define the dataset and the submission (docs/DECISIONS.md §5). |
 
 The user chose this scope on 2026-09-19 ("all scoring parameters").
 
@@ -98,7 +98,7 @@ The user chose this scope on 2026-09-19 ("all scoring parameters").
   `PUT` / `DELETE` return HTTP 409. A save while the pipeline runs also returns 409.
 - **Preview.** The "Vista previa en una entidad" film sends the changed sections of the draft to
   `POST /api/entities/{id}/tuning`. The backend scores that one entity with the draft and writes nothing
-  (`SECTOR_PRESETS.md` S3). This is the only way to see a draft on a server that serves precomputed data.
+  (`PRESETS.md` S3). This is the only way to see a draft on a server that serves precomputed data.
 - **Why.** The deployed app serves precomputed data (render.yaml sets `XRAY_DEMO_MODE=true`). A jury member must not
   change what the pitch shows, but an expert can still test a value. A second run during a run would race on the
   same tables.
@@ -111,7 +111,7 @@ The user chose this scope on 2026-09-19 ("all scoring parameters").
 - **Why.** The user asked for a warning that the change alters the data shown. The action affects every
   user, so the gate names the effect before the click, not after. The review sits in the bar because the
   viewer frame carries every control (DESIGN.md, "Radiology Lightbox"). A modal would hide the values
-  under review (Impeccable craft floor: no modal for a task that does not need protected focus).
+  under review, and this task does not need protected focus.
 - **Also.** The "Zona de experto" section at the top states the effect, the file used and the way back.
   Its status cells show where the values come from and whether the data on screen uses them.
 
@@ -127,9 +127,9 @@ The user chose this scope on 2026-09-19 ("all scoring parameters").
 ### D10. The weights stay editable, with the warning of the closed decision
 
 - **Choice.** The page shows the profile weights first in the editor, with a note: the weights were closed
-  with the Embat CTO on 2026-09-19 (`WEIGHTS_JUSTIFICATION.md`), so change one only with a reason you can
+  with the Embat CTO on 2026-09-19 (`WEIGHTS.md`), so change one only with a reason you can
   defend.
-- **Why.** The user asked for every parameter to be editable. `WEIGHTS_JUSTIFICATION.md` §5 still gives
+- **Why.** The user asked for every parameter to be editable. `WEIGHTS.md` §13 still gives
   the only valid reasons for a change. The page makes a change possible, not advisable.
 
 ### D11. Client presets change rules, never weights
@@ -171,8 +171,8 @@ and 390 px.
 | Browser: edit, review, consent, apply | The bar shows each stage, then "Datos recalculados", and the page shows the new values |
 | Browser: section menu | A click puts the section tab at the top (40 px on desktop, 96 px on mobile below the strip), and the current entry follows the scroll |
 | Boot with a broken preset (anchors out of order) | The boot stops: "Invalid presets.yml: preset fund gives an invalid config …" |
-| `./mvnw test` | 30 tests pass |
-| `npm run typecheck`, `lint`, `build`, Impeccable detector | Clean |
+| `./mvnw test` | 31 tests pass |
+| `npm run typecheck`, `lint`, `build` | Clean |
 
 ## 5. Files
 

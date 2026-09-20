@@ -1,6 +1,6 @@
 # Recommendations — "Qué hacer ahora"
 
-Static, rule-based recommendations on the entity page. No generative AI, no external call (CLAUDE.md rule 9).
+Static, rule-based recommendations on the entity page. No generative AI, no external call (docs/RULES.md rule 9).
 The AI action plan of the `ia` branch (Helmcode client, `POST /entities/{id}/action-plan`, the recommendation
 rules on `/algorithm`) was removed on 2026-09-19 at the product owner's request.
 

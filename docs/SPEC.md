@@ -1,8 +1,11 @@
-# X-Ray — Application Specification for Coding Agents
+# X-Ray — Application Specification
 
-> **Audience:** Claude Code, Gemini, Codex or any coding agent/LLM working on this repo.
-> **Context:** HackSpain 2026, Embat challenge "X-Ray" (Madrid, 18–20 Sept 2026). Two developers, ~20 effective hours.
-> **Source documents:** `embat-track.md` (official challenge) and `Embat-x-ray-investigacion.md` (our research). This spec is the single source of truth for implementation. When this spec and the research disagree, this spec wins.
+> **Owns:** *what* to compute — data, indicators, anchors, scoring formulas, regimes, alerts,
+> products and the API contract. `ARCHITECTURE.md` owns *how* it is built, and `DECISIONS.md`
+> wins over both.
+> **Context:** HackSpain 2026, Embat track (Madrid, 18–20 September 2026). Two developers.
+> **Source:** `embat-track.md` holds the official challenge, unedited. Where this spec and our
+> earlier research disagree, this spec wins.
 > **Language:** code, identifiers, commits and API in English. UI copy may be Spanish.
 
 ---
@@ -29,7 +32,7 @@ formulas, the regimes, the statuses, the lead time and the alert catalogue.
 
 Shipped after this file was written, documented elsewhere: band S (`THRESHOLDS.md`), the score
 projection (`FORECAST.md`), the recommendations (`RECOMMENDATIONS.md`), the expert configuration page
-(`ALGORITHM_PAGE.md`), the client and sector presets (`PRESETS.md`, `SECTOR_PRESETS.md`) and the
+(`ALGORITHM_PAGE.md`), the client and sector presets (`PRESETS.md`, `PRESETS.md`) and the
 coverage gate (`DATA_FINDINGS.md`).
 
 ---
@@ -256,7 +259,7 @@ Final_p = Σ_{c≠MOM} w'_c · (λ_p·C_level(c) + (1−λ_p)·C_traj(c)) + w'_M
 
 **Weight tables** — ⚠ **superseded on 2026-09-19 (decision W1).** The table below was the first draft.
 The shipped weights come from the AHP generator, every category carries a positive weight in every
-profile, and λ is unchanged. Read `WEIGHTS.md` for the method and the ratings, `WEIGHTS_JUSTIFICATION.md`
+profile, and λ is unchanged. Read `WEIGHTS.md` for the method and the ratings, `WEIGHTS.md`
 for why they are closed, and `GET /api/profiles` for the live values. The table is kept for history:
 
 | Category | BANK (lender) | FUND (investor) | INSURER (trade credit) |
@@ -497,9 +500,8 @@ Entity viewed as a **buyer** someone insures receivables against:
 /frontend           React app
 /data/raw           CSVs (gitignored)
 /data/xray.duckdb   pipeline output (gitignored, but keep a frozen copy for the demo)
-/docs               SPEC.md (this file), DATA_FINDINGS.md, THRESHOLDS.md, PITCH.md
+/docs               SPEC.md (this file), DATA_FINDINGS.md, THRESHOLDS.md, RULES.md — docs/README.md maps them
 docker-compose.yml
-CLAUDE.md           short pointer: "Read docs/SPEC.md first"
 ```
 
 ### 12.2 Backend stack

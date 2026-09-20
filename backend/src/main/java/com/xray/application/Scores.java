@@ -3,7 +3,7 @@ package com.xray.application;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-/** Scores are rounded to 1 decimal at the API boundary only (CLAUDE.md conventions). */
+/** Scores are rounded to 1 decimal at the API boundary only (docs/RULES.md §2). */
 public final class Scores {
 
     private Scores() {

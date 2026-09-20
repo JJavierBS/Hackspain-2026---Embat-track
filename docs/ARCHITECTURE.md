@@ -3,7 +3,8 @@
 > Companion to `docs/SPEC.md`. **SPEC.md owns business rules** (indicators, anchors, weights, thresholds, product formulas). **This document owns implementation**: modules, contracts, execution model, extension points, file layout, build order.
 > If the two disagree on *what* to compute, SPEC.md wins. If they disagree on *how* to structure the code, this document wins.
 >
-> Audience: coding agents and the two developers. Language: English for code, identifiers, commits, API.
+> Language: English for code, identifiers, commits and API. The engineering rules this document
+> assumes are listed in `RULES.md`.
 
 ---
 
@@ -67,7 +68,6 @@ So: heavy set-based work in SQL over 2.5M transactions, then **everything else i
 /docs                                         DECISIONS.md first; README.md maps the rest
 docker-compose.yml
 README.md                                     the front door: story, product, how to run it
-CLAUDE.md                                     working rules for coding agents
 ```
 
 ---

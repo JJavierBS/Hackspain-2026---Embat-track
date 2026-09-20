@@ -164,7 +164,7 @@ components:
 
 ## Embat identity layer (2026-09-19)
 
-The Radiology Lightbox keeps its layout, films, tabs, ladder and scan line. Its tokens now follow the Embat brand (extracted with tastelabs from embat.io). These rules override the older text below where they conflict:
+The Radiology Lightbox keeps its layout, films, tabs, ladder and scan line. Its tokens now follow the Embat brand (extracted from embat.io). These rules override the older text below where they conflict:
 
 - **Palette.** Frame and ink are Embat Midnight Ink `#050B2C` (raised `#232845`, rule `#373C56`). Panel is `#F3F4F6`, films are white. "Scan" is Embat Action Blue `#3878F6`, and its wash is Cloud Blue `#E7EFFF`. Action Blue now also fills the primary action (Reproducir, Aplicar y recalcular). Coral `#F7B2A8` marks the demo-data flag, the one non-semantic marker.
 - **Band A** moves from cobalt to indigo `#4338CA`, so a health value never reads as Action Blue (The Three Voices Rule).

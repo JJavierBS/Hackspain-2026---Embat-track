@@ -76,7 +76,7 @@ ratios, every CR below 0.01 for categories and at most 0.0334 inside a category.
 
 Limit engine at M23 (BANK): DECLINE 5 → 10 (band E has no spread), MAINTAIN 167 → 163, INCREASE 38 → 37.
 
-**Histogram check (CLAUDE.md).** Histogram of `final` at M23, 10-point bins from 0 to 100:
+**Histogram check (`RULES.md` §3).** Histogram of `final` at M23, 10-point bins from 0 to 100:
 
 - BANK `[0, 0, 4, 15, 54, 43, 52, 43, 34, 3]`, IQR 25.2
 - FUND `[0, 3, 12, 35, 51, 62, 39, 24, 19, 3]`, IQR 23.1
@@ -94,7 +94,7 @@ The config validator requires `100 ≥ s > a > b > c > d > 0`.
 **Why.** Product request: a tier that singles out the best entities. At M23 the cut at 90 holds
 3 BANK, 3 FUND and 2 INSURER entities (of 248), so S stays rare; A keeps the rest of the ≥ 80 group.
 
-**Products.** Our assumptions, like the rest of the grid (`docs/WEIGHTS_JUSTIFICATION.md` §4), no source:
+**Products.** Our assumptions, like the rest of the grid (`docs/WEIGHTS.md` §12), no source:
 - `limit-engine.spread-bps-by-band.S: 100` (A is 150).
 - `insurer.multiplier-by-band.S: 0.5` (A is 0.7).
 - Insurer preset (`presets.yml`): `S: 0.4`, the same as A. Atradius publishes nothing below 0.10 %,

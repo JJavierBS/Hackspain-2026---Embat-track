@@ -58,7 +58,7 @@ Two more views of the same score ship with it, selected by one switch in the URL
 - **Insurer** — a trade-credit premium that moves with the band every month instead of once a year.
 - **Fund** — a momentum screen that finds the company at 45 that is on its way to 65.
 
-Reasons and price structure: [`PRODUCT.md`](PRODUCT.md).
+Reasons and price structure: [`docs/PRODUCT.md`](docs/PRODUCT.md).
 
 ## How it works
 
@@ -135,23 +135,94 @@ number that only reports its wins is not a number anyone can underwrite with.
 
 ## Run it
 
+### Requirements
+
+| | Version | Note |
+|---|---|---|
+| JDK | 21+ | `mise.toml` pins `temurin-21`. Newer JDKs build and run fine. |
+| Node | 20+ | `mise.toml` pins 24. **Use npm** — `package-lock.json` is the lockfile in git. |
+| Docker | any recent | Only for the one-command path below. |
+
+Maven and the DuckDB engine come down on the first build; nothing else to install.
+
+### Option A — demo mode, no data files needed (start here)
+
+The repo ships a **frozen slice of the results database**, so the demo runs with no CSVs and no
+pipeline. This is exactly how production runs ([`docs/DEPLOY.md`](docs/DEPLOY.md)).
+
 ```bash
-# 1. Put the nine Embat CSVs in data/raw/ (gitignored, ~617 MB)
-cd backend && ./mvnw spring-boot:run     # :8080, runs the pipeline on first boot, Swagger at /swagger-ui.html
-cd frontend && npm install && npm run dev # :5173, proxies /api
+# 1. expand the frozen database (47 MB in git → 108 MB on disk)
+mkdir -p data
+gzip -dc backend/demo/xray-demo.duckdb.gz > data/xray.duckdb
 
-# everything at once, as deployed
-docker compose up --build                 # http://localhost
+# 2. backend — boots in ~2 s and serves the precomputed data
+cd backend && XRAY_DEMO_MODE=true ./mvnw spring-boot:run
 
-# the six tests that guard the six claims
-cd backend && ./mvnw test
+# 3. frontend, in a second terminal
+cd frontend && npm install && npm run dev
 ```
 
-No CSVs at hand? The repo ships a frozen slice of the results database
-(`backend/demo/xray-demo.duckdb.gz`, 47 MB in git, 108 MB expanded). Start the backend with
-`XRAY_DEMO_MODE=true` and it serves the
-precomputed data without ever running the pipeline. That is exactly how production runs
-([`docs/DEPLOY.md`](docs/DEPLOY.md)).
+Open **http://localhost:5173**. The API is on `:8080`, Swagger UI at
+`http://localhost:8080/swagger-ui.html`.
+
+In demo mode the pipeline never runs: "Aplicar y recalcular" on `/algorithm` and
+`POST /api/pipeline/run` are disabled. Everything else — including the sector what-if, the custom
+presets and the limit simulator — works, because those compute one entity per request and write
+nothing.
+
+### Option B — the whole pipeline from the raw CSVs
+
+```bash
+# 1. put the nine Embat CSVs in data/raw/ (gitignored, ~617 MB)
+# 2. boot; the pipeline runs automatically when the results tables are empty (~1 min)
+cd backend && ./mvnw spring-boot:run
+cd frontend && npm install && npm run dev
+```
+
+```bash
+curl localhost:8080/api/pipeline/status     # progress while it runs
+curl -X POST localhost:8080/api/pipeline/run # rerun it by hand
+```
+
+### Option C — the full stack in one command
+
+```bash
+docker compose up --build      # http://localhost, backend on :8080
+```
+
+Compose bind-mounts `./data`, so it uses whatever database is already there. `XRAY_DEMO_MODE`
+defaults to `true`; set it to `false` to allow a recalculation (needs the CSVs in `data/raw/`).
+
+### Environment variables
+
+| Variable | Default | What it does |
+|---|---|---|
+| `XRAY_DEMO_MODE` | `false` | `true` serves the frozen database and never runs the pipeline |
+| `XRAY_DATA_DIR` | `../data` | Where `xray.duckdb`, `raw/` and `scoring-overrides.yml` live |
+| `SERVER_PORT` / `PORT` | `8080` | API port. `PORT` wins, for PaaS hosts that inject it |
+| `XRAY_DUCKDB_MEMORY_LIMIT` | unset | DuckDB `memory_limit`, e.g. `64MB`. Needed on small containers |
+| `VITE_API_TARGET` | `http://localhost:8080` | Backend the Vite dev proxy points at |
+
+### Tests
+
+```bash
+cd backend && ./mvnw test      # 31 tests; the six named ones guard the six claims
+cd frontend && npm run typecheck && npm run lint && npm run build
+```
+
+The six that matter are listed in [`docs/RULES.md`](docs/RULES.md) §4: `AnchorInterpolatorTest`,
+`ExplanationSumTest`, `LookAheadTest`, `ProfileRenormalizationTest`, `RollupTest` and
+`ScoringConfigValidationTest`.
+
+### If something goes wrong
+
+| Symptom | Cause and fix |
+|---|---|
+| `IOException: Could not set lock on file` | DuckDB allows one process per database file. Stop the other backend first. |
+| Empty pages, every score `null` | No database at `data/xray.duckdb`. Run step 1 of option A. |
+| The pipeline starts when you did not want it to | `XRAY_DEMO_MODE` is not `true` and the results tables are empty. |
+| The UI shows data that looks too healthy | `VITE_MOCKS=true` is set. Unset it — that is `npm run dev:mock`, not `npm run dev`. |
+| `/monitor`, `/entity/...` return 404 on reload | An SPA-fallback rewrite is missing in the host config ([`docs/DEPLOY.md`](docs/DEPLOY.md)). |
 
 ## The demo
 
@@ -178,21 +249,21 @@ Stated in the UI, not hidden in a footnote.
 
 ## Documentation
 
-Start here, then follow the one file you need.
+Thirteen files under [`docs/`](docs/), each with one owner. [`docs/README.md`](docs/README.md) is the
+full index; these are the four to start from.
 
 | File | Owns |
 |---|---|
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | **Every decision, with its reason and its evidence.** Read this before disagreeing with anything. |
+| [`docs/RULES.md`](docs/RULES.md) | The engineering rules the code holds, the conventions, and the tests that guard them |
 | [`docs/SPEC.md`](docs/SPEC.md) | *What* to compute: data, indicators, anchors, scoring, regimes, alerts, products, API |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | *How* it is built: packages, contracts, pipeline stages, SQL files, extension points, tests |
-| [`docs/DATA_FINDINGS.md`](docs/DATA_FINDINGS.md) | What the CSVs actually say. Every profiling answer, with the query |
-| [`docs/THRESHOLDS.md`](docs/THRESHOLDS.md) | The anchors: quantiles, proposals and review status |
-| [`docs/WEIGHTS.md`](docs/WEIGHTS.md) · [`docs/WEIGHTS_JUSTIFICATION.md`](docs/WEIGHTS_JUSTIFICATION.md) | How the weights were derived, and the sensitivity test that says the magnitudes barely matter |
-| [`docs/PRESETS.md`](docs/PRESETS.md) · [`docs/SECTOR_PRESETS.md`](docs/SECTOR_PRESETS.md) | Client and sector starting points, each value with the source we read |
-| [`docs/CUSTOM_PRESETS.md`](docs/CUSTOM_PRESETS.md) | Presets the client writes for one entity, in memory, with its own evidence |
-| [`docs/ALGORITHM_PAGE.md`](docs/ALGORITHM_PAGE.md) | The expert configuration page: decisions, limits and test evidence |
-| [`docs/FORECAST.md`](docs/FORECAST.md) · [`docs/RECOMMENDATIONS.md`](docs/RECOMMENDATIONS.md) | The two outputs that do not feed the score |
-| [`docs/DEPLOY.md`](docs/DEPLOY.md) | Render, Vercel, the frozen database and the memory budget |
-| [`PRODUCT.md`](PRODUCT.md) · [`DESIGN.md`](DESIGN.md) | Product context and the design system |
-| [`CLAUDE.md`](CLAUDE.md) | Working rules for coding agents on this repo |
-| [`docs/embat-track.md`](docs/embat-track.md) | The original brief, unedited |
+
+Then, by question: the data ([`DATA_FINDINGS.md`](docs/DATA_FINDINGS.md)), the anchors
+([`THRESHOLDS.md`](docs/THRESHOLDS.md)), the weights and their sensitivity test
+([`WEIGHTS.md`](docs/WEIGHTS.md)), the presets ([`PRESETS.md`](docs/PRESETS.md)), the expert page
+([`ALGORITHM_PAGE.md`](docs/ALGORITHM_PAGE.md)), the two non-scoring outputs
+([`FORECAST.md`](docs/FORECAST.md), [`RECOMMENDATIONS.md`](docs/RECOMMENDATIONS.md)), the product
+([`PRODUCT.md`](docs/PRODUCT.md)), the design system ([`DESIGN.md`](docs/DESIGN.md)), the deploy
+([`DEPLOY.md`](docs/DEPLOY.md)) and the original brief, unedited
+([`embat-track.md`](docs/embat-track.md)).

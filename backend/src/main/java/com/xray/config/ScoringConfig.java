@@ -134,7 +134,7 @@ public record ScoringConfig(
         }
     }
 
-    /** DEBT_DSCR level when the entity has no debt service (CLAUDE.md resolved conflict 7). */
+    /** DEBT_DSCR level when the entity has no debt service (DECISIONS.md M9b). */
     public record DebtDscrConfig(double noDebtLevel) {
     }
 

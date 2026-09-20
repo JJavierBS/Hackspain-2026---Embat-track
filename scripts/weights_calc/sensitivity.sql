@@ -1,4 +1,4 @@
--- Sensitivity of the GROUP ranking to the category weights and to lambda (docs/WEIGHTS_JUSTIFICATION.md).
+-- Sensitivity of the GROUP ranking to the category weights and to lambda (docs/WEIGHTS.md).
 -- Reads the results tables of any pipeline run, at its last month. No input from this dataset is hardcoded.
 -- Rebuilds final exactly as S60 does (checked on 2026-09-19: MAE 0.0 against profile_scores).
 -- Run: duckdb -readonly data/xray.duckdb < scripts/weights_calc/sensitivity.sql

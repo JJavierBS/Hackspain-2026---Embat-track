@@ -12,7 +12,7 @@ import { ProfileTable, ScorePair, TuningChart } from "./TuningParts";
 const NONE = "";
 
 /**
- * The per-entity tuning (docs/SECTOR_PRESETS.md). The data has no sector field, so the reader picks one. The
+ * The per-entity tuning (docs/PRESETS.md). The data has no sector field, so the reader picks one. The
  * backend scores this one entity again with the sector anchors and writes nothing: every other page keeps the
  * published score. Every sector is open to every entity. Each anchor change applies by default, and the reader can
  * turn one off. The choice lives in ?sector and ?off (the changes turned off), so the view is linkable.

@@ -107,7 +107,7 @@ export function AlgorithmPage() {
               <p className="mb-6 max-w-[70ch] text-ink-muted">
                 Cuánto cuenta cada categoría en la puntuación de cada comprador. Una categoría sin datos se excluye y el
                 resto se reparte su peso. Estos pesos se cerraron con el CTO de Embat el 19-09-2026
-                (docs/WEIGHTS_JUSTIFICATION.md): cámbialos solo con un motivo que puedas defender.
+                (docs/WEIGHTS.md): cámbialos solo con un motivo que puedas defender.
               </p>
               <WeightsTable />
             </Film>

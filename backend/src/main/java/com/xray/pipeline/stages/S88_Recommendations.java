@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 
 /**
  * Static recommendations for every entity-month-profile (docs/RECOMMENDATIONS.md), so the entity page only reads
- * them (CLAUDE.md rule 8). Causal: month m reads month m and the count of scored months up to m. Output only.
+ * them (docs/RULES.md rule 8). Causal: month m reads month m and the count of scored months up to m. Output only.
  */
 @Component
 @Order(88)

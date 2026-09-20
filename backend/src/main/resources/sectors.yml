@@ -1,9 +1,9 @@
-# Sector presets for the per-entity tuning (docs/SECTOR_PRESETS.md).
+# Sector presets for the per-entity tuning (docs/PRESETS.md).
 # The data has no sector field (SPEC §4), so a user picks the sector of one group or company on the Entity page.
 # The backend then scores that one entity again with the sector anchors. Nothing is written, and no other entity changes.
 # Rules for this file:
 #   - A sector changes indicator anchors only (path indicators.<ID>.anchors). Never a weight: the profile weights
-#     are closed (docs/WEIGHTS_JUSTIFICATION.md). The boot refuses any other path.
+#     are closed (docs/WEIGHTS.md). The boot refuses any other path.
 #   - Each change says sourced, derived (a source gives the numbers, a rule of ours named in "why" gives the anchors)
 #     or placeholder. No figure is attributed to a source that we did not read.
 #   - The fixed parts of SPEC §6.1 stay: DPO <= 60 days -> 100 (Ley 3/2004), NOCF margin < 0 -> <= 35 and 0 -> 45.

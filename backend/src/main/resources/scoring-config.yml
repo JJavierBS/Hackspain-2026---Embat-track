@@ -152,7 +152,7 @@ scoring:
     runway-guard: { below-months: 1.5, multiplier: 0.5 }
     dscr-min: 1.25
     default-term-months: 36
-    reference-rate: 0.035           # EXAMPLE value, not agreed with the experts (see CLAUDE.md open items)
+    reference-rate: 0.035           # EXAMPLE value, not agreed with the experts (see docs/DECISIONS.md §5)
     spread-bps-by-band: { S: 100, A: 150, B: 250, C: 400, D: 650 }   # E missing = DECLINE
     action-threshold: 0.10
     rounding-eur: 1000              # SPEC §10.1: limit rounded to 1,000 EUR (down, never up)

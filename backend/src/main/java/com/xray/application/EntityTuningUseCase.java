@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * POST /api/entities/{id}/tuning (docs/SECTOR_PRESETS.md): a what-if score for ONE entity with a sector preset
+ * POST /api/entities/{id}/tuning (docs/PRESETS.md): a what-if score for ONE entity with a sector preset
  * and/or the Algorithm page draft. The request reads the entity's stored raw indicators (indicator_values_raw)
  * and runs the pipeline's own scoring steps (PanelScoring) twice: with the active config (the base) and with the
  * tuned config. Both runs use the same code, so the difference comes from the config only. It writes nothing,

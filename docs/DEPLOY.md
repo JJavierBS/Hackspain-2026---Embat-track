@@ -6,7 +6,7 @@ your laptop. Prod runs in demo mode: `render.yaml` and `docker-compose.yml` set 
 
 - The Algorithm page edits a draft and previews it on one entity. "Aplicar y recalcular" and
   "Recalcular ahora" stay disabled (`docs/ALGORITHM_PAGE.md` D7).
-- The Entity page tunes one entity by sector (`docs/SECTOR_PRESETS.md`). Nothing is written.
+- The Entity page tunes one entity by sector (`docs/PRESETS.md`). Nothing is written.
 
 To allow a full recalculation again, set `XRAY_DEMO_MODE=false` on the service. S00..S25 then skip without the
 CSVs, and S30 onwards reads the input tables that ship in the frozen database. Saved edits live on the Render
@@ -81,8 +81,9 @@ zero-downtime deploy. A service created from the dashboard needs the disk added 
   at the end (`RunDatabase`). A failed run changes nothing that the app shows. A heap
   `OutOfMemoryError` stops the JVM (`-XX:+ExitOnOutOfMemoryError`), and Render restarts it with the
   last published database on the disk.
-- Neither the image nor `render.yaml` sets `XRAY_DEMO_MODE`, so the app default (`false`) applies. A
-  service created from the dashboard keeps its own env vars: delete `XRAY_DEMO_MODE` there.
+- `render.yaml` sets `XRAY_DEMO_MODE=true`; the image itself sets nothing, so the app default
+  (`false`) applies to anything that does not come from the blueprint. A service created from the
+  dashboard keeps its own env vars, so set `XRAY_DEMO_MODE` there by hand.
 
 Checks once it is live:
 

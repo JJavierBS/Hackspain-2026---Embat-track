@@ -18,7 +18,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
- * Sector presets of the per-entity tuning (sectors.yml, docs/SECTOR_PRESETS.md). A sector is a list of anchor
+ * Sector presets of the per-entity tuning (sectors.yml, docs/PRESETS.md). A sector is a list of anchor
  * changes with their evidence. It never changes a weight: the constructor refuses any path other than
  * indicators.&lt;ID&gt;.anchors, applies each sector to the shipped config and runs the boot checks, so a bad sector
  * stops the boot like a bad scoring-config.yml.

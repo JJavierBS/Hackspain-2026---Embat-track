@@ -41,7 +41,7 @@ import { ProfileTable, ScorePair, TuningChart } from "./TuningParts";
 const LABEL = "Con el preset";
 
 /**
- * Custom presets of one entity (docs/CUSTOM_PRESETS.md). The catalogue presets carry a source we read and never
+ * Custom presets of one entity (docs/PRESETS.md). The catalogue presets carry a source we read and never
  * change here; these are the client's own, written on this page. A preset is a set of config values over the
  * config in use, each with its evidence. Opening one applies it to this entity: the backend scores that entity
  * again with the pipeline's own code (POST /api/entities/{id}/tuning) and writes nothing, so every other page
