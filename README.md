@@ -6,7 +6,7 @@
 y un límite de circulante que se recalcula solo a partir de ese score.**
 
 [![Demo](https://img.shields.io/badge/demo-en%20vivo-3878f6?style=flat-square)](https://hackspain-2026-embat-track.vercel.app/)
-[![API](https://img.shields.io/badge/API-Swagger-85ea2d?style=flat-square)](https://hackspain-2026-embat-track.onrender.com/swagger-ui.html)
+[![API](https://img.shields.io/badge/API-Swagger-85ea2d?style=flat-square)](https://hackspain-2026-embat-track-uei8.onrender.com/swagger-ui.html)
 ![Java](https://img.shields.io/badge/Java-21-orange?style=flat-square)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-6db33f?style=flat-square)
 ![DuckDB](https://img.shields.io/badge/DuckDB-embebido-fff000?style=flat-square)
@@ -283,7 +283,7 @@ Seis páginas. `profile` y `month` viven en la URL, así que toda vista es un en
 
 ## API
 
-Documentación interactiva en [`/swagger-ui.html`](https://hackspain-2026-embat-track.onrender.com/swagger-ui.html).
+Documentación interactiva en [`/swagger-ui.html`](https://hackspain-2026-embat-track-uei8.onrender.com/swagger-ui.html).
 Ninguna petición recalcula nada: la API lee tablas de resultados y apunta a menos de 1 s por página.
 
 | Endpoint | Devuelve |
@@ -380,7 +380,7 @@ Está dicho en la UI, no escondido en una nota al pie.
 and a working-capital limit that recalculates itself from that score.**
 
 [![Demo](https://img.shields.io/badge/demo-live-3878f6?style=flat-square)](https://hackspain-2026-embat-track.vercel.app/)
-[![API](https://img.shields.io/badge/API-Swagger-85ea2d?style=flat-square)](https://hackspain-2026-embat-track.onrender.com/swagger-ui.html)
+[![API](https://img.shields.io/badge/API-Swagger-85ea2d?style=flat-square)](https://hackspain-2026-embat-track-uei8.onrender.com/swagger-ui.html)
 ![Java](https://img.shields.io/badge/Java-21-orange?style=flat-square)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-6db33f?style=flat-square)
 ![DuckDB](https://img.shields.io/badge/DuckDB-embedded-fff000?style=flat-square)
@@ -654,7 +654,7 @@ Six pages. `profile` and `month` live in the URL, so every view is a link.
 
 ## API
 
-Interactive docs at [`/swagger-ui.html`](https://hackspain-2026-embat-track.onrender.com/swagger-ui.html).
+Interactive docs at [`/swagger-ui.html`](https://hackspain-2026-embat-track-uei8.onrender.com/swagger-ui.html).
 No request recomputes anything: the API reads results tables and targets under 1 s per page.
 
 | Endpoint | Returns |
