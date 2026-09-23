@@ -12,6 +12,7 @@ const NAV = [
   { to: "/compare", label: "Comparar" },
   { to: "/methodology", label: "Metodología" },
   { to: "/algorithm", label: "Algoritmo" },
+  { to: "/story", label: "Historia" },
 ];
 
 /** The viewer frame: navigation, the profile cord, the month stepper and strip, and the pipeline lamp. */

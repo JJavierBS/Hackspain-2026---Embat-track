@@ -7,6 +7,7 @@ import { MethodologyPage } from "./pages/MethodologyPage";
 import { MonitorPage } from "./pages/MonitorPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { PortfolioPage } from "./pages/PortfolioPage";
+import { StoryPage } from "./pages/StoryPage";
 
 // SPEC §12.7 pages. profile and month travel as search params on every route.
 export const router = createBrowserRouter([
@@ -20,6 +21,7 @@ export const router = createBrowserRouter([
       { path: "compare", element: <ComparePage /> },
       { path: "methodology", element: <MethodologyPage /> },
       { path: "algorithm", element: <AlgorithmPage /> },
+      { path: "story", element: <StoryPage /> },
       { path: "*", element: <NotFoundPage /> },
     ],
   },
